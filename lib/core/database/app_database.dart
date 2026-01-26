@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:uuid/uuid.dart';
 // Importamos las tablas y DAOs
 import 'tables/app_tables.dart';
 import 'daos/matches_dao.dart';

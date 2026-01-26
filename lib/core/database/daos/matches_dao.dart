@@ -14,12 +14,12 @@ class MatchesDao extends DatabaseAccessor<AppDatabase> with _$MatchesDaoMixin {
       await into(matches).insert(match);
     } catch (e) {
       // Aquí manejas la excepción específica de BD y la lanzas como una de tu dominio
-      throw Exception('Error al crear partido: $e'); 
+      throw Exception('Error al crear partido: $e');
     }
   }
 
   // Obtener partidos pendientes (Stream para UI reactiva)
-  Stream<List<Match>> watchPendingMatches() {
+  Stream<List<Matche>> watchPendingMatches() {
     return (select(matches)
           ..where((tbl) => tbl.status.equals('PENDING'))
           ..orderBy([(t) => OrderingTerm(expression: t.scheduledDate)]))
@@ -28,7 +28,10 @@ class MatchesDao extends DatabaseAccessor<AppDatabase> with _$MatchesDaoMixin {
 
   // Ejemplo de Transacción (Atomicidad)
   // Útil cuando registras un equipo completo: o se guardan todos o ninguno.
-  Future<void> addRosterToMatch(String matchId, List<MatchRostersCompanion> roster) async {
+  Future<void> addRosterToMatch(
+    String matchId,
+    List<MatchRostersCompanion> roster,
+  ) async {
     return transaction(() async {
       for (var player in roster) {
         await into(matchRosters).insert(player);
