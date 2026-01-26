@@ -3,7 +3,8 @@
 part of 'app_database.dart';
 
 // ignore_for_file: type=lint
-class $MatchesTable extends Matches with TableInfo<$MatchesTable, Matche> {
+class $MatchesTable extends Matches
+    with TableInfo<$MatchesTable, BasketballMatch> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -152,7 +153,7 @@ class $MatchesTable extends Matches with TableInfo<$MatchesTable, Matche> {
   static const String $name = 'matches';
   @override
   VerificationContext validateIntegrity(
-    Insertable<Matche> instance, {
+    Insertable<BasketballMatch> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -238,9 +239,9 @@ class $MatchesTable extends Matches with TableInfo<$MatchesTable, Matche> {
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  Matche map(Map<String, dynamic> data, {String? tablePrefix}) {
+  BasketballMatch map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return Matche(
+    return BasketballMatch(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -294,7 +295,7 @@ class $MatchesTable extends Matches with TableInfo<$MatchesTable, Matche> {
   }
 }
 
-class Matche extends DataClass implements Insertable<Matche> {
+class BasketballMatch extends DataClass implements Insertable<BasketballMatch> {
   final String id;
   final DateTime createdAt;
   final DateTime? updatedAt;
@@ -306,7 +307,7 @@ class Matche extends DataClass implements Insertable<Matche> {
   final String status;
   final int scoreA;
   final int scoreB;
-  const Matche({
+  const BasketballMatch({
     required this.id,
     required this.createdAt,
     this.updatedAt,
@@ -360,12 +361,12 @@ class Matche extends DataClass implements Insertable<Matche> {
     );
   }
 
-  factory Matche.fromJson(
+  factory BasketballMatch.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return Matche(
+    return BasketballMatch(
       id: serializer.fromJson<String>(json['id']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
@@ -397,7 +398,7 @@ class Matche extends DataClass implements Insertable<Matche> {
     };
   }
 
-  Matche copyWith({
+  BasketballMatch copyWith({
     String? id,
     DateTime? createdAt,
     Value<DateTime?> updatedAt = const Value.absent(),
@@ -409,7 +410,7 @@ class Matche extends DataClass implements Insertable<Matche> {
     String? status,
     int? scoreA,
     int? scoreB,
-  }) => Matche(
+  }) => BasketballMatch(
     id: id ?? this.id,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
@@ -422,8 +423,8 @@ class Matche extends DataClass implements Insertable<Matche> {
     scoreA: scoreA ?? this.scoreA,
     scoreB: scoreB ?? this.scoreB,
   );
-  Matche copyWithCompanion(MatchesCompanion data) {
-    return Matche(
+  BasketballMatch copyWithCompanion(MatchesCompanion data) {
+    return BasketballMatch(
       id: data.id.present ? data.id.value : this.id,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -444,7 +445,7 @@ class Matche extends DataClass implements Insertable<Matche> {
 
   @override
   String toString() {
-    return (StringBuffer('Matche(')
+    return (StringBuffer('BasketballMatch(')
           ..write('id: $id, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -477,7 +478,7 @@ class Matche extends DataClass implements Insertable<Matche> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is Matche &&
+      (other is BasketballMatch &&
           other.id == this.id &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
@@ -491,7 +492,7 @@ class Matche extends DataClass implements Insertable<Matche> {
           other.scoreB == this.scoreB);
 }
 
-class MatchesCompanion extends UpdateCompanion<Matche> {
+class MatchesCompanion extends UpdateCompanion<BasketballMatch> {
   final Value<String> id;
   final Value<DateTime> createdAt;
   final Value<DateTime?> updatedAt;
@@ -534,7 +535,7 @@ class MatchesCompanion extends UpdateCompanion<Matche> {
   }) : teamAName = Value(teamAName),
        teamBName = Value(teamBName),
        scheduledDate = Value(scheduledDate);
-  static Insertable<Matche> custom({
+  static Insertable<BasketballMatch> custom({
     Expression<String>? id,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -2344,7 +2345,7 @@ typedef $$MatchesTableUpdateCompanionBuilder =
     });
 
 final class $$MatchesTableReferences
-    extends BaseReferences<_$AppDatabase, $MatchesTable, Matche> {
+    extends BaseReferences<_$AppDatabase, $MatchesTable, BasketballMatch> {
   $$MatchesTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
   static MultiTypedResultKey<$MatchRostersTable, List<RosterEntry>>
@@ -2666,14 +2667,14 @@ class $$MatchesTableTableManager
         RootTableManager<
           _$AppDatabase,
           $MatchesTable,
-          Matche,
+          BasketballMatch,
           $$MatchesTableFilterComposer,
           $$MatchesTableOrderingComposer,
           $$MatchesTableAnnotationComposer,
           $$MatchesTableCreateCompanionBuilder,
           $$MatchesTableUpdateCompanionBuilder,
-          (Matche, $$MatchesTableReferences),
-          Matche,
+          (BasketballMatch, $$MatchesTableReferences),
+          BasketballMatch,
           PrefetchHooks Function({bool matchRostersRefs, bool gameEventsRefs})
         > {
   $$MatchesTableTableManager(_$AppDatabase db, $MatchesTable table)
@@ -2764,7 +2765,7 @@ class $$MatchesTableTableManager
                     return [
                       if (matchRostersRefs)
                         await $_getPrefetchedData<
-                          Matche,
+                          BasketballMatch,
                           $MatchesTable,
                           RosterEntry
                         >(
@@ -2785,7 +2786,7 @@ class $$MatchesTableTableManager
                         ),
                       if (gameEventsRefs)
                         await $_getPrefetchedData<
-                          Matche,
+                          BasketballMatch,
                           $MatchesTable,
                           GameEvent
                         >(
@@ -2816,14 +2817,14 @@ typedef $$MatchesTableProcessedTableManager =
     ProcessedTableManager<
       _$AppDatabase,
       $MatchesTable,
-      Matche,
+      BasketballMatch,
       $$MatchesTableFilterComposer,
       $$MatchesTableOrderingComposer,
       $$MatchesTableAnnotationComposer,
       $$MatchesTableCreateCompanionBuilder,
       $$MatchesTableUpdateCompanionBuilder,
-      (Matche, $$MatchesTableReferences),
-      Matche,
+      (BasketballMatch, $$MatchesTableReferences),
+      BasketballMatch,
       PrefetchHooks Function({bool matchRostersRefs, bool gameEventsRefs})
     >;
 typedef $$PlayersTableCreateCompanionBuilder =

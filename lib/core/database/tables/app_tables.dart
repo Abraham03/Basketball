@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'base_table.dart';
 
 // Tabla de Partidos
+@DataClassName('BasketballMatch')
 class Matches extends Table with BaseTable {
   TextColumn get tournamentId => text().nullable()();
   TextColumn get teamAName => text()();

@@ -19,7 +19,7 @@ class MatchesDao extends DatabaseAccessor<AppDatabase> with _$MatchesDaoMixin {
   }
 
   // Obtener partidos pendientes (Stream para UI reactiva)
-  Stream<List<Matche>> watchPendingMatches() {
+  Stream<List<BasketballMatch>> watchPendingMatches() {
     return (select(matches)
           ..where((tbl) => tbl.status.equals('PENDING'))
           ..orderBy([(t) => OrderingTerm(expression: t.scheduledDate)]))
