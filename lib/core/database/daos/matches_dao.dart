@@ -6,7 +6,7 @@ part 'matches_dao.g.dart'; // Drift generará esto
 
 @DriftAccessor(tables: [Matches, MatchRosters, GameEvents])
 class MatchesDao extends DatabaseAccessor<AppDatabase> with _$MatchesDaoMixin {
-  MatchesDao(AppDatabase db) : super(db);
+  MatchesDao(super.db);
 
   // Crear un partido
   Future<void> createMatch(MatchesCompanion match) async {

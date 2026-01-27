@@ -71,17 +71,17 @@ class MatchesListScreen extends ConsumerWidget {
 
           // 4. Estado vacío
           if (matches.isEmpty) {
-            return Center(
+            return const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.sports_basketball,
                     size: 80,
                     color: Colors.grey,
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
+                  SizedBox(height: 16),
+                  Text(
                     'No hay partidos programados.\nPresiona + para crear uno.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.grey, fontSize: 16),

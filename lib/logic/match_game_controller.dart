@@ -28,10 +28,10 @@ class MatchState {
   final int currentPeriod;
 
   // --- NUEVO: LISTAS PARA SUSTITUCIONES ---
-  final List<String> teamA_OnCourt;
-  final List<String> teamA_Bench;
-  final List<String> teamB_OnCourt;
-  final List<String> teamB_Bench;
+  final List<String> teamAOnCourt;
+  final List<String> teamABench;
+  final List<String> teamBOnCourt;
+  final List<String> teamBBench;
 
   // Mapa de estadísticas por jugador
   final Map<String, PlayerStats> playerStats;
@@ -43,10 +43,10 @@ class MatchState {
     this.timeLeft = const Duration(minutes: 10),
     this.isRunning = false,
     this.currentPeriod = 1,
-    this.teamA_OnCourt = const [],
-    this.teamA_Bench = const [],
-    this.teamB_OnCourt = const [],
-    this.teamB_Bench = const [],
+    this.teamAOnCourt = const [],
+    this.teamABench = const [],
+    this.teamBOnCourt = const [],
+    this.teamBBench = const [],
     this.playerStats = const {},
   });
 
@@ -57,10 +57,10 @@ class MatchState {
     Duration? timeLeft,
     bool? isRunning,
     int? currentPeriod,
-    List<String>? teamA_OnCourt,
-    List<String>? teamA_Bench,
-    List<String>? teamB_OnCourt,
-    List<String>? teamB_Bench,
+    List<String>? teamAOnCourt,
+    List<String>? teamABench,
+    List<String>? teamBOnCourt,
+    List<String>? teamBBench,
     Map<String, PlayerStats>? playerStats,
   }) {
     return MatchState(
@@ -70,10 +70,10 @@ class MatchState {
       timeLeft: timeLeft ?? this.timeLeft,
       isRunning: isRunning ?? this.isRunning,
       currentPeriod: currentPeriod ?? this.currentPeriod,
-      teamA_OnCourt: teamA_OnCourt ?? this.teamA_OnCourt,
-      teamA_Bench: teamA_Bench ?? this.teamA_Bench,
-      teamB_OnCourt: teamB_OnCourt ?? this.teamB_OnCourt,
-      teamB_Bench: teamB_Bench ?? this.teamB_Bench,
+      teamAOnCourt: teamAOnCourt ?? this.teamAOnCourt,
+      teamABench: teamABench ?? this.teamABench,
+      teamBOnCourt: teamBOnCourt ?? this.teamBOnCourt,
+      teamBBench: teamBBench ?? this.teamBBench,
       playerStats: playerStats ?? this.playerStats,
     );
   }
@@ -94,10 +94,10 @@ class MatchGameController extends StateNotifier<MatchState> {
     state = state.copyWith(
       matchId: matchId,
       // Generamos 5 titulares y 3 suplentes por equipo
-      teamA_OnCourt: List.generate(5, (i) => "Jugador A$i"),
-      teamA_Bench: List.generate(3, (i) => "Banca A$i"),
-      teamB_OnCourt: List.generate(5, (i) => "Jugador B$i"),
-      teamB_Bench: List.generate(3, (i) => "Banca B$i"),
+      teamAOnCourt: List.generate(5, (i) => "Jugador A$i"),
+      teamABench: List.generate(3, (i) => "Banca A$i"),
+      teamBOnCourt: List.generate(5, (i) => "Jugador B$i"),
+      teamBBench: List.generate(3, (i) => "Banca B$i"),
     );
   }
 
@@ -170,10 +170,11 @@ class MatchGameController extends StateNotifier<MatchState> {
     int newScoreA = state.scoreA;
     int newScoreB = state.scoreB;
     if (points > 0) {
-      if (teamId == 'A')
+      if (teamId == 'A') {
         newScoreA += points;
-      else
+      } else {
         newScoreB += points;
+      }
     }
 
     final currentStats = state.playerStats[playerId] ?? const PlayerStats();
@@ -201,21 +202,21 @@ class MatchGameController extends StateNotifier<MatchState> {
     _saveToHistory(); // Guardar historial antes del cambio
 
     if (teamId == 'A') {
-      final newOnCourt = List<String>.from(state.teamA_OnCourt)
+      final newOnCourt = List<String>.from(state.teamAOnCourt)
         ..remove(playerOut)
         ..add(playerIn);
-      final newBench = List<String>.from(state.teamA_Bench)
+      final newBench = List<String>.from(state.teamABench)
         ..remove(playerIn)
         ..add(playerOut);
-      state = state.copyWith(teamA_OnCourt: newOnCourt, teamA_Bench: newBench);
+      state = state.copyWith(teamAOnCourt: newOnCourt, teamABench: newBench);
     } else {
-      final newOnCourt = List<String>.from(state.teamB_OnCourt)
+      final newOnCourt = List<String>.from(state.teamBOnCourt)
         ..remove(playerOut)
         ..add(playerIn);
-      final newBench = List<String>.from(state.teamB_Bench)
+      final newBench = List<String>.from(state.teamBBench)
         ..remove(playerIn)
         ..add(playerOut);
-      state = state.copyWith(teamB_OnCourt: newOnCourt, teamB_Bench: newBench);
+      state = state.copyWith(teamBOnCourt: newOnCourt, teamBBench: newBench);
     }
 
     // Podríamos guardar el evento de cambio aquí también si fuera necesario

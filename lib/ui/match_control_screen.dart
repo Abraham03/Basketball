@@ -117,8 +117,8 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                     widget.teamAName,
                     Colors.orange.shade50,
                     'A',
-                    gameState.teamA_OnCourt, // Solo cancha
-                    gameState.teamA_Bench, // Banca para cambios
+                    gameState.teamAOnCourt, // Solo cancha
+                    gameState.teamABench, // Banca para cambios
                     controller,
                     gameState,
                   ),
@@ -135,8 +135,8 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                     widget.teamBName,
                     Colors.blue.shade50,
                     'B',
-                    gameState.teamB_OnCourt,
-                    gameState.teamB_Bench,
+                    gameState.teamBOnCourt,
+                    gameState.teamBBench,
                     controller,
                     gameState,
                   ),
