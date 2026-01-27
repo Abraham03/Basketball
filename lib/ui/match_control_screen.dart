@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/match_game_controller.dart';
 
-class MatchControlScreen extends ConsumerWidget {
+class MatchControlScreen extends ConsumerStatefulWidget {
   final String matchId;
   final String teamAName;
   final String teamBName;
@@ -15,18 +15,30 @@ class MatchControlScreen extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MatchControlScreen> createState() => _MatchControlScreenState();
+}
+
+class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Inicializamos el partido al cargar la pantalla
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(matchGameProvider.notifier).initMatch(widget.matchId);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final gameState = ref.watch(matchGameProvider);
     final controller = ref.read(matchGameProvider.notifier);
 
-    // --- ESCUCHA DE EVENTOS (NOTIFICACIONES) ---
-    // Esto se ejecuta solo cuando cambia el estado, no repinta la UI.
+    // Listener para alertas (5 faltas)
     ref.listen<MatchState>(matchGameProvider, (previous, next) {
-      // Detectamos si alguien llegó a 5 faltas
       next.playerStats.forEach((playerId, stats) {
         final previousFouls = previous?.playerStats[playerId]?.fouls ?? 0;
+        // Solo mostramos alerta si acaba de subir a 5 (para no spammear)
         if (stats.fouls == 5 && previousFouls == 4) {
-          // ALERTA VISUAL
           showDialog(
             context: context,
             builder: (_) => AlertDialog(
@@ -51,10 +63,9 @@ class MatchControlScreen extends ConsumerWidget {
         backgroundColor: Colors.black87,
         foregroundColor: Colors.white,
         actions: [
-          // BOTÓN DESHACER
           IconButton(
             icon: const Icon(Icons.undo),
-            tooltip: "Deshacer última acción",
+            tooltip: "Deshacer",
             onPressed: () {
               controller.undo();
               ScaffoldMessenger.of(context).showSnackBar(
@@ -65,12 +76,7 @@ class MatchControlScreen extends ConsumerWidget {
               );
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.save_alt),
-            onPressed: () {
-              /* Guardar PDF */
-            },
-          ),
+          IconButton(icon: const Icon(Icons.save_alt), onPressed: () {}),
         ],
       ),
       body: Column(
@@ -79,12 +85,15 @@ class MatchControlScreen extends ConsumerWidget {
           Expanded(
             child: Row(
               children: [
+                // EQUIPO A
                 Expanded(
                   child: _buildTeamColumn(
                     context,
-                    teamAName,
+                    widget.teamAName,
                     Colors.orange.shade50,
                     'A',
+                    gameState.teamA_OnCourt, // Solo cancha
+                    gameState.teamA_Bench, // Banca para cambios
                     controller,
                     gameState,
                   ),
@@ -94,12 +103,15 @@ class MatchControlScreen extends ConsumerWidget {
                   thickness: 1,
                   color: Colors.grey,
                 ),
+                // EQUIPO B
                 Expanded(
                   child: _buildTeamColumn(
                     context,
-                    teamBName,
+                    widget.teamBName,
                     Colors.blue.shade50,
                     'B',
+                    gameState.teamB_OnCourt,
+                    gameState.teamB_Bench,
                     controller,
                     gameState,
                   ),
@@ -119,73 +131,63 @@ class MatchControlScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       color: Colors.black87,
-      child: Column(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _scoreText(state.scoreA.toString(), teamAName),
+          _scoreText(state.scoreA.toString(), widget.teamAName),
 
-              // RELOJ + CONTROLES DE TIEMPO
-              Column(
+          // --- RELOJ INTERACTIVO (CORREGIDO) ---
+          GestureDetector(
+            // UN TOQUE: SIEMPRE PAUSA O INICIA
+            onTap: () => controller.toggleTimer(),
+
+            // MANTENER PRESIONADO: EDITA (Solo si está pausado para evitar errores)
+            onLongPress: () {
+              if (!state.isRunning) {
+                _showTimePicker(context, controller, state.timeLeft);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Pausa el reloj para editar")),
+                );
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: state.isRunning
+                      ? Colors.greenAccent
+                      : Colors.redAccent,
+                  width: 3,
+                ),
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.white10,
+              ),
+              child: Column(
                 children: [
-                  GestureDetector(
-                    onTap: () => controller.toggleTimer(),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: state.isRunning
-                              ? Colors.greenAccent
-                              : Colors.redAccent,
-                          width: 3,
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                        color: Colors.white10,
-                      ),
-                      child: Text(
-                        "$minutes:$seconds",
-                        style: TextStyle(
-                          color: state.isRunning
-                              ? Colors.greenAccent
-                              : Colors.redAccent,
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'monospace',
-                        ),
-                      ),
+                  Text(
+                    "$minutes:$seconds",
+                    style: TextStyle(
+                      color: state.isRunning
+                          ? Colors.greenAccent
+                          : Colors.redAccent,
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'monospace',
                     ),
                   ),
-                  // BOTONES DE AJUSTE DE TIEMPO
-                  if (!state
-                      .isRunning) // Solo mostrar si está pausado para no estorbar
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.remove, color: Colors.white70),
-                          onPressed: () => controller.adjustTime(-1),
-                          tooltip: "-1 Seg",
-                        ),
-                        const Text(
-                          "Seg",
-                          style: TextStyle(color: Colors.white30),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.add, color: Colors.white70),
-                          onPressed: () => controller.adjustTime(1),
-                          tooltip: "+1 Seg",
-                        ),
-                      ],
+                  // Indicador visual pequeño para que sepan que pueden editar
+                  if (!state.isRunning)
+                    const Text(
+                      "Mantén para editar",
+                      style: TextStyle(color: Colors.white38, fontSize: 10),
                     ),
                 ],
               ),
-
-              _scoreText(state.scoreB.toString(), teamBName),
-            ],
+            ),
           ),
+
+          _scoreText(state.scoreB.toString(), widget.teamBName),
         ],
       ),
     );
@@ -198,11 +200,11 @@ class MatchControlScreen extends ConsumerWidget {
           score,
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 48,
+            fontSize: 40,
             fontWeight: FontWeight.w900,
           ),
         ),
-        Text(team, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+        Text(team, style: const TextStyle(color: Colors.white70, fontSize: 12)),
       ],
     );
   }
@@ -212,6 +214,8 @@ class MatchControlScreen extends ConsumerWidget {
     String teamName,
     Color bgColor,
     String teamId,
+    List<String> onCourt,
+    List<String> bench,
     MatchGameController controller,
     MatchState state,
   ) {
@@ -219,138 +223,88 @@ class MatchControlScreen extends ConsumerWidget {
       color: bgColor,
       child: Column(
         children: [
+          // CABECERA + BOTÓN DE CAMBIO
           Container(
-            padding: const EdgeInsets.all(12.0),
-            width: double.infinity,
+            padding: const EdgeInsets.all(8),
             color: Colors.black12,
-            child: Text(
-              teamName,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: Text(
+                    teamName,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.compare_arrows),
+                  tooltip: "Sustitución",
+                  style: IconButton.styleFrom(backgroundColor: Colors.white54),
+                  onPressed: () => _showSubstitutionDialog(
+                    context,
+                    teamId,
+                    onCourt,
+                    bench,
+                    controller,
+                  ),
+                ),
+              ],
             ),
           ),
+
+          // LISTA JUGADORES (SOLO CANCHA)
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.all(8),
-              itemCount: 5,
+              padding: const EdgeInsets.all(4),
+              itemCount: onCourt.length,
               itemBuilder: (context, index) {
-                // Generamos ID único para el mapa (Ej: "A_1")
-                // En la app real usarás el UUID del jugador
-                final playerId = "${teamId}_$index";
-                final playerStats =
-                    state.playerStats[playerId] ?? const PlayerStats();
+                final playerName = onCourt[index];
+                final stats =
+                    state.playerStats[playerName] ?? const PlayerStats();
 
-                // Detectar si está en peligro (4 faltas) o fuera (5)
+                // --- COLORES DE FALTAS (CORREGIDO) ---
                 Color? cardColor;
-                if (playerStats.fouls == 4) cardColor = Colors.orange.shade100;
-                if (playerStats.fouls >= 5) cardColor = Colors.red.shade100;
+                Color textColor = Colors.black; // Color de texto por defecto
+
+                if (stats.fouls == 4) {
+                  // Falta 4: Amarillo fuerte
+                  cardColor = Colors.yellow.shade400;
+                } else if (stats.fouls >= 5) {
+                  // Falta 5: Rojo intenso y texto blanco
+                  cardColor = Colors.red.shade400;
+                  textColor = Colors.white;
+                } else {
+                  cardColor = Colors.white;
+                }
 
                 return Card(
                   color: cardColor,
-                  elevation: 2,
-                  margin: const EdgeInsets.symmetric(vertical: 6),
+                  margin: const EdgeInsets.symmetric(vertical: 4),
                   child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
                     leading: CircleAvatar(
                       backgroundColor: Colors.grey.shade800,
                       foregroundColor: Colors.white,
-                      child: Text(
-                        "${4 + index}",
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
+                      child: Text("${index + 4}"),
                     ),
                     title: Text(
-                      "Jugador ${index + 1}",
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    // MOSTRAMOS STATS REALES
-                    subtitle: Text(
-                      "${playerStats.points} Pts | ${playerStats.fouls} Faltas",
+                      playerName,
                       style: TextStyle(
-                        color: playerStats.fouls >= 5
-                            ? Colors.red
-                            : Colors.grey[700],
                         fontWeight: FontWeight.bold,
+                        color: textColor, // Aplicar color de texto
                       ),
                     ),
-                    onTap: () {
-                      if (playerStats.fouls >= 5) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Jugador expulsado.")),
-                        );
-                        return;
-                      }
-
-                      // Menú de Acciones
-                      showModalBottomSheet(
-                        context: context,
-                        builder: (_) => Container(
-                          height: 220,
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            children: [
-                              Text(
-                                "Jugador ${index + 1} ($teamName)",
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceEvenly,
-                                children: [
-                                  _actionButton(
-                                    context,
-                                    "+1",
-                                    Colors.blue,
-                                    () => controller.updateStats(
-                                      teamId,
-                                      playerId,
-                                      points: 1,
-                                    ),
-                                  ),
-                                  _actionButton(
-                                    context,
-                                    "+2",
-                                    Colors.green,
-                                    () => controller.updateStats(
-                                      teamId,
-                                      playerId,
-                                      points: 2,
-                                    ),
-                                  ),
-                                  _actionButton(
-                                    context,
-                                    "+3",
-                                    Colors.orange,
-                                    () => controller.updateStats(
-                                      teamId,
-                                      playerId,
-                                      points: 3,
-                                    ),
-                                  ),
-                                  _actionButton(
-                                    context,
-                                    "Falta",
-                                    Colors.red,
-                                    () => controller.updateStats(
-                                      teamId,
-                                      playerId,
-                                      fouls: 1,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+                    subtitle: Text(
+                      "${stats.points}pts • ${stats.fouls}flt",
+                      style: TextStyle(color: textColor),
+                    ),
+                    onTap: () => _showActionMenu(
+                      context,
+                      teamId,
+                      playerName,
+                      controller,
+                    ),
                   ),
                 );
               },
@@ -361,25 +315,254 @@ class MatchControlScreen extends ConsumerWidget {
     );
   }
 
-  Widget _actionButton(
+  // DIÁLOGO PICKER DE TIEMPO (SCROLLABLE)
+  void _showTimePicker(
     BuildContext context,
-    String label,
-    Color color,
-    VoidCallback onTap,
+    MatchGameController controller,
+    Duration currentTime,
   ) {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+    int selectedMinute = currentTime.inMinutes;
+    int selectedSecond = currentTime.inSeconds % 60;
+
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => Container(
+        height: 300,
+        color: Colors.white,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text(
+                      "Cancelar",
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ),
+                  const Text(
+                    "Ajustar Reloj",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      controller.setTime(
+                        Duration(
+                          minutes: selectedMinute,
+                          seconds: selectedSecond,
+                        ),
+                      );
+                      Navigator.pop(context);
+                    },
+                    child: const Text(
+                      "Aceptar",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildWheel(
+                    selectedMinute,
+                    99,
+                    (val) => selectedMinute = val,
+                    "Min",
+                  ),
+                  const SizedBox(width: 20),
+                  _buildWheel(
+                    selectedSecond,
+                    59,
+                    (val) => selectedSecond = val,
+                    "Seg",
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-      onPressed: () {
-        onTap();
-        Navigator.pop(context);
-      },
-      child: Text(
-        label,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+    );
+  }
+
+  Widget _buildWheel(
+    int initial,
+    int max,
+    Function(int) onChanged,
+    String label,
+  ) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 70,
+          child: ListWheelScrollView.useDelegate(
+            itemExtent: 50,
+            physics: const FixedExtentScrollPhysics(),
+            controller: FixedExtentScrollController(initialItem: initial),
+            onSelectedItemChanged: onChanged,
+            childDelegate: ListWheelChildBuilderDelegate(
+              childCount: max + 1,
+              builder: (c, i) => Center(
+                child: Text(
+                  i.toString().padLeft(2, '0'),
+                  style: const TextStyle(fontSize: 30),
+                ),
+              ),
+            ),
+          ),
+        ),
+        Text(label),
+      ],
+    );
+  }
+
+  // DIÁLOGO DE SUSTITUCIÓN
+  void _showSubstitutionDialog(
+    BuildContext context,
+    String teamId,
+    List<String> onCourt,
+    List<String> bench,
+    MatchGameController controller,
+  ) {
+    String? selectedOut;
+    String? selectedIn;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text("Realizar Cambio"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "Sale (Cancha):",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              DropdownButton<String>(
+                value: selectedOut,
+                hint: const Text("Seleccionar..."),
+                isExpanded: true,
+                items: onCourt
+                    .map((p) => DropdownMenuItem(value: p, child: Text(p)))
+                    .toList(),
+                onChanged: (val) => setState(() => selectedOut = val),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "Entra (Banca):",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              DropdownButton<String>(
+                value: selectedIn,
+                hint: const Text("Seleccionar..."),
+                isExpanded: true,
+                items: bench
+                    .map((p) => DropdownMenuItem(value: p, child: Text(p)))
+                    .toList(),
+                onChanged: (val) => setState(() => selectedIn = val),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancelar"),
+            ),
+            ElevatedButton(
+              onPressed: (selectedOut != null && selectedIn != null)
+                  ? () {
+                      controller.substitutePlayer(
+                        teamId,
+                        selectedOut!,
+                        selectedIn!,
+                      );
+                      Navigator.pop(context);
+                    }
+                  : null,
+              child: const Text("Confirmar"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showActionMenu(
+    BuildContext context,
+    String teamId,
+    String playerName,
+    MatchGameController controller,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => Container(
+        padding: const EdgeInsets.all(20),
+        height: 180,
+        child: Column(
+          children: [
+            Text(
+              playerName,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    controller.updateStats(teamId, playerName, points: 1);
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text("+1"),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    controller.updateStats(teamId, playerName, points: 2);
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text("+2"),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    controller.updateStats(teamId, playerName, points: 3);
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text("+3"),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    controller.updateStats(teamId, playerName, fouls: 1);
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text("Falta"),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
