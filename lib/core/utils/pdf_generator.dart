@@ -2,73 +2,131 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import '../../logic/match_game_controller.dart'; // Importa tu MatchState
+import '../../logic/match_game_controller.dart';
 
 class PdfGenerator {
-  /// Función principal que genera el PDF
+  // ==================================================================
+  // 🔧 ZONA DE CALIBRACIÓN (Ajusta estos números para mover el texto)
+  // ==================================================================
+
+  // Encabezados
+  static const double headerTeamAX = 150.0;
+  static const double headerTeamAY = 750.0;
+  static const double headerTeamBX = 400.0;
+  static const double headerTeamBY = 750.0;
+
+  // Marcador Grande
+  static const double scoreAX = 200.0;
+  static const double scoreAY = 700.0;
+  static const double scoreBX = 450.0;
+  static const double scoreBY = 700.0;
+
+  // Listas de Jugadores (Inicio de la lista)
+  static const double listTeamAX = 50.0;
+  static const double listTeamAY = 600.0;
+  static const double listTeamBX = 300.0; // Más a la derecha
+  static const double listTeamBY = 600.0;
+
+  // Espacio entre renglones de jugadores
+  static const double rowHeight = 15.0;
+
+  // ==================================================================
+
+  /// 1. Ver en Pantalla (Imprimir)
   static Future<void> generateAndPreview(
+    MatchState state,
+    String teamAName,
+    String teamBName,
+  ) async {
+    final pdf = await _buildDocument(state, teamAName, teamBName);
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+    );
+  }
+
+  /// 2. Compartir Directamente (WhatsApp, etc.)
+  static Future<void> generateAndShare(
+    MatchState state,
+    String teamAName,
+    String teamBName,
+  ) async {
+    final pdf = await _buildDocument(state, teamAName, teamBName);
+    await Printing.sharePdf(
+      bytes: await pdf.save(),
+      filename: 'acta_${teamAName}_vs_$teamBName.pdf',
+    );
+  }
+
+  /// 🛠️ Método privado que construye el PDF (Reutilizable)
+  static Future<pw.Document> _buildDocument(
     MatchState state,
     String teamAName,
     String teamBName,
   ) async {
     final pdf = pw.Document();
 
-    // 1. Cargar la imagen de fondo (La hoja de anotación)
-    // Asegúrate de que el nombre coincida con pubspec.yaml
+    // Cargar imagen .png
     final imageBytes = await rootBundle.load(
       'assets/images/hoja_anotacion.png',
     );
     final image = pw.MemoryImage(imageBytes.buffer.asUint8List());
 
-    // 2. Crear la página PDF (Formato A4 o Letter según tu imagen)
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
-        // margins: pw.EdgeInsets.zero es CRÍTICO para que la imagen ocupe todo
         margin: pw.EdgeInsets.zero,
         build: (pw.Context context) {
           return pw.Stack(
             children: [
-              // A. La Imagen de Fondo (Full Screen)
+              // Fondo
               pw.Positioned.fill(child: pw.Image(image, fit: pw.BoxFit.fill)),
 
-              // B. Los Datos Superpuestos (Aquí es donde ajustarás las X,Y)
+              // --- USAMOS LAS VARIABLES DE ARRIBA ---
 
-              // --- EJEMPLO: ENCABEZADO ---
-              _drawText(teamAName, x: 150, y: 750, fontSize: 10), // Equipo A
-              _drawText(teamBName, x: 400, y: 750, fontSize: 10), // Equipo B
-              _drawText("Cancha 1", x: 60, y: 780, fontSize: 8), // Lugar
-              // --- EJEMPLO: MARCADOR FINAL ---
+              // Encabezados
+              _drawText(
+                teamAName,
+                x: headerTeamAX,
+                y: headerTeamAY,
+                fontSize: 10,
+              ),
+              _drawText(
+                teamBName,
+                x: headerTeamBX,
+                y: headerTeamBY,
+                fontSize: 10,
+              ),
+
+              // Marcadores
               _drawText(
                 "${state.scoreA}",
-                x: 200,
-                y: 700,
-                fontSize: 20,
+                x: scoreAX,
+                y: scoreAY,
+                fontSize: 24,
                 isBold: true,
               ),
               _drawText(
                 "${state.scoreB}",
-                x: 450,
-                y: 700,
-                fontSize: 20,
+                x: scoreBX,
+                y: scoreBY,
+                fontSize: 24,
                 isBold: true,
               ),
 
-              // --- EJEMPLO: LISTA DE JUGADORES (Iterativa) ---
-              // Equipo A
+              // Lista Equipo A
               ..._generatePlayerList(
                 state.teamA_OnCourt + state.teamA_Bench,
                 state.playerStats,
-                startX: 50,
-                startY: 600,
+                startX: listTeamAX,
+                startY: listTeamAY,
               ),
 
-              // Equipo B (Más a la derecha)
+              // Lista Equipo B
               ..._generatePlayerList(
                 state.teamB_OnCourt + state.teamB_Bench,
                 state.playerStats,
-                startX: 300,
-                startY: 600,
+                startX: listTeamBX,
+                startY: listTeamBY,
               ),
             ],
           );
@@ -76,15 +134,9 @@ class PdfGenerator {
       ),
     );
 
-    // 3. Mostrar Vista Previa (Share/Print)
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => pdf.save(),
-    );
+    return pdf;
   }
 
-  /// Helper para dibujar texto en coordenada absoluta (X, Y son puntos PDF)
-  /// Nota: En PDF, el eje Y=0 suele estar ABAJO. Pero 'pdf' package lo maneja desde arriba
-  /// si usas Positioned dentro de Stack a veces varía. Ajusta a prueba y error.
   static pw.Widget _drawText(
     String text, {
     required double x,
@@ -94,19 +146,18 @@ class PdfGenerator {
   }) {
     return pw.Positioned(
       left: x,
-      top: y, // Ajusta 'top' o 'bottom' según como salga tu imagen
+      top: y,
       child: pw.Text(
         text,
         style: pw.TextStyle(
           fontSize: fontSize,
           fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
-          color: PdfColors.black, // Color del texto (simula pluma negra)
+          color: PdfColors.black,
         ),
       ),
     );
   }
 
-  /// Genera la lista visual de jugadores hacia abajo
   static List<pw.Widget> _generatePlayerList(
     List<String> players,
     Map<String, PlayerStats> stats, {
@@ -115,7 +166,6 @@ class PdfGenerator {
   }) {
     List<pw.Widget> widgets = [];
     double currentY = startY;
-    double rowHeight = 15.0; // Espacio entre renglones de la hoja
 
     for (var i = 0; i < players.length; i++) {
       final player = players[i];
@@ -123,20 +173,19 @@ class PdfGenerator {
 
       // Nombre
       widgets.add(_drawText(player, x: startX, y: currentY, fontSize: 9));
-
-      // Número (Dorsal dummy)
+      // Dorsal (Simulado)
       widgets.add(
         _drawText("${i + 4}", x: startX + 100, y: currentY, fontSize: 9),
       );
-
-      // Faltas (P, P1, P2...)
+      // Faltas
       String foulsStr = "";
-      for (int f = 0; f < stat.fouls; f++) foulsStr += "X "; // Marcamos con X
+      for (int f = 0; f < stat.fouls; f++) foulsStr += "X ";
       widgets.add(
         _drawText(foulsStr, x: startX + 130, y: currentY, fontSize: 9),
       );
 
-      currentY += rowHeight; // Bajamos al siguiente renglón
+      // Mover hacia abajo usando la constante
+      currentY -= rowHeight;
     }
     return widgets;
   }

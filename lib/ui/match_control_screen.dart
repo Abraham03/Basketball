@@ -77,12 +77,25 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
               );
             },
           ),
+
           IconButton(
             icon: const Icon(Icons.print),
             tooltip: "Generar PDF",
             onPressed: () async {
               // Llamamos al generador pasando el estado actual
               await PdfGenerator.generateAndPreview(
+                gameState,
+                widget.teamAName,
+                widget.teamBName,
+              );
+            },
+          ),
+          // BOTÓN 2: COMPARTIR (Nuevo)
+          IconButton(
+            icon: const Icon(Icons.share),
+            tooltip: "Compartir PDF",
+            onPressed: () async {
+              await PdfGenerator.generateAndShare(
                 gameState,
                 widget.teamAName,
                 widget.teamBName,
