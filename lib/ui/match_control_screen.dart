@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/utils/pdf_generator.dart';
 import '../logic/match_game_controller.dart';
 
 class MatchControlScreen extends ConsumerStatefulWidget {
@@ -76,7 +77,18 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
               );
             },
           ),
-          IconButton(icon: const Icon(Icons.save_alt), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.print),
+            tooltip: "Generar PDF",
+            onPressed: () async {
+              // Llamamos al generador pasando el estado actual
+              await PdfGenerator.generateAndPreview(
+                gameState,
+                widget.teamAName,
+                widget.teamBName,
+              );
+            },
+          ),
         ],
       ),
       body: Column(
