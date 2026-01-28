@@ -5,54 +5,82 @@ import 'package:printing/printing.dart';
 import '../../logic/match_game_controller.dart';
 
 /// ==============================================================
-///   CONFIGURACIÓN DE COORDENADAS (LAYOUT)
+/// 📐 CONFIGURACIÓN DE COORDENADAS (LAYOUT)
 /// ==============================================================
-/// Modifica estos valores para ajustar la posición de los textos
-/// según la imagen de fondo que estés utilizando.
-/// Coordenadas: (0,0) es la esquina inferior izquierda por defecto en PDF,
-/// pero 'pdf' package con Stack suele usar Top-Left visualmente.
-/// Ajusta a prueba y error si se ve invertido.
 class PdfCoords {
   // --- 1. ENCABEZADO (Datos del Partido) ---
-  static const double headerY = 90.0; // Altura general del encabezado
+  static const double headerY = 90.0;
   
-  static const double competitionX = 350.0; // Liga
-  static const double dateX = 195.0;  // Fecha
-  static const double timeX = 270.0;  // Hora
-  static const double placeX = 180.0; // Derecha
-  static const double placeY = 105.0; // Arriba
-  static const double gameNoX = 100.0;  // Numero de partido
+  static const double competitionX = 390.0;
+  static const double dateX = 195.0;
+  static const double timeX = 270.0;
+  static const double placeX = 180.0;
+  static const double placeY = 105.0;
+  static const double gameNoX = 100.0;
 
-  // --- 2. ENCABEZADOS DE EQUIPOS ---
-  // Nombre del Equipo A (Izquierda/Arriba)
-  static const double teamANameX = 100.0;
+  // --- 2. ENCABEZADOS DE EQUIPOS (SUPERIOR) ---
+  static const double teamANameX = 115.0;
   static const double teamANameY = 123.0; 
   
-  // Nombre del Equipo B (Derecha/Abajo según formato, aquí asumimos simétrico)
-  static const double teamBNameX = 100.0;
+  static const double teamBNameX = 115.0;
   static const double teamBNameY = 405.0;
 
+  // --- 2.1. ENCABEZADOS DE EQUIPOS (Encabezado) ---
+  static const double teamAName2X = 130.0; 
+  static const double teamAName2Y = 55.0; 
+  
+  static const double teamBName2X = 390.0;
+  static const double teamBName2Y = 55.0; 
+
   // --- 3. TABLA DE JUGADORES (EQUIPO A) ---
-  static const double teamAListStartY = 310.0; // Altura del primer jugador
-  static const double teamAColNumX = 22.5;     // Columna "#"
-  static const double teamAColNameX = 50.0;    // Columna "Nombre"
-  static const double teamAColFoulsX = 235.0;  // Inicio casillas de faltas (1 a 5)
+  static const double teamAListStartY = 310.0;
+  static const double teamAColNumX = 22.5;
+  static const double teamAColNameX = 50.0;
+  static const double teamAColFoulsX = 235.0;
 
   // --- 4. TABLA DE JUGADORES (EQUIPO B) ---
-  static const double teamBListStartY = 594.7; // Altura del primer jugador
-  static const double teamBColNumX = 22.5;    // Columna "#"
-  static const double teamBColNameX = 50.0;  // Columna "Nombre"
-  static const double teamBColFoulsX = 235.0; // Inicio casillas de faltas (1 a 5)
+  static const double teamBListStartY = 594.7;
+  static const double teamBColNumX = 22.5;
+  static const double teamBColNameX = 50.0;
+  static const double teamBColFoulsX = 235.0;
 
   // --- 5. CONFIGURACIÓN GENERAL DE TABLAS ---
-  static const double rowHeight = 13.0;      // Espacio vertical entre jugadores
-  static const double foulBoxWidth = 12.0;   // Ancho de cada casilla de falta pequeña
+  static const double rowHeight = 13.0;
+  static const double foulBoxWidth = 12.0;
 
   // --- 6. MARCADOR FINAL (Pie de página) ---
-  static const double scoreBoxY = 772.0;     // Altura del cuadro de score final
+  static const double scoreBoxY = 772.0;
   static const double scoreAX = 450.0;
   static const double scoreBX = 535.0;
   static const double scoreFontSize = 20.0;
+
+  // --- 7. PUNTUACIÓN POR PERIODOS (COORDENADAS INDEPENDIENTES) ---
+  // Ajusta X e Y para mover cada periodo individualmente a donde quieras
+  
+  // Periodo 1
+  static const double period1AX = 446.0; // Puntos Equipo A (P1)
+  static const double period1BX = 532.0; // Puntos Equipo B (P1)
+  static const double period1Y  = 692.0; // Altura P1
+
+  // Periodo 2
+  static const double period2AX = 446.0; 
+  static const double period2BX = 532.0;
+  static const double period2Y  = 707.0;
+
+  // Periodo 3
+  static const double period3AX = 446.0;
+  static const double period3BX = 532.0;
+  static const double period3Y  = 723.0;
+
+  // Periodo 4
+  static const double period4AX = 446.0;
+  static const double period4BX = 532.0;
+  static const double period4Y  = 740.0;
+
+  // Tiempo Extra (Total acumulado)
+  static const double overtimeAX = 446.0;
+  static const double overtimeBX = 532.0;
+  static const double overtimeY  = 755.0;
 }
 
 /// ==============================================================
@@ -60,7 +88,6 @@ class PdfCoords {
 /// ==============================================================
 class PdfGenerator {
   
-  /// Genera y muestra la vista previa del PDF
   static Future<void> generateAndPreview(
     MatchState state,
     String teamAName,
@@ -72,7 +99,6 @@ class PdfGenerator {
     );
   }
 
-  /// Genera y comparte el PDF directamente (WhatsApp, etc.)
   static Future<void> generateAndShare(
     MatchState state,
     String teamAName,
@@ -95,16 +121,13 @@ class PdfGenerator {
     final pdf = pw.Document();
 
     try {
-      // 1. Cargar imagen de fondo
-      // Asegúrate de que este archivo exista en assets/images/
       final imageBytes = await rootBundle.load('assets/images/hoja_anotacion.png');
       final image = pw.MemoryImage(imageBytes.buffer.asUint8List());
 
-      // 2. Crear página
       pdf.addPage(
         pw.Page(
           pageFormat: PdfPageFormat.a4,
-          margin: pw.EdgeInsets.zero, // Margen cero para fondo completo
+          margin: pw.EdgeInsets.zero, 
           build: (pw.Context context) {
             return pw.Stack(
               children: [
@@ -123,13 +146,17 @@ class PdfGenerator {
                 _drawText("12:00", x: PdfCoords.timeX, y: PdfCoords.headerY, fontSize: 9),
                 _drawText("Cancha Central", x: PdfCoords.placeX, y: PdfCoords.placeY, fontSize: 9),
 
-                // --- NOMBRES DE EQUIPOS ---
-                _drawText(teamAName.toUpperCase(), x: PdfCoords.teamANameX, y: PdfCoords.teamANameY, isBold: true),
-                _drawText(teamBName.toUpperCase(), x: PdfCoords.teamBNameX, y: PdfCoords.teamBNameY, isBold: true),
+                // --- NOMBRES DE EQUIPOS (ARRIBA) ---
+                _drawText(teamAName.toUpperCase(), x: PdfCoords.teamANameX, y: PdfCoords.teamANameY, isBold: false),
+                _drawText(teamBName.toUpperCase(), x: PdfCoords.teamBNameX, y: PdfCoords.teamBNameY, isBold: false),
+
+                // --- NOMBRES DE EQUIPOS (DUPLICADOS/ABAJO) ---
+                _drawText(teamAName.toUpperCase(), x: PdfCoords.teamAName2X, y: PdfCoords.teamAName2Y, isBold: true, fontSize: 10),
+                _drawText(teamBName.toUpperCase(), x: PdfCoords.teamBName2X, y: PdfCoords.teamBName2Y, isBold: true, fontSize: 10),
 
                 // --- LISTA DE JUGADORES EQUIPO A ---
                 ..._buildRosterList(
-                  players: state.teamAOnCourt + state.teamABench, // Lista completa
+                  players: state.teamAOnCourt + state.teamABench,
                   stats: state.playerStats,
                   startXNum: PdfCoords.teamAColNumX,
                   startXName: PdfCoords.teamAColNameX,
@@ -147,14 +174,14 @@ class PdfGenerator {
                   startY: PdfCoords.teamBListStartY,
                 ),
 
-                // --- MARCADOR FINAL ---
+                // --- MARCADOR FINAL (TOTAL) ---
                 _drawText(
                   "${state.scoreA}",
                   x: PdfCoords.scoreAX,
                   y: PdfCoords.scoreBoxY,
                   fontSize: PdfCoords.scoreFontSize,
                   isBold: true,
-                  color: PdfColors.blue900, // Color distintivo para el score
+                  color: PdfColors.blue900,
                 ),
                 _drawText(
                   "${state.scoreB}",
@@ -164,13 +191,29 @@ class PdfGenerator {
                   isBold: true,
                   color: PdfColors.blue900,
                 ),
+
+                // --- ✅ PUNTUACIÓN POR PERIODOS (INDEPENDIENTES) ---
+                // Periodo 1
+                _drawPeriodScore(state, 1, PdfCoords.period1AX, PdfCoords.period1BX, PdfCoords.period1Y),
+                
+                // Periodo 2
+                _drawPeriodScore(state, 2, PdfCoords.period2AX, PdfCoords.period2BX, PdfCoords.period2Y),
+                
+                // Periodo 3
+                _drawPeriodScore(state, 3, PdfCoords.period3AX, PdfCoords.period3BX, PdfCoords.period3Y),
+                
+                // Periodo 4
+                _drawPeriodScore(state, 4, PdfCoords.period4AX, PdfCoords.period4BX, PdfCoords.period4Y),
+
+                // Tiempo Extra (Solo si hubo)
+                if (state.periodScores.containsKey(5))
+                  _drawOvertimeScore(state, PdfCoords.overtimeAX, PdfCoords.overtimeBX, PdfCoords.overtimeY),
               ],
             );
           },
         ),
       );
     } catch (e) {
-      // Aquí manejas la excepción particular de PDF y la lanzas como una de tu dominio
       throw Exception('Error al generar PDF: $e');
     }
 
@@ -179,7 +222,49 @@ class PdfGenerator {
 
   // --- HELPERS DE DIBUJO ---
 
-  /// Construye la lista visual de jugadores (Filas con Número, Nombre y Faltas)
+  /// ✅ NUEVO: Dibuja el score de un periodo específico en sus propias coordenadas
+  static pw.Widget _drawPeriodScore(MatchState state, int period, double xA, double xB, double y) {
+    // Obtenemos los puntos del periodo (o 0 si no existe)
+    final scoreA = (state.periodScores[period] != null && state.periodScores[period]!.isNotEmpty) 
+        ? state.periodScores[period]![0] 
+        : 0;
+    
+    final scoreB = (state.periodScores[period] != null && state.periodScores[period]!.length > 1) 
+        ? state.periodScores[period]![1] 
+        : 0;
+
+    // Retornamos un Stack pequeño con los dos números
+    return pw.Stack(
+      children: [
+        _drawText("$scoreA", x: xA, y: y, fontSize: 10, isBold: true),
+        _drawText("$scoreB", x: xB, y: y, fontSize: 10, isBold: true),
+      ]
+    );
+  }
+
+  /// ✅ NUEVO: Dibuja el score acumulado de todos los tiempos extra
+  static pw.Widget _drawOvertimeScore(MatchState state, double xA, double xB, double y) {
+    int totalA = _calculateOvertimeTotal(state, 0);
+    int totalB = _calculateOvertimeTotal(state, 1);
+
+    return pw.Stack(
+      children: [
+        _drawText("$totalA", x: xA, y: y, fontSize: 10, isBold: true),
+        _drawText("$totalB", x: xB, y: y, fontSize: 10, isBold: true),
+      ]
+    );
+  }
+
+  static int _calculateOvertimeTotal(MatchState state, int teamIndex) {
+    int total = 0;
+    state.periodScores.forEach((period, scores) {
+      if (period >= 5 && scores.length > teamIndex) {
+        total += scores[teamIndex];
+      }
+    });
+    return total;
+  }
+
   static List<pw.Widget> _buildRosterList({
     required List<String> players,
     required Map<String, PlayerStats> stats,
@@ -191,32 +276,23 @@ class PdfGenerator {
     List<pw.Widget> widgets = [];
     double currentY = startY;
 
-    // Solo dibujamos hasta 12 jugadores (límite estándar de hoja)
     int limit = players.length > 12 ? 12 : players.length;
 
     for (var i = 0; i < limit; i++) {
       final playerName = players[i];
       final stat = stats[playerName] ?? const PlayerStats();
-      final dorsal = "${i + 4}"; // Simulación de dorsal (4, 5, 6...)
+      final dorsal = "${i + 4}"; 
 
-      // 1. Número
       widgets.add(_drawText(dorsal, x: startXNum, y: currentY, fontSize: 10));
 
-      // 2. Nombre (Recortar si es muy largo)
       String displayName = playerName.length > 18 
           ? "${playerName.substring(0, 16)}..." 
           : playerName;
       widgets.add(_drawText(displayName, x: startXName, y: currentY, fontSize: 10));
 
-      // 3. Faltas (Dibujar 'X' o 'P' en cada casilla)
       for (int f = 0; f < stat.fouls; f++) {
-        if (f >= 5) break; // Máximo 5 faltas visuales
-        
-        // Calculamos la posición X de la falta actual
-        // (Posición inicial + (número de falta * ancho de casilla))
+        if (f >= 5) break; 
         double foulX = startXFouls + (f * PdfCoords.foulBoxWidth);
-        
-        // Dibujamos la marca. Si es la 5ta, la ponemos roja (opcional)
         widgets.add(
           _drawText(
             "X", 
@@ -228,14 +304,12 @@ class PdfGenerator {
           )
         );
       }
-
-      // Bajamos al siguiente renglón
       currentY -= PdfCoords.rowHeight; 
     }
     return widgets;
   }
 
-  /// Dibuja texto simple en una posición absoluta (X, Y)
+  /// Helper genérico con el arreglo del fontSize
   static pw.Widget _drawText(
     String text, {
     required double x,
@@ -250,7 +324,7 @@ class PdfGenerator {
       child: pw.Text(
         text,
         style: pw.TextStyle(
-          fontSize: fontSize,
+          fontSize: fontSize, // ✅ AHORA SÍ ESTÁ DENTRO DE TEXTSTYLE
           fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
           color: color,
         ),

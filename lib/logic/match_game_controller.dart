@@ -20,20 +20,24 @@ class PlayerStats {
 }
 
 class MatchState {
-  final String matchId; 
+  final String matchId;
   final int scoreA;
   final int scoreB;
   final Duration timeLeft;
   final bool isRunning;
   final int currentPeriod;
 
-  // --- LISTAS PARA SUSTITUCIONES ---
+  // --- NUEVO: PUNTUACIÓN POR PERIODO ---
+  // Mapa donde la llave es el periodo (1, 2, 3...) y el valor es una lista [puntosA, puntosB]
+  final Map<int, List<int>> periodScores;
+
+  // Listas de jugadores
   final List<String> teamAOnCourt;
   final List<String> teamABench;
   final List<String> teamBOnCourt;
   final List<String> teamBBench;
 
-  // Mapa de estadísticas por jugador
+  // Estadísticas individuales
   final Map<String, PlayerStats> playerStats;
 
   const MatchState({
@@ -43,6 +47,10 @@ class MatchState {
     this.timeLeft = const Duration(minutes: 10),
     this.isRunning = false,
     this.currentPeriod = 1,
+    // Inicializamos el periodo 1 en 0-0
+    this.periodScores = const {
+      1: [0, 0],
+    },
     this.teamAOnCourt = const [],
     this.teamABench = const [],
     this.teamBOnCourt = const [],
@@ -57,6 +65,7 @@ class MatchState {
     Duration? timeLeft,
     bool? isRunning,
     int? currentPeriod,
+    Map<int, List<int>>? periodScores, // Nuevo parámetro
     List<String>? teamAOnCourt,
     List<String>? teamABench,
     List<String>? teamBOnCourt,
@@ -70,6 +79,7 @@ class MatchState {
       timeLeft: timeLeft ?? this.timeLeft,
       isRunning: isRunning ?? this.isRunning,
       currentPeriod: currentPeriod ?? this.currentPeriod,
+      periodScores: periodScores ?? this.periodScores,
       teamAOnCourt: teamAOnCourt ?? this.teamAOnCourt,
       teamABench: teamABench ?? this.teamABench,
       teamBOnCourt: teamBOnCourt ?? this.teamBOnCourt,
@@ -82,7 +92,7 @@ class MatchState {
 // --- CONTROLADOR (LÓGICA) ---
 
 class MatchGameController extends StateNotifier<MatchState> {
-  final MatchesDao _dao; 
+  final MatchesDao _dao;
   Timer? _timer;
   final List<MatchState> _history = [];
 
@@ -103,7 +113,6 @@ class MatchGameController extends StateNotifier<MatchState> {
     _history.add(state);
   }
 
-  // 1. DESHACER (UNDO)
   void undo() {
     if (_history.isNotEmpty) {
       final previousState = _history.removeLast();
@@ -115,7 +124,6 @@ class MatchGameController extends StateNotifier<MatchState> {
     }
   }
 
-  // 2. AJUSTAR RELOJ
   void setTime(Duration newTime) {
     state = state.copyWith(timeLeft: newTime);
   }
@@ -126,47 +134,57 @@ class MatchGameController extends StateNotifier<MatchState> {
     state = state.copyWith(timeLeft: Duration(seconds: newSeconds));
   }
 
-  // Lógica para avanzar de periodo
-  // <--- MODIFICADO: Ahora detecta si es tiempo extra (5 min) o normal (10 min)
+  // --- AVANZAR PERIODO ---
   void nextPeriod() {
-    _saveToHistory(); 
-    
+    _saveToHistory();
+
     int nextPeriodIdx = state.currentPeriod + 1;
-    
-    // Regla: Periodos > 4 son Tiempos Extra de 5 minutos.
-    Duration newDuration = (nextPeriodIdx > 4) 
-        ? const Duration(minutes: 5) 
+    Duration newDuration = (nextPeriodIdx > 4)
+        ? const Duration(minutes: 5)
         : const Duration(minutes: 10);
+
+    // Inicializamos el marcador parcial del nuevo periodo en [0, 0]
+    final newPeriodScores = Map<int, List<int>>.from(state.periodScores);
+    if (!newPeriodScores.containsKey(nextPeriodIdx)) {
+      newPeriodScores[nextPeriodIdx] = [0, 0];
+    }
 
     state = state.copyWith(
       currentPeriod: nextPeriodIdx,
-      timeLeft: newDuration, 
-      isRunning: false, 
+      timeLeft: newDuration,
+      isRunning: false,
+      periodScores: newPeriodScores,
     );
     _saveToDatabase();
   }
 
-  // <--- NUEVO: Función para asignar periodo manualmente
+  // --- ASIGNAR PERIODO MANUAL ---
   void setPeriod(int period) {
     _saveToHistory();
-    
-    // Al cambiar manualmente, ponemos el tiempo por defecto de ese periodo
-    Duration newDuration = (period > 4) 
-        ? const Duration(minutes: 5) 
+    Duration newDuration = (period > 4)
+        ? const Duration(minutes: 5)
         : const Duration(minutes: 10);
+
+    // Aseguramos que exista la entrada en el mapa para ese periodo
+    final newPeriodScores = Map<int, List<int>>.from(state.periodScores);
+    if (!newPeriodScores.containsKey(period)) {
+      newPeriodScores[period] = [0, 0];
+    }
 
     state = state.copyWith(
       currentPeriod: period,
       timeLeft: newDuration,
       isRunning: false,
+      periodScores: newPeriodScores,
     );
     _saveToDatabase();
   }
 
   void toggleTimer() {
-    if (state.isRunning) {
+    if (state.isRunning){
       _pause();
-    } else {
+    }
+    else{
       _start();
     }
   }
@@ -187,58 +205,77 @@ class MatchGameController extends StateNotifier<MatchState> {
   void _pause() {
     _timer?.cancel();
     state = state.copyWith(isRunning: false);
-    _saveToDatabase(); 
+    _saveToDatabase();
   }
 
-  // 3. AGREGAR PUNTOS Y FALTAS
+  // --- AGREGAR PUNTOS Y FALTAS ---
   void updateStats(
     String teamId,
     String playerId, {
     int points = 0,
     int fouls = 0,
   }) {
-
     final currentStats = state.playerStats[playerId] ?? const PlayerStats();
 
     // Bloqueo de 5 faltas
-    if (currentStats.fouls >= 5 && (points > 0 || fouls > 0)) {
-      return; 
-    }
+    if (currentStats.fouls >= 5 && (points > 0 || fouls > 0)) return;
+
     _saveToHistory();
 
+    // 1. Actualizar Score Global
     int newScoreA = state.scoreA;
     int newScoreB = state.scoreB;
-
     if (points > 0) {
-      if (teamId == 'A') {
-        newScoreA += points;
-      } else {
-        newScoreB += points;
+      if (teamId == 'A'){
+          newScoreA += points;
       }
+        
+      else{
+          newScoreB += points;
+      }
+        
     }
 
-    final newStats = currentStats.copyWith(
+    // 2. Actualizar Score Parcial del Periodo Actual
+    final newPeriodScores = Map<int, List<int>>.from(state.periodScores);
+    // Recuperamos el score actual del periodo o iniciamos en [0,0]
+    List<int> currentPeriodScore = List.from(
+      newPeriodScores[state.currentPeriod] ?? [0, 0],
+    );
+
+    if (points > 0) {
+      if (teamId == 'A'){
+        currentPeriodScore[0] += points;
+      }
+        
+      else{
+        currentPeriodScore[1] += points;
+      }
+        
+    }
+    newPeriodScores[state.currentPeriod] = currentPeriodScore;
+
+    // 3. Actualizar Stats Jugador
+    final newPlayerStatsMap = Map<String, PlayerStats>.from(state.playerStats);
+    newPlayerStatsMap[playerId] = currentStats.copyWith(
       points: currentStats.points + points,
       fouls: currentStats.fouls + fouls,
     );
 
-    final newPlayerStats = Map<String, PlayerStats>.from(state.playerStats);
-    newPlayerStats[playerId] = newStats;
-
     state = state.copyWith(
       scoreA: newScoreA,
       scoreB: newScoreB,
-      playerStats: newPlayerStats,
+      periodScores: newPeriodScores, // Guardamos el mapa actualizado
+      playerStats: newPlayerStatsMap,
     );
 
     _saveToDatabase();
     _logEventToDb(playerId, points, fouls);
   }
 
-  // 4. SUSTITUCIONES
+  // --- SUSTITUCIONES ---
   void substitutePlayer(String teamId, String playerOut, String playerIn) {
-    _saveToHistory(); 
-
+    _saveToHistory();
     if (teamId == 'A') {
       final newOnCourt = List<String>.from(state.teamAOnCourt)
         ..remove(playerOut)
@@ -260,8 +297,15 @@ class MatchGameController extends StateNotifier<MatchState> {
 
   Future<void> _saveToDatabase() async {
     if (state.matchId.isEmpty) return;
-    final timeStr = "${state.timeLeft.inMinutes}:${(state.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}";
-    await _dao.updateMatchStatus(state.matchId, state.scoreA, state.scoreB, timeStr, "IN_PROGRESS");
+    final timeStr =
+        "${state.timeLeft.inMinutes}:${(state.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}";
+    await _dao.updateMatchStatus(
+      state.matchId,
+      state.scoreA,
+      state.scoreB,
+      timeStr,
+      "IN_PROGRESS",
+    );
   }
 
   Future<void> _logEventToDb(String player, int points, int fouls) async {
@@ -271,9 +315,8 @@ class MatchGameController extends StateNotifier<MatchState> {
     if (points == 2) type = "POINT_2";
     if (points == 3) type = "POINT_3";
     if (fouls > 0) type = "FOUL";
-
-    final timeStr = "${state.timeLeft.inMinutes}:${(state.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}";
-
+    final timeStr =
+        "${state.timeLeft.inMinutes}:${(state.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}";
     await _dao.insertEvent(
       GameEventsCompanion.insert(
         matchId: state.matchId,
@@ -293,6 +336,6 @@ class MatchGameController extends StateNotifier<MatchState> {
 
 final matchGameProvider =
     StateNotifierProvider<MatchGameController, MatchState>((ref) {
-      final dao = ref.watch(matchesDaoProvider); 
+      final dao = ref.watch(matchesDaoProvider);
       return MatchGameController(dao);
     });
