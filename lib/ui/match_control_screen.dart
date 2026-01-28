@@ -23,7 +23,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
   @override
   void initState() {
     super.initState();
-    // Inicializamos el partido al cargar la pantalla
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(matchGameProvider.notifier).initMatch(widget.matchId);
     });
@@ -34,17 +33,17 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     final gameState = ref.watch(matchGameProvider);
     final controller = ref.read(matchGameProvider.notifier);
 
-    // Listener para alertas (5 faltas)
+    // ✅ LISTENER GENERAL
     ref.listen<MatchState>(matchGameProvider, (previous, next) {
+      // 1. Alerta de 5 Faltas (Igual que antes)
       next.playerStats.forEach((playerId, stats) {
         final previousFouls = previous?.playerStats[playerId]?.fouls ?? 0;
-        // Solo mostramos alerta si acaba de subir a 5 (para no spammear)
         if (stats.fouls == 5 && previousFouls == 4) {
           showDialog(
             context: context,
             builder: (_) => AlertDialog(
               title: const Text("🚨 Límite de Faltas"),
-              content: Text("El jugador $playerId ha llegado a 5 faltas."),
+              content: Text("El jugador $playerId ha llegado a 5 faltas y debe ser sustituido."),
               backgroundColor: Colors.red.shade50,
               actions: [
                 TextButton(
@@ -56,6 +55,62 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
           );
         }
       });
+
+      // 2. Alerta de Fin de Periodo (cuando el reloj llega a 0)
+      // <--- MODIFICADO: Lógica inteligente para Tiempos Extra y Final
+      if ((previous?.timeLeft.inSeconds ?? 1) > 0 && next.timeLeft.inSeconds == 0) {
+        
+        bool isTie = next.scoreA == next.scoreB;
+        bool isRegularTimeOver = next.currentPeriod >= 4;
+
+        String title;
+        String content;
+        String actionButtonText;
+        VoidCallback action;
+
+        if (!isRegularTimeOver) {
+          // Periodos 1, 2, 3 -> Siguiente normal
+          title = "Fin del Periodo ${next.currentPeriod}";
+          content = "¿Deseas iniciar el Periodo ${next.currentPeriod + 1}?";
+          actionButtonText = "Siguiente Periodo";
+          action = () => controller.nextPeriod();
+        } else {
+          // Fin del 4to o Prórroga
+          if (isTie) {
+            title = "¡EMPATE!";
+            content = "El partido terminó empatado. ¿Iniciar Tiempo Extra?";
+            actionButtonText = "Iniciar Tiempo Extra"; // Esto pondrá 5 mins
+            action = () => controller.nextPeriod();
+          } else {
+            title = "Fin del Partido";
+            content = "El tiempo ha terminado. Marcador Final: ${next.scoreA} - ${next.scoreB}";
+            actionButtonText = "Finalizar";
+            action = () {}; // Aquí podrías navegar atrás o guardar final
+          }
+        }
+
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => AlertDialog(
+            title: Text(title),
+            content: Text(content),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Revisar"),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  action();
+                  Navigator.pop(context);
+                },
+                child: Text(actionButtonText),
+              ),
+            ],
+          ),
+        );
+      }
     });
 
     return Scaffold(
@@ -70,65 +125,45 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
             onPressed: () {
               controller.undo();
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Acción deshecha"),
-                  duration: Duration(milliseconds: 500),
-                ),
+                const SnackBar(content: Text("Acción deshecha"), duration: Duration(milliseconds: 500)),
               );
             },
           ),
-
           IconButton(
             icon: const Icon(Icons.print),
-            tooltip: "Generar PDF",
+            tooltip: "Vista Previa",
             onPressed: () async {
-              // Llamamos al generador pasando el estado actual
-              await PdfGenerator.generateAndPreview(
-                gameState,
-                widget.teamAName,
-                widget.teamBName,
-              );
+              await PdfGenerator.generateAndPreview(gameState, widget.teamAName, widget.teamBName);
             },
           ),
-          // BOTÓN 2: COMPARTIR (Nuevo)
           IconButton(
             icon: const Icon(Icons.share),
             tooltip: "Compartir PDF",
             onPressed: () async {
-              await PdfGenerator.generateAndShare(
-                gameState,
-                widget.teamAName,
-                widget.teamBName,
-              );
+              await PdfGenerator.generateAndShare(gameState, widget.teamAName, widget.teamBName);
             },
           ),
         ],
       ),
       body: Column(
         children: [
-          _buildScoreBoard(gameState, controller),
+          _buildScoreBoard(context, gameState, controller), // <--- MODIFICADO: Pide context
           Expanded(
             child: Row(
               children: [
-                // EQUIPO A
                 Expanded(
                   child: _buildTeamColumn(
                     context,
                     widget.teamAName,
                     Colors.orange.shade50,
                     'A',
-                    gameState.teamAOnCourt, // Solo cancha
-                    gameState.teamABench, // Banca para cambios
+                    gameState.teamAOnCourt,
+                    gameState.teamABench,
                     controller,
                     gameState,
                   ),
                 ),
-                const VerticalDivider(
-                  width: 1,
-                  thickness: 1,
-                  color: Colors.grey,
-                ),
-                // EQUIPO B
+                const VerticalDivider(width: 1, thickness: 1, color: Colors.grey),
                 Expanded(
                   child: _buildTeamColumn(
                     context,
@@ -149,70 +184,89 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     );
   }
 
-  Widget _buildScoreBoard(MatchState state, MatchGameController controller) {
+  // <--- MODIFICADO: Agregamos BuildContext para abrir el diálogo
+  Widget _buildScoreBoard(BuildContext context, MatchState state, MatchGameController controller) {
     final minutes = state.timeLeft.inMinutes.toString().padLeft(2, '0');
     final seconds = (state.timeLeft.inSeconds % 60).toString().padLeft(2, '0');
+
+    // <--- NUEVO: Texto dinámico para Tiempos Extra
+    String periodText = state.currentPeriod <= 4 
+        ? "PERIODO ${state.currentPeriod}" 
+        : "TIEMPO EXTRA ${state.currentPeriod - 4}";
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       color: Colors.black87,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      child: Column(
         children: [
-          _scoreText(state.scoreA.toString(), widget.teamAName),
-
-          // --- RELOJ INTERACTIVO (CORREGIDO) ---
+          // <--- MODIFICADO: Ahora es clickeable para cambiar manualmente
           GestureDetector(
-            // UN TOQUE: SIEMPRE PAUSA O INICIA
-            onTap: () => controller.toggleTimer(),
-
-            // MANTENER PRESIONADO: EDITA (Solo si está pausado para evitar errores)
-            onLongPress: () {
-              if (!state.isRunning) {
-                _showTimePicker(context, controller, state.timeLeft);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Pausa el reloj para editar")),
-                );
-              }
-            },
+            onTap: () => _showPeriodSelector(context, controller),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                border: Border.all(
-                  color: state.isRunning
-                      ? Colors.greenAccent
-                      : Colors.redAccent,
-                  width: 3,
-                ),
-                borderRadius: BorderRadius.circular(8),
-                color: Colors.white10,
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Column(
-                children: [
-                  Text(
-                    "$minutes:$seconds",
-                    style: TextStyle(
-                      color: state.isRunning
-                          ? Colors.greenAccent
-                          : Colors.redAccent,
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                  // Indicador visual pequeño para que sepan que pueden editar
-                  if (!state.isRunning)
-                    const Text(
-                      "Mantén para editar",
-                      style: TextStyle(color: Colors.white38, fontSize: 10),
-                    ),
-                ],
+              child: Text(
+                periodText,
+                style: const TextStyle(
+                  color: Colors.orangeAccent,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2.0,
+                ),
               ),
             ),
           ),
-
-          _scoreText(state.scoreB.toString(), widget.teamBName),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _scoreText(state.scoreA.toString(), widget.teamAName),
+              
+              // RELOJ
+              GestureDetector(
+                onTap: () => controller.toggleTimer(),
+                onLongPress: () {
+                  if (!state.isRunning) {
+                    _showTimePicker(context, controller, state.timeLeft);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Pausa el reloj para editar")),
+                    );
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: state.isRunning ? Colors.greenAccent : Colors.redAccent,
+                      width: 3,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.white10,
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        "$minutes:$seconds",
+                        style: TextStyle(
+                          color: state.isRunning ? Colors.greenAccent : Colors.redAccent,
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                      if (!state.isRunning)
+                        const Text("Mantén para editar", style: TextStyle(color: Colors.white38, fontSize: 10))
+                    ],
+                  ),
+                ),
+              ),
+              
+              _scoreText(state.scoreB.toString(), widget.teamBName),
+            ],
+          ),
         ],
       ),
     );
@@ -221,14 +275,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
   Widget _scoreText(String score, String team) {
     return Column(
       children: [
-        Text(
-          score,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 40,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
+        Text(score, style: const TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.w900)),
         Text(team, style: const TextStyle(color: Colors.white70, fontSize: 12)),
       ],
     );
@@ -248,7 +295,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
       color: bgColor,
       child: Column(
         children: [
-          // CABECERA + BOTÓN DE CAMBIO
           Container(
             padding: const EdgeInsets.all(8),
             color: Colors.black12,
@@ -278,8 +324,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
               ],
             ),
           ),
-
-          // LISTA JUGADORES (SOLO CANCHA)
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.all(4),
@@ -289,15 +333,11 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                 final stats =
                     state.playerStats[playerName] ?? const PlayerStats();
 
-                // --- COLORES DE FALTAS (CORREGIDO) ---
                 Color? cardColor;
-                Color textColor = Colors.black; // Color de texto por defecto
-
+                Color textColor = Colors.black;
                 if (stats.fouls == 4) {
-                  // Falta 4: Amarillo fuerte
                   cardColor = Colors.yellow.shade400;
                 } else if (stats.fouls >= 5) {
-                  // Falta 5: Rojo intenso y texto blanco
                   cardColor = Colors.red.shade400;
                   textColor = Colors.white;
                 } else {
@@ -317,7 +357,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                       playerName,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: textColor, // Aplicar color de texto
+                        color: textColor,
                       ),
                     ),
                     subtitle: Text(
@@ -329,6 +369,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                       teamId,
                       playerName,
                       controller,
+                      stats.fouls,
                     ),
                   ),
                 );
@@ -340,7 +381,132 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     );
   }
 
-  // DIÁLOGO PICKER DE TIEMPO (SCROLLABLE)
+  // <--- NUEVO: Diálogo para seleccionar periodo manualmente
+  void _showPeriodSelector(BuildContext context, MatchGameController controller) {
+    showDialog(
+      context: context,
+      builder: (_) => SimpleDialog(
+        title: const Text("Seleccionar Periodo"),
+        children: [
+          _periodOption(context, controller, 1, "Periodo 1"),
+          _periodOption(context, controller, 2, "Periodo 2"),
+          _periodOption(context, controller, 3, "Periodo 3"),
+          _periodOption(context, controller, 4, "Periodo 4"),
+          const Divider(),
+          _periodOption(context, controller, 5, "Tiempo Extra 1"),
+          _periodOption(context, controller, 6, "Tiempo Extra 2"),
+        ],
+      ),
+    );
+  }
+
+  // <--- NUEVO: Helper para opción de periodo
+  Widget _periodOption(BuildContext context, MatchGameController controller, int period, String label) {
+    return SimpleDialogOption(
+      onPressed: () {
+        controller.setPeriod(period);
+        Navigator.pop(context);
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Text(label),
+      ),
+    );
+  }
+
+  void _showActionMenu(
+    BuildContext context,
+    String teamId,
+    String playerName,
+    MatchGameController controller,
+    int currentFouls,
+  ) {
+    final bool isDisqualified = currentFouls >= 5;
+
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => Container(
+        padding: const EdgeInsets.all(20),
+        height: 200,
+        child: Column(
+          children: [
+            Text(
+              isDisqualified ? "$playerName (EXPULSADO)" : playerName,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: isDisqualified ? Colors.red : Colors.black,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            if (isDisqualified)
+              const Padding(
+                padding: EdgeInsets.all(10),
+                child: Text(
+                  "Este jugador ha alcanzado el límite de 5 faltas. Realiza una sustitución.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
+                ),
+              )
+            else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      controller.updateStats(teamId, playerName, points: 1);
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text("+1"),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      controller.updateStats(teamId, playerName, points: 2);
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text("+2"),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      controller.updateStats(teamId, playerName, points: 3);
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text("+3"),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      controller.updateStats(teamId, playerName, fouls: 1);
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text("Falta"),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- RESTO DE DIÁLOGOS ---
+
   void _showTimePicker(
     BuildContext context,
     MatchGameController controller,
@@ -348,7 +514,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
   ) {
     int selectedMinute = currentTime.inMinutes;
     int selectedSecond = currentTime.inSeconds % 60;
-
     showModalBottomSheet(
       context: context,
       builder: (_) => Container(
@@ -447,7 +612,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     );
   }
 
-  // DIÁLOGO DE SUSTITUCIÓN
   void _showSubstitutionDialog(
     BuildContext context,
     String teamId,
@@ -457,7 +621,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
   ) {
     String? selectedOut;
     String? selectedIn;
-
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -512,79 +675,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                     }
                   : null,
               child: const Text("Confirmar"),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showActionMenu(
-    BuildContext context,
-    String teamId,
-    String playerName,
-    MatchGameController controller,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      builder: (_) => Container(
-        padding: const EdgeInsets.all(20),
-        height: 180,
-        child: Column(
-          children: [
-            Text(
-              playerName,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton(
-                  onPressed: () {
-                    controller.updateStats(teamId, playerName, points: 1);
-                    Navigator.pop(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text("+1"),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    controller.updateStats(teamId, playerName, points: 2);
-                    Navigator.pop(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text("+2"),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    controller.updateStats(teamId, playerName, points: 3);
-                    Navigator.pop(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text("+3"),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    controller.updateStats(teamId, playerName, fouls: 1);
-                    Navigator.pop(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text("Falta"),
-                ),
-              ],
             ),
           ],
         ),

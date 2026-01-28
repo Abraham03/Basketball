@@ -20,14 +20,14 @@ class PlayerStats {
 }
 
 class MatchState {
-  final String matchId; // Necesario para guardar en BD
+  final String matchId; 
   final int scoreA;
   final int scoreB;
   final Duration timeLeft;
   final bool isRunning;
   final int currentPeriod;
 
-  // --- NUEVO: LISTAS PARA SUSTITUCIONES ---
+  // --- LISTAS PARA SUSTITUCIONES ---
   final List<String> teamAOnCourt;
   final List<String> teamABench;
   final List<String> teamBOnCourt;
@@ -82,18 +82,15 @@ class MatchState {
 // --- CONTROLADOR (LÓGICA) ---
 
 class MatchGameController extends StateNotifier<MatchState> {
-  final MatchesDao _dao; // DAO Inyectado
+  final MatchesDao _dao; 
   Timer? _timer;
   final List<MatchState> _history = [];
 
-  // Constructor recibe el DAO
   MatchGameController(this._dao) : super(const MatchState());
 
-  // INICIALIZACIÓN: Carga datos iniciales (Dummy por ahora)
   void initMatch(String matchId) {
     state = state.copyWith(
       matchId: matchId,
-      // Generamos 5 titulares y 3 suplentes por equipo
       teamAOnCourt: List.generate(5, (i) => "Jugador A$i"),
       teamABench: List.generate(3, (i) => "Banca A$i"),
       teamBOnCourt: List.generate(5, (i) => "Jugador B$i"),
@@ -106,21 +103,19 @@ class MatchGameController extends StateNotifier<MatchState> {
     _history.add(state);
   }
 
-  // 1. DESHACER (UNDO) CON GUARDADO EN BD
+  // 1. DESHACER (UNDO)
   void undo() {
     if (_history.isNotEmpty) {
       final previousState = _history.removeLast();
-      // Restauramos todo MENOS el tiempo y el estado del reloj (generalmente no se deshace el tiempo corrido)
       state = previousState.copyWith(
         timeLeft: state.timeLeft,
         isRunning: state.isRunning,
       );
-      // ¡IMPORTANTE! Guardamos el estado restaurado en la BD
       _saveToDatabase();
     }
   }
 
-  // 2. AJUSTAR RELOJ (SCROLL)
+  // 2. AJUSTAR RELOJ
   void setTime(Duration newTime) {
     state = state.copyWith(timeLeft: newTime);
   }
@@ -129,6 +124,43 @@ class MatchGameController extends StateNotifier<MatchState> {
     final newSeconds = state.timeLeft.inSeconds + seconds;
     if (newSeconds < 0) return;
     state = state.copyWith(timeLeft: Duration(seconds: newSeconds));
+  }
+
+  // Lógica para avanzar de periodo
+  // <--- MODIFICADO: Ahora detecta si es tiempo extra (5 min) o normal (10 min)
+  void nextPeriod() {
+    _saveToHistory(); 
+    
+    int nextPeriodIdx = state.currentPeriod + 1;
+    
+    // Regla: Periodos > 4 son Tiempos Extra de 5 minutos.
+    Duration newDuration = (nextPeriodIdx > 4) 
+        ? const Duration(minutes: 5) 
+        : const Duration(minutes: 10);
+
+    state = state.copyWith(
+      currentPeriod: nextPeriodIdx,
+      timeLeft: newDuration, 
+      isRunning: false, 
+    );
+    _saveToDatabase();
+  }
+
+  // <--- NUEVO: Función para asignar periodo manualmente
+  void setPeriod(int period) {
+    _saveToHistory();
+    
+    // Al cambiar manualmente, ponemos el tiempo por defecto de ese periodo
+    Duration newDuration = (period > 4) 
+        ? const Duration(minutes: 5) 
+        : const Duration(minutes: 10);
+
+    state = state.copyWith(
+      currentPeriod: period,
+      timeLeft: newDuration,
+      isRunning: false,
+    );
+    _saveToDatabase();
   }
 
   void toggleTimer() {
@@ -155,7 +187,7 @@ class MatchGameController extends StateNotifier<MatchState> {
   void _pause() {
     _timer?.cancel();
     state = state.copyWith(isRunning: false);
-    _saveToDatabase(); // Guardar al pausar
+    _saveToDatabase(); 
   }
 
   // 3. AGREGAR PUNTOS Y FALTAS
@@ -165,10 +197,18 @@ class MatchGameController extends StateNotifier<MatchState> {
     int points = 0,
     int fouls = 0,
   }) {
+
+    final currentStats = state.playerStats[playerId] ?? const PlayerStats();
+
+    // Bloqueo de 5 faltas
+    if (currentStats.fouls >= 5 && (points > 0 || fouls > 0)) {
+      return; 
+    }
     _saveToHistory();
 
     int newScoreA = state.scoreA;
     int newScoreB = state.scoreB;
+
     if (points > 0) {
       if (teamId == 'A') {
         newScoreA += points;
@@ -177,7 +217,6 @@ class MatchGameController extends StateNotifier<MatchState> {
       }
     }
 
-    final currentStats = state.playerStats[playerId] ?? const PlayerStats();
     final newStats = currentStats.copyWith(
       points: currentStats.points + points,
       fouls: currentStats.fouls + fouls,
@@ -192,14 +231,13 @@ class MatchGameController extends StateNotifier<MatchState> {
       playerStats: newPlayerStats,
     );
 
-    // GUARDADO AUTOMÁTICO
     _saveToDatabase();
     _logEventToDb(playerId, points, fouls);
   }
 
   // 4. SUSTITUCIONES
   void substitutePlayer(String teamId, String playerOut, String playerIn) {
-    _saveToHistory(); // Guardar historial antes del cambio
+    _saveToHistory(); 
 
     if (teamId == 'A') {
       final newOnCourt = List<String>.from(state.teamAOnCourt)
@@ -218,46 +256,30 @@ class MatchGameController extends StateNotifier<MatchState> {
         ..add(playerOut);
       state = state.copyWith(teamBOnCourt: newOnCourt, teamBBench: newBench);
     }
-
-    // Podríamos guardar el evento de cambio aquí también si fuera necesario
   }
 
-  // --- MÉTODOS PRIVADOS DE BASE DE DATOS ---
   Future<void> _saveToDatabase() async {
     if (state.matchId.isEmpty) return;
-
-    final timeStr =
-        "${state.timeLeft.inMinutes}:${(state.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}";
-
-    await _dao.updateMatchStatus(
-      state.matchId,
-      state.scoreA,
-      state.scoreB,
-      timeStr,
-      "IN_PROGRESS",
-    );
+    final timeStr = "${state.timeLeft.inMinutes}:${(state.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}";
+    await _dao.updateMatchStatus(state.matchId, state.scoreA, state.scoreB, timeStr, "IN_PROGRESS");
   }
 
   Future<void> _logEventToDb(String player, int points, int fouls) async {
     if (state.matchId.isEmpty) return;
-
     String type = "UNKNOWN";
     if (points == 1) type = "POINT_1";
     if (points == 2) type = "POINT_2";
     if (points == 3) type = "POINT_3";
     if (fouls > 0) type = "FOUL";
 
-    final timeStr =
-        "${state.timeLeft.inMinutes}:${(state.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}";
+    final timeStr = "${state.timeLeft.inMinutes}:${(state.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}";
 
-    // Insertamos en GameEvents
     await _dao.insertEvent(
       GameEventsCompanion.insert(
         matchId: state.matchId,
         type: type,
         period: state.currentPeriod,
         clockTime: timeStr,
-        // playerId: Value(player), // En un futuro usarás el UUID real
       ),
     );
   }
@@ -269,9 +291,8 @@ class MatchGameController extends StateNotifier<MatchState> {
   }
 }
 
-// PROVIDER (Sin autoDispose para mantener el reloj vivo si sales de la pantalla)
 final matchGameProvider =
     StateNotifierProvider<MatchGameController, MatchState>((ref) {
-      final dao = ref.watch(matchesDaoProvider); // Inyectamos el DAO
+      final dao = ref.watch(matchesDaoProvider); 
       return MatchGameController(dao);
     });
