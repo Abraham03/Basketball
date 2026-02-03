@@ -4,11 +4,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../logic/match_game_controller.dart';
 
-/// ==============================================================
-/// 📐 CONFIGURACIÓN DE COORDENADAS (LAYOUT)
-/// ==============================================================
 class PdfCoords {
-  // --- 1. ENCABEZADO ---
+  // --- 1. HEADER ---
   static const double headerY = 90.0;
   static const double competitionX = 390.0;
   static const double dateX = 195.0;
@@ -17,7 +14,13 @@ class PdfCoords {
   static const double placeY = 105.0;
   static const double gameNoX = 100.0;
 
-  // --- 2. ENCABEZADOS DE EQUIPOS ---
+  // --- REFEREES ---
+  static const double referee1X = 390.0;
+  static const double referee1Y = 105.0;
+  static const double referee2X = 390.0;
+  static const double referee2Y = 115.0;
+
+  // --- 2. TEAM HEADERS ---
   static const double teamANameX = 115.0;
   static const double teamANameY = 123.0;
   static const double teamBNameX = 115.0;
@@ -28,27 +31,29 @@ class PdfCoords {
   static const double teamBName2X = 390.0;
   static const double teamBName2Y = 55.0;
 
-  // --- 3. TABLAS DE JUGADORES ---
+  // --- 3. ROSTER TABLES ---
   static const double teamAListStartY = 310.0;
-  static const double teamAColNumX = 22.5;
+  static const double teamAColNumX = 199.0;
   static const double teamAColNameX = 50.0;
   static const double teamAColFoulsX = 235.0;
+  static const double teamAColEntryX = 215.0; 
 
   static const double teamBListStartY = 594.7;
-  static const double teamBColNumX = 22.5;
+  static const double teamBColNumX = 199.0;
   static const double teamBColNameX = 50.0;
   static const double teamBColFoulsX = 235.0;
+  static const double teamBColEntryX = 215.0; 
 
   static const double rowHeight = 13.0;
   static const double foulBoxWidth = 12.0;
 
-  // --- 6. MARCADOR FINAL ---
+  // --- 6. FINAL SCORE ---
   static const double scoreBoxY = 772.0;
   static const double scoreAX = 450.0;
   static const double scoreBX = 535.0;
   static const double scoreFontSize = 20.0;
 
-  // --- 7. SCORES POR PERIODO ---
+  // --- 7. PERIOD SCORES ---
   static const double period1AX = 446.0;
   static const double period1BX = 532.0;
   static const double period1Y = 692.0;
@@ -69,39 +74,57 @@ class PdfCoords {
   static const double overtimeBX = 532.0;
   static const double overtimeY = 755.0;
 
-  // --- 9. CONTEO CORRIDO (RUNNING SCORE) ---
-
+  // --- 9. RUNNING SCORE ---
   static const double runScoreCol1X = 335.0;
   static const double runScoreTeamSpacing = 10.0;
   static const double runScoreBlockSpacing = 68.0;
   static const double playerNumOffsetX = -18.0;
-
-  // ✅ ESTRATEGIA DE ALINEACIÓN PERFECTA (INTERPOLACIÓN)
-  // En lugar de adivinar la altura de fila, definimos el inicio y el fin exactos.
-  // 1. Ajusta 'runScoreStartY' para que el marcador "1" caiga perfecto.
-  // 2. Ajusta 'runScoreEndY' para que el marcador "40" caiga perfecto.
-  // El código calculará automáticamente la posición de todos los números intermedios (2-39).
-
-  static const double runScoreStartY = 157.0; // Coordenada Y del número 1
-  static const double runScoreEndY =680.0; // Coordenada Y del número 40 (Ajusta esto si se descuadra el final)
+  static const double runScoreStartY = 157.0;
+  static const double runScoreEndY = 680.0;
 }
 
 class PdfGenerator {
   static Future<void> generateAndPreview(
     MatchState state,
     String teamAName,
-    String teamBName,
-  ) async {
-    final pdf = await _buildDocument(state, teamAName, teamBName);
+    String teamBName, {
+    String tournamentName = "",
+    String venueName = "",
+    String mainReferee = "",
+    String auxReferee = "",
+    String scorekeeper = "",
+  }) async {
+    final pdf = await _buildDocument(
+      state,
+      teamAName,
+      teamBName,
+      tournamentName,
+      venueName,
+      mainReferee,
+      auxReferee,
+    );
     await Printing.layoutPdf(onLayout: (format) async => pdf.save());
   }
 
   static Future<void> generateAndShare(
     MatchState state,
     String teamAName,
-    String teamBName,
-  ) async {
-    final pdf = await _buildDocument(state, teamAName, teamBName);
+    String teamBName, {
+    String tournamentName = "",
+    String venueName = "",
+    String mainReferee = "",
+    String auxReferee = "",
+    String scorekeeper = "",
+  }) async {
+    final pdf = await _buildDocument(
+      state,
+      teamAName,
+      teamBName,
+      tournamentName,
+      venueName,
+      mainReferee,
+      auxReferee,
+    );
     await Printing.sharePdf(
       bytes: await pdf.save(),
       filename: 'Acta_${teamAName}_vs_$teamBName.pdf',
@@ -112,6 +135,10 @@ class PdfGenerator {
     MatchState state,
     String teamAName,
     String teamBName,
+    String tournamentName,
+    String venueName,
+    String mainReferee,
+    String auxReferee,
   ) async {
     final pdf = pw.Document();
 
@@ -131,7 +158,7 @@ class PdfGenerator {
                 pw.Positioned.fill(child: pw.Image(image, fit: pw.BoxFit.fill)),
 
                 _drawText(
-                  "Liga Local",
+                  tournamentName,
                   x: PdfCoords.competitionX,
                   y: PdfCoords.headerY,
                   fontSize: 9,
@@ -155,11 +182,26 @@ class PdfGenerator {
                   fontSize: 9,
                 ),
                 _drawText(
-                  "Cancha Central",
+                  venueName,
                   x: PdfCoords.placeX,
                   y: PdfCoords.placeY,
                   fontSize: 9,
                 ),
+
+                if (mainReferee.isNotEmpty)
+                  _drawText(
+                    mainReferee,
+                    x: PdfCoords.referee1X,
+                    y: PdfCoords.referee1Y,
+                    fontSize: 8,
+                  ),
+                if (auxReferee.isNotEmpty)
+                  _drawText(
+                    auxReferee,
+                    x: PdfCoords.referee2X,
+                    y: PdfCoords.referee2Y,
+                    fontSize: 8,
+                  ),
 
                 _drawText(
                   teamAName.toUpperCase(),
@@ -195,6 +237,7 @@ class PdfGenerator {
                   startXName: PdfCoords.teamAColNameX,
                   startXFouls: PdfCoords.teamAColFoulsX,
                   startY: PdfCoords.teamAListStartY,
+                  entryX: PdfCoords.teamAColEntryX, // ✅
                 ),
                 ..._buildRosterList(
                   players: state.teamBOnCourt + state.teamBBench,
@@ -203,6 +246,7 @@ class PdfGenerator {
                   startXName: PdfCoords.teamBColNameX,
                   startXFouls: PdfCoords.teamBColFoulsX,
                   startY: PdfCoords.teamBListStartY,
+                  entryX: PdfCoords.teamBColEntryX, // ✅
                 ),
 
                 _drawText(
@@ -258,7 +302,6 @@ class PdfGenerator {
                     PdfCoords.overtimeY,
                   ),
 
-                // ✅ NUEVA FUNCIÓN OPTIMIZADA
                 ..._drawRunningScore(state.scoreLog),
               ],
             );
@@ -271,48 +314,106 @@ class PdfGenerator {
     return pdf;
   }
 
-  // --- LÓGICA DEL CONTEO CORRIDO (RUNNING SCORE) ---
+  static List<pw.Widget> _buildRosterList({
+    required List<String> players,
+    required Map<String, PlayerStats> stats,
+    required double startXNum,
+    required double startXName,
+    required double startXFouls,
+    required double startY,
+    required double entryX, // ✅
+  }) {
+    List<pw.Widget> widgets = [];
+    double currentY = startY;
+    int limit = players.length > 12 ? 12 : players.length;
+
+    for (var i = 0; i < limit; i++) {
+      final playerName = players[i];
+      final stat = stats[playerName] ?? const PlayerStats();
+      final dorsal = stat.playerNumber.isNotEmpty ? stat.playerNumber : "";
+
+      widgets.add(_drawText(dorsal, x: startXNum, y: currentY, fontSize: 10));
+      String displayName = playerName.length > 18
+          ? "${playerName.substring(0, 16)}..."
+          : playerName;
+      widgets.add(
+        _drawText(displayName, x: startXName, y: currentY, fontSize: 10),
+      );
+
+      // DRAW STARTER MARK
+      if (stat.isOnCourt) {
+        widgets.add(_drawStarterMark(x: entryX, y: currentY));
+      } else if (stat.points > 0 || stat.fouls > 0 || stat.isOnCourt) {
+        widgets.add(_drawText("X", x: entryX, y: currentY, fontSize: 10));
+      }
+
+      for (int f = 0; f < stat.fouls; f++) {
+        if (f >= 5) break;
+        double foulX = startXFouls + (f * PdfCoords.foulBoxWidth);
+        widgets.add(
+          _drawText(
+            "X",
+            x: foulX,
+            y: currentY,
+            fontSize: 10,
+            isBold: true,
+            color: f == 4 ? PdfColors.red : PdfColors.black,
+          ),
+        );
+      }
+      currentY -= PdfCoords.rowHeight;
+    }
+    return widgets;
+  }
+
+  static pw.Widget _drawStarterMark({required double x, required double y}) {
+    return pw.Positioned(
+      left: x - 1,
+      top: y + 1,
+      child: pw.Stack(
+        alignment: pw.Alignment.center,
+        children: [
+          pw.Container(
+            width: 11,
+            height: 11,
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: PdfColors.black, width: 1),
+              shape: pw.BoxShape.circle,
+            ),
+          ),
+          pw.Text("x", style: const pw.TextStyle(fontSize: 8)),
+        ],
+      ),
+    );
+  }
+
   static List<pw.Widget> _drawRunningScore(List<ScoreEvent> log) {
     List<pw.Widget> widgets = [];
-
-    // ✅ CÁLCULO DINÁMICO DE ALTURA
-    // Calculamos la distancia total disponible desde el número 1 hasta el 40
     const double totalHeight =
         PdfCoords.runScoreEndY - PdfCoords.runScoreStartY;
-    // Dividimos esa distancia en 39 espacios (saltos) para obtener la altura exacta de cada fila
     const double stepY = totalHeight / 39.0;
 
     for (var event in log) {
-      // Regla de color
       final PdfColor inkColor = (event.period <= 2)
           ? PdfColors.blue900
           : PdfColors.red;
-
-      // Limitar visualmente a 160 puntos
       int score = event.scoreAfter;
       if (score > 160) score = 160;
 
-      // Calcular columna (Bloque) y fila
       int blockIndex = (score - 1) ~/ 40;
       int rowInBlock = (score - 1) % 40;
 
-      // Posición X Base
       double blockX =
           PdfCoords.runScoreCol1X +
           (blockIndex * PdfCoords.runScoreBlockSpacing);
       double finalX = (event.teamId == 'A')
           ? blockX
           : blockX + PdfCoords.runScoreTeamSpacing;
-
-      // ✅ POSICIÓN Y EXACTA (Usando el paso dinámico)
       double finalY = PdfCoords.runScoreStartY + (rowInBlock * stepY);
-
-      // Posición del número de jugador
       double playerNumX = (event.teamId == 'A')
           ? finalX + PdfCoords.playerNumOffsetX
           : finalX - PdfCoords.playerNumOffsetX + 5;
 
-      // Dibujar Dorsal
       widgets.add(
         _drawText(
           event.playerNumber,
@@ -323,7 +424,6 @@ class PdfGenerator {
         ),
       );
 
-      // Dibujar Marca (Punto, Raya, Círculo)
       if (event.points == 1) {
         widgets.add(_drawFilledDot(finalX, finalY, inkColor));
       } else {
@@ -335,8 +435,6 @@ class PdfGenerator {
     }
     return widgets;
   }
-
-  // --- HELPERS GRÁFICOS ---
 
   static pw.Widget _drawFilledDot(double x, double y, PdfColor color) {
     return pw.Positioned(
@@ -353,7 +451,7 @@ class PdfGenerator {
   static pw.Widget _drawDiagonalSlash(double x, double y, PdfColor color) {
     return pw.Positioned(
       left: x,
-      top: y - 1, // Ajuste fino vertical para la raya
+      top: y - 1,
       child: pw.CustomPaint(
         size: const PdfPoint(10, 10),
         painter: (canvas, size) {
@@ -380,8 +478,6 @@ class PdfGenerator {
       ),
     );
   }
-
-  // --- RESTO DE HELPERS (Sin cambios) ---
 
   static pw.Widget _drawPeriodScore(
     MatchState state,
@@ -430,47 +526,6 @@ class PdfGenerator {
       if (period >= 5 && scores.length > teamIndex) total += scores[teamIndex];
     });
     return total;
-  }
-
-  static List<pw.Widget> _buildRosterList({
-    required List<String> players,
-    required Map<String, PlayerStats> stats,
-    required double startXNum,
-    required double startXName,
-    required double startXFouls,
-    required double startY,
-  }) {
-    List<pw.Widget> widgets = [];
-    double currentY = startY;
-    int limit = players.length > 12 ? 12 : players.length;
-    for (var i = 0; i < limit; i++) {
-      final playerName = players[i];
-      final stat = stats[playerName] ?? const PlayerStats();
-      final dorsal = "${i + 4}";
-      widgets.add(_drawText(dorsal, x: startXNum, y: currentY, fontSize: 10));
-      String displayName = playerName.length > 18
-          ? "${playerName.substring(0, 16)}..."
-          : playerName;
-      widgets.add(
-        _drawText(displayName, x: startXName, y: currentY, fontSize: 10),
-      );
-      for (int f = 0; f < stat.fouls; f++) {
-        if (f >= 5) break;
-        double foulX = startXFouls + (f * PdfCoords.foulBoxWidth);
-        widgets.add(
-          _drawText(
-            "X",
-            x: foulX,
-            y: currentY,
-            fontSize: 10,
-            isBold: true,
-            color: f == 4 ? PdfColors.red : PdfColors.black,
-          ),
-        );
-      }
-      currentY -= PdfCoords.rowHeight;
-    }
-    return widgets;
   }
 
   static pw.Widget _drawText(

@@ -2,17 +2,39 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/utils/pdf_generator.dart';
 import '../logic/match_game_controller.dart';
+import '../core/models/catalog_models.dart';
 
 class MatchControlScreen extends ConsumerStatefulWidget {
   final String matchId;
   final String teamAName;
   final String teamBName;
 
+  final String mainReferee;
+  final String auxReferee;
+  final String scorekeeper;
+  final String tournamentName;
+  final String venueName;
+
+  final List<Player> fullRosterA;
+  final List<Player> fullRosterB;
+  final Set<int> startersAIds;
+  final Set<int> startersBIds;
+
   const MatchControlScreen({
     super.key,
     required this.matchId,
     required this.teamAName,
     required this.teamBName,
+
+    required this.mainReferee,
+    required this.auxReferee,
+    required this.scorekeeper,
+    required this.tournamentName,
+    required this.venueName,
+    required this.fullRosterA,
+    required this.fullRosterB,
+    required this.startersAIds,
+    required this.startersBIds,
   });
 
   @override
@@ -24,7 +46,14 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(matchGameProvider.notifier).initMatch(widget.matchId);
+      // ✅ FIX: Use the correct method 'initializeNewMatch' instead of 'initMatch'
+      ref.read(matchGameProvider.notifier).initializeNewMatch(
+        matchId: widget.matchId,
+        rosterA: widget.fullRosterA,
+        rosterB: widget.fullRosterB,
+        startersA: widget.startersAIds,
+        startersB: widget.startersBIds,
+      );
     });
   }
 
@@ -35,7 +64,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
 
     // ✅ LISTENER GENERAL
     ref.listen<MatchState>(matchGameProvider, (previous, next) {
-      // 1. Alerta de 5 Faltas (Igual que antes)
+      // 1. Alerta de 5 Faltas
       next.playerStats.forEach((playerId, stats) {
         final previousFouls = previous?.playerStats[playerId]?.fouls ?? 0;
         if (stats.fouls == 5 && previousFouls == 4) {
@@ -56,8 +85,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
         }
       });
 
-      // 2. Alerta de Fin de Periodo (cuando el reloj llega a 0)
-      // <--- MODIFICADO: Lógica inteligente para Tiempos Extra y Final
+      // 2. Alerta de Fin de Periodo
       if ((previous?.timeLeft.inSeconds ?? 1) > 0 && next.timeLeft.inSeconds == 0) {
         
         bool isTie = next.scoreA == next.scoreB;
@@ -69,23 +97,21 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
         VoidCallback action;
 
         if (!isRegularTimeOver) {
-          // Periodos 1, 2, 3 -> Siguiente normal
           title = "Fin del Periodo ${next.currentPeriod}";
           content = "¿Deseas iniciar el Periodo ${next.currentPeriod + 1}?";
           actionButtonText = "Siguiente Periodo";
           action = () => controller.nextPeriod();
         } else {
-          // Fin del 4to o Prórroga
           if (isTie) {
             title = "¡EMPATE!";
             content = "El partido terminó empatado. ¿Iniciar Tiempo Extra?";
-            actionButtonText = "Iniciar Tiempo Extra"; // Esto pondrá 5 mins
+            actionButtonText = "Iniciar Tiempo Extra"; 
             action = () => controller.nextPeriod();
           } else {
             title = "Fin del Partido";
             content = "El tiempo ha terminado. Marcador Final: ${next.scoreA} - ${next.scoreB}";
             actionButtonText = "Finalizar";
-            action = () {}; // Aquí podrías navegar atrás o guardar final
+            action = () {}; 
           }
         }
 
@@ -147,7 +173,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
       ),
       body: Column(
         children: [
-          _buildScoreBoard(context, gameState, controller), // <--- MODIFICADO: Pide context
+          _buildScoreBoard(context, gameState, controller), 
           Expanded(
             child: Row(
               children: [
@@ -184,12 +210,10 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     );
   }
 
-  // <--- MODIFICADO: Agregamos BuildContext para abrir el diálogo
   Widget _buildScoreBoard(BuildContext context, MatchState state, MatchGameController controller) {
     final minutes = state.timeLeft.inMinutes.toString().padLeft(2, '0');
     final seconds = (state.timeLeft.inSeconds % 60).toString().padLeft(2, '0');
 
-    // <--- NUEVO: Texto dinámico para Tiempos Extra
     String periodText = state.currentPeriod <= 4 
         ? "PERIODO ${state.currentPeriod}" 
         : "TIEMPO EXTRA ${state.currentPeriod - 4}";
@@ -199,7 +223,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
       color: Colors.black87,
       child: Column(
         children: [
-          // <--- MODIFICADO: Ahora es clickeable para cambiar manualmente
           GestureDetector(
             onTap: () => _showPeriodSelector(context, controller),
             child: Container(
@@ -351,7 +374,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                     leading: CircleAvatar(
                       backgroundColor: Colors.grey.shade800,
                       foregroundColor: Colors.white,
-                      child: Text("${index + 4}"),
+                      child: Text(stats.playerNumber.isNotEmpty ? stats.playerNumber : "#"),
                     ),
                     title: Text(
                       playerName,
@@ -381,7 +404,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     );
   }
 
-  // <--- NUEVO: Diálogo para seleccionar periodo manualmente
   void _showPeriodSelector(BuildContext context, MatchGameController controller) {
     showDialog(
       context: context,
@@ -400,7 +422,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     );
   }
 
-  // <--- NUEVO: Helper para opción de periodo
   Widget _periodOption(BuildContext context, MatchGameController controller, int period, String label) {
     return SimpleDialogOption(
       onPressed: () {
@@ -504,8 +525,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
       ),
     );
   }
-
-  // --- RESTO DE DIÁLOGOS ---
 
   void _showTimePicker(
     BuildContext context,

@@ -1,0 +1,94 @@
+// lib/core/models/catalog_models.dart
+
+class Tournament {
+  final int id;
+  final String name;
+  final String category;
+
+  Tournament({required this.id, required this.name, required this.category});
+
+  factory Tournament.fromJson(Map<String, dynamic> json) {
+    return Tournament(
+      id: int.parse(json['id'].toString()),
+      name: json['name'],
+      category: json['category'] ?? '',
+    );
+  }
+}
+
+class Venue {
+  final int id;
+  final String name;
+  final String address;
+
+  Venue({required this.id, required this.name, required this.address});
+
+  factory Venue.fromJson(Map<String, dynamic> json) {
+    return Venue(
+      id: int.parse(json['id'].toString()),
+      name: json['name'],
+      address: json['address'] ?? '',
+    );
+  }
+}
+
+class Team {
+  final int id;
+  final String name;
+  final String shortName;
+  final String coachName;
+
+  Team({
+    required this.id,
+    required this.name,
+    required this.shortName,
+    required this.coachName,
+  });
+
+  factory Team.fromJson(Map<String, dynamic> json) {
+    return Team(
+      id: int.parse(json['id'].toString()),
+      name: json['name'],
+      shortName: json['short_name'] ?? '',
+      coachName: json['coach_name'] ?? '',
+    );
+  }
+}
+
+class Player {
+  final int id;
+  final int teamId;
+  final String name;
+  final int defaultNumber;
+
+  Player({
+    required this.id,
+    required this.teamId,
+    required this.name,
+    required this.defaultNumber,
+  });
+
+  factory Player.fromJson(Map<String, dynamic> json) {
+    return Player(
+      id: int.parse(json['id'].toString()),
+      teamId: int.parse(json['team_id'].toString()),
+      name: json['name'],
+      defaultNumber: int.tryParse(json['default_number'].toString()) ?? 0,
+    );
+  }
+}
+
+// Clase contenedora para recibir todo de golpe
+class CatalogData {
+  final List<Tournament> tournaments;
+  final List<Venue> venues;
+  final List<Team> teams;
+  final List<Player> players;
+
+  CatalogData({
+    required this.tournaments,
+    required this.venues,
+    required this.teams,
+    required this.players,
+  });
+}

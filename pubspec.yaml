@@ -38,6 +38,7 @@ dependencies:
   flutter_riverpod: ^2.6.1
   pdf: ^3.10.4
   printing: ^5.11.0
+  http: ^1.2.0
 
 
 dev_dependencies:

@@ -3,15 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/database/app_database.dart';
 import '../core/database/daos/matches_dao.dart';
 import '../core/di/dependency_injection.dart';
+// ✅ Importamos alias para evitar conflicto
+import '../core/models/catalog_models.dart' as models;
 
-// --- NUEVO: CLASE PARA REGISTRAR CADA ANOTACIÓN ---
 class ScoreEvent {
   final int period;
-  final String teamId; // 'A' o 'B'
-  final String playerId; // Nombre o ID del jugador
-  final String playerNumber; // El dorsal (ej. "10") para poner en la hoja
-  final int points; // 1, 2, o 3
-  final int scoreAfter; // El marcador acumulado de ese equipo (ej. 12)
+  final String teamId;
+  final String playerId;
+  final String playerNumber;
+  final int points;
+  final int scoreAfter;
 
   const ScoreEvent({
     required this.period,
@@ -23,17 +24,25 @@ class ScoreEvent {
   });
 }
 
-// --- MODELO DE DATOS INMUTABLE ---
-
 class PlayerStats {
   final int points;
   final int fouls;
-  const PlayerStats({this.points = 0, this.fouls = 0});
+  final bool isOnCourt;
+  final String playerNumber; // Guardamos el dorsal aquí
 
-  PlayerStats copyWith({int? points, int? fouls}) {
+  const PlayerStats({
+    this.points = 0,
+    this.fouls = 0,
+    this.isOnCourt = false,
+    this.playerNumber = "00", // Valor por defecto
+  });
+
+  PlayerStats copyWith({int? points, int? fouls, bool? isOnCourt, String? playerNumber}) {
     return PlayerStats(
       points: points ?? this.points,
       fouls: fouls ?? this.fouls,
+      isOnCourt: isOnCourt ?? this.isOnCourt,
+      playerNumber: playerNumber ?? this.playerNumber,
     );
   }
 }
@@ -45,20 +54,15 @@ class MatchState {
   final Duration timeLeft;
   final bool isRunning;
   final int currentPeriod;
-
-  // --- PUNTUACIÓN POR PERIODO ---
   final Map<int, List<int>> periodScores;
-
-  // --- NUEVO: HISTORIAL DE ANOTACIONES (PARA CONTEO CORRIDO) ---
   final List<ScoreEvent> scoreLog;
-
-  // Listas de jugadores
+  
+  // Listas de NOMBRES (Strings) para referenciar el mapa
   final List<String> teamAOnCourt;
   final List<String> teamABench;
   final List<String> teamBOnCourt;
   final List<String> teamBBench;
-
-  // Estadísticas individuales
+  
   final Map<String, PlayerStats> playerStats;
 
   const MatchState({
@@ -69,7 +73,7 @@ class MatchState {
     this.isRunning = false,
     this.currentPeriod = 1,
     this.periodScores = const {1: [0, 0]},
-    this.scoreLog = const [], // Inicializamos vacío
+    this.scoreLog = const [],
     this.teamAOnCourt = const [],
     this.teamABench = const [],
     this.teamBOnCourt = const [],
@@ -85,7 +89,7 @@ class MatchState {
     bool? isRunning,
     int? currentPeriod,
     Map<int, List<int>>? periodScores,
-    List<ScoreEvent>? scoreLog, // Nuevo parámetro
+    List<ScoreEvent>? scoreLog,
     List<String>? teamAOnCourt,
     List<String>? teamABench,
     List<String>? teamBOnCourt,
@@ -110,8 +114,6 @@ class MatchState {
   }
 }
 
-// --- CONTROLADOR (LÓGICA) ---
-
 class MatchGameController extends StateNotifier<MatchState> {
   final MatchesDao _dao;
   Timer? _timer;
@@ -119,14 +121,71 @@ class MatchGameController extends StateNotifier<MatchState> {
 
   MatchGameController(this._dao) : super(const MatchState());
 
-  void initMatch(String matchId) {
+  void initializeNewMatch({
+    required String matchId,
+    required List<models.Player> rosterA,
+    required List<models.Player> rosterB,
+    required Set<int> startersA,
+    required Set<int> startersB,
+  }) {
+    final Map<String, PlayerStats> initialStats = {};
+    final List<String> courtA = [];
+    final List<String> benchA = [];
+    final List<String> courtB = [];
+    final List<String> benchB = [];
+
+    // Procesar Equipo A
+    for (var player in rosterA) {
+      final isStarter = startersA.contains(player.id);
+      final pName = player.name; 
+      
+      initialStats[pName] = PlayerStats(
+        isOnCourt: isStarter,
+        playerNumber: player.defaultNumber.toString(), // ✅ Guardamos el número real
+      );
+      
+      if (isStarter) {
+        courtA.add(pName);
+      } else {
+        benchA.add(pName);
+      }
+    }
+
+    // Procesar Equipo B
+    for (var player in rosterB) {
+      final isStarter = startersB.contains(player.id);
+      final pName = player.name;
+
+      initialStats[pName] = PlayerStats(
+        isOnCourt: isStarter,
+        playerNumber: player.defaultNumber.toString(), // ✅ Guardamos el número real
+      );
+
+      if (isStarter) {
+        courtB.add(pName);
+      } else {
+        benchB.add(pName);
+      }
+    }
+
     state = state.copyWith(
       matchId: matchId,
-      teamAOnCourt: List.generate(5, (i) => "Jugador A$i"),
-      teamABench: List.generate(3, (i) => "Banca A$i"),
-      teamBOnCourt: List.generate(5, (i) => "Jugador B$i"),
-      teamBBench: List.generate(3, (i) => "Banca B$i"),
+      playerStats: initialStats,
+      teamAOnCourt: courtA,
+      teamABench: benchA,
+      teamBOnCourt: courtB,
+      teamBBench: benchB,
+      scoreA: 0,
+      scoreB: 0,
+      currentPeriod: 1,
+      timeLeft: const Duration(minutes: 10),
+      scoreLog: [],
+      periodScores: {1: [0, 0]},
     );
+  }
+
+  void initMatch(String matchId) {
+     // Legacy stub
   }
 
   void _saveToHistory() {
@@ -140,7 +199,6 @@ class MatchGameController extends StateNotifier<MatchState> {
       state = previousState.copyWith(
         timeLeft: state.timeLeft,
         isRunning: state.isRunning,
-        // Al restaurar state, scoreLog regresa a su estado anterior automáticamente
       );
       _saveToDatabase();
     }
@@ -158,7 +216,6 @@ class MatchGameController extends StateNotifier<MatchState> {
 
   void nextPeriod() {
     _saveToHistory();
-    
     int nextPeriodIdx = state.currentPeriod + 1;
     Duration newDuration = (nextPeriodIdx > 4) 
         ? const Duration(minutes: 5) 
@@ -219,7 +276,6 @@ class MatchGameController extends StateNotifier<MatchState> {
     _saveToDatabase();
   }
 
-  // --- MODIFICADO: AGREGAR PUNTOS Y REGISTRAR EN EL LOG ---
   void updateStats(String teamId, String playerId, {int points = 0, int fouls = 0}) {
     final currentStats = state.playerStats[playerId] ?? const PlayerStats();
 
@@ -227,10 +283,9 @@ class MatchGameController extends StateNotifier<MatchState> {
 
     _saveToHistory();
 
-    // 1. Calcular nuevos scores
     int newScoreA = state.scoreA;
     int newScoreB = state.scoreB;
-    int scoreAfter = 0; // Para el evento
+    int scoreAfter = 0;
 
     if (points > 0) {
       if (teamId == 'A') {
@@ -242,7 +297,6 @@ class MatchGameController extends StateNotifier<MatchState> {
       }
     }
 
-    // 2. Score por periodo
     final newPeriodScores = Map<int, List<int>>.from(state.periodScores);
     List<int> currentPeriodScore = List.from(newPeriodScores[state.currentPeriod] ?? [0, 0]);
     if (points > 0) {
@@ -251,25 +305,16 @@ class MatchGameController extends StateNotifier<MatchState> {
     }
     newPeriodScores[state.currentPeriod] = currentPeriodScore;
 
-    // 3. Stats Jugador
     final newPlayerStatsMap = Map<String, PlayerStats>.from(state.playerStats);
     newPlayerStatsMap[playerId] = currentStats.copyWith(
       points: currentStats.points + points,
       fouls: currentStats.fouls + fouls,
     );
 
-    // 4. NUEVO: Agregar al LOG si hubo puntos
     List<ScoreEvent> newScoreLog = List.from(state.scoreLog);
     if (points > 0) {
-      // Obtenemos el dorsal simulado (i+4) igual que en el PDF
-      String dorsal = "00";
-      int indexA = state.teamAOnCourt.indexOf(playerId);
-      if (indexA == -1) indexA = state.teamABench.indexOf(playerId);
-      if (indexA != -1) dorsal = "${indexA + 4}";
-      
-      int indexB = state.teamBOnCourt.indexOf(playerId);
-      if (indexB == -1) indexB = state.teamBBench.indexOf(playerId);
-      if (indexB != -1) dorsal = "${indexB + 4}";
+      // ✅ Usamos el número real guardado en el estado
+      String dorsal = currentStats.playerNumber;
 
       newScoreLog.add(ScoreEvent(
         period: state.currentPeriod,
@@ -286,7 +331,7 @@ class MatchGameController extends StateNotifier<MatchState> {
       scoreB: newScoreB,
       periodScores: newPeriodScores,
       playerStats: newPlayerStatsMap,
-      scoreLog: newScoreLog, // Guardamos el log
+      scoreLog: newScoreLog,
     );
 
     _saveToDatabase();
@@ -295,14 +340,23 @@ class MatchGameController extends StateNotifier<MatchState> {
 
   void substitutePlayer(String teamId, String playerOut, String playerIn) {
     _saveToHistory();
+    
+    final newStats = Map<String, PlayerStats>.from(state.playerStats);
+    if(newStats.containsKey(playerOut)) {
+        newStats[playerOut] = newStats[playerOut]!.copyWith(isOnCourt: false);
+    }
+    if(newStats.containsKey(playerIn)) {
+        newStats[playerIn] = newStats[playerIn]!.copyWith(isOnCourt: true);
+    }
+
     if (teamId == 'A') {
       final newOnCourt = List<String>.from(state.teamAOnCourt)..remove(playerOut)..add(playerIn);
       final newBench = List<String>.from(state.teamABench)..remove(playerIn)..add(playerOut);
-      state = state.copyWith(teamAOnCourt: newOnCourt, teamABench: newBench);
+      state = state.copyWith(teamAOnCourt: newOnCourt, teamABench: newBench, playerStats: newStats);
     } else {
       final newOnCourt = List<String>.from(state.teamBOnCourt)..remove(playerOut)..add(playerIn);
       final newBench = List<String>.from(state.teamBBench)..remove(playerIn)..add(playerOut);
-      state = state.copyWith(teamBOnCourt: newOnCourt, teamBBench: newBench);
+      state = state.copyWith(teamBOnCourt: newOnCourt, teamBBench: newBench, playerStats: newStats);
     }
   }
 
@@ -319,7 +373,9 @@ class MatchGameController extends StateNotifier<MatchState> {
     if (points == 2) type = "POINT_2";
     if (points == 3) type = "POINT_3";
     if (fouls > 0) type = "FOUL";
+    
     final timeStr = "${state.timeLeft.inMinutes}:${(state.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}";
+    
     await _dao.insertEvent(
       GameEventsCompanion.insert(
         matchId: state.matchId,
