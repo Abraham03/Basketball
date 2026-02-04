@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/database/app_database.dart';
 import '../core/database/daos/matches_dao.dart';
 import '../core/di/dependency_injection.dart';
-// ✅ Importamos alias para evitar conflicto
 import '../core/models/catalog_models.dart' as models;
 
 class ScoreEvent {
@@ -54,6 +53,7 @@ class MatchState {
   final Duration timeLeft;
   final bool isRunning;
   final int currentPeriod;
+  final String possession;
   final Map<int, List<int>> periodScores;
   final List<ScoreEvent> scoreLog;
   
@@ -72,6 +72,7 @@ class MatchState {
     this.timeLeft = const Duration(minutes: 10),
     this.isRunning = false,
     this.currentPeriod = 1,
+    this.possession = '',
     this.periodScores = const {1: [0, 0]},
     this.scoreLog = const [],
     this.teamAOnCourt = const [],
@@ -88,6 +89,7 @@ class MatchState {
     Duration? timeLeft,
     bool? isRunning,
     int? currentPeriod,
+    String? possession,
     Map<int, List<int>>? periodScores,
     List<ScoreEvent>? scoreLog,
     List<String>? teamAOnCourt,
@@ -103,6 +105,7 @@ class MatchState {
       timeLeft: timeLeft ?? this.timeLeft,
       isRunning: isRunning ?? this.isRunning,
       currentPeriod: currentPeriod ?? this.currentPeriod,
+      possession: possession ?? this.possession,
       periodScores: periodScores ?? this.periodScores,
       scoreLog: scoreLog ?? this.scoreLog,
       teamAOnCourt: teamAOnCourt ?? this.teamAOnCourt,
@@ -141,7 +144,7 @@ class MatchGameController extends StateNotifier<MatchState> {
       
       initialStats[pName] = PlayerStats(
         isOnCourt: isStarter,
-        playerNumber: player.defaultNumber.toString(), // ✅ Guardamos el número real
+        playerNumber: player.defaultNumber.toString(), // Guardamos el número real
       );
       
       if (isStarter) {
@@ -158,7 +161,7 @@ class MatchGameController extends StateNotifier<MatchState> {
 
       initialStats[pName] = PlayerStats(
         isOnCourt: isStarter,
-        playerNumber: player.defaultNumber.toString(), // ✅ Guardamos el número real
+        playerNumber: player.defaultNumber.toString(), // Guardamos el número real
       );
 
       if (isStarter) {
@@ -178,10 +181,24 @@ class MatchGameController extends StateNotifier<MatchState> {
       scoreA: 0,
       scoreB: 0,
       currentPeriod: 1,
+      possession: '',
       timeLeft: const Duration(minutes: 10),
       scoreLog: [],
       periodScores: {1: [0, 0]},
     );
+  }
+
+// Recibe el equipo ('A' o 'B') directamente
+  void setPossession(String team) {
+    _saveToHistory();
+    
+    // Si tocas la flecha del equipo que YA tiene la posesión, la apagamos (opcional)
+    if (state.possession == team) {
+      state = state.copyWith(possession: ''); 
+    } else {
+      // Si no, le damos la posesión a ese equipo
+      state = state.copyWith(possession: team);
+    }
   }
 
   void initMatch(String matchId) {

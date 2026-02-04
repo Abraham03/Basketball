@@ -15,24 +15,21 @@ class PdfCoords {
   static const double gameNoX = 100.0;
 
   // --- REFEREES & OFFICIALS (EN EL HEADER) ---
-  static const double referee1X = 370.0;
+  static const double referee1X = 365.0;
   static const double referee1Y = 105.0;
-  static const double referee2X = 510.0;
+  static const double referee2X = 495.0;
   static const double referee2Y = 105.0;
 
-  // Lo ponemos a la derecha de los árbitros o abajo.
-  //static const double scorekeeperX = 370.0; 
-  //static const double scorekeeperY = 115.0;
 
   // --- FOOTER (FIRMAS AL FINAL DE LA HOJA) ---
   // Coordenada para los Arbitros en la parte inferior
   static const double footerY = 795.0; 
-  static const double footerReferee1X = 80.0;   // Árbitro Principal
-  static const double footerReferee2X = 215.0;   // Árbitro Auxiliar
+  static const double footerReferee1X = 72.0;   // Árbitro Principal
+  static const double footerReferee2X = 210.0;   // Árbitro Auxiliar
 
   // Coordenada para firma del Anotador al final
-  static const double footerScorekeeperY = 150.0;
-  static const double footerScorekeeperX = 772.0;
+  static const double footerScorekeeperY = 695.0;
+  static const double footerScorekeeperX = 140.0;
 
 
   // Coordenada para el Equipo Ganador

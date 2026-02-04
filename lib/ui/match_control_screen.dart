@@ -62,7 +62,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     final gameState = ref.watch(matchGameProvider);
     final controller = ref.read(matchGameProvider.notifier);
 
-    // ✅ LISTENER GENERAL
+    // LISTENER GENERAL
     ref.listen<MatchState>(matchGameProvider, (previous, next) {
       // 1. Alerta de 5 Faltas
       next.playerStats.forEach((playerId, stats) {
@@ -228,12 +228,12 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     );
   }
 
-  Widget _buildScoreBoard(BuildContext context, MatchState state, MatchGameController controller) {
+Widget _buildScoreBoard(BuildContext context, MatchState state, MatchGameController controller) {
     final minutes = state.timeLeft.inMinutes.toString().padLeft(2, '0');
     final seconds = (state.timeLeft.inSeconds % 60).toString().padLeft(2, '0');
 
-    String periodText = state.currentPeriod <= 4 
-        ? "PERIODO ${state.currentPeriod}" 
+    String periodText = state.currentPeriod <= 4
+        ? "PERIODO ${state.currentPeriod}"
         : "TIEMPO EXTRA ${state.currentPeriod - 4}";
 
     return Container(
@@ -241,6 +241,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
       color: Colors.black87,
       child: Column(
         children: [
+          // FILA SUPERIOR: Periodo
           GestureDetector(
             onTap: () => _showPeriodSelector(context, controller),
             child: Container(
@@ -259,37 +260,49 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 8),
+
+          const SizedBox(height: 10),
+
+          // FILA CENTRAL: Score A - Reloj - Score B
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _scoreText(state.scoreA.toString(), widget.teamAName),
-              
-              // RELOJ
-              GestureDetector(
-                onTap: () => controller.toggleTimer(),
-                onLongPress: () {
-                  if (!state.isRunning) {
-                    _showTimePicker(context, controller, state.timeLeft);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Pausa el reloj para editar")),
-                    );
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: state.isRunning ? Colors.greenAccent : Colors.redAccent,
-                      width: 3,
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                    color: Colors.white10,
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
+              // --- EQUIPO A ---
+              Column(
+                children: [
+                  // Indicador visual si tienen la posesión
+                  if (state.possession == 'A')
+                    const Icon(Icons.arrow_downward, color: Colors.orange, size: 20),
+                  _scoreText(state.scoreA.toString(), widget.teamAName),
+                ],
+              ),
+
+              // --- RELOJ Y POSESIÓN (CENTRO) ---
+              Column(
+                children: [
+                  // Reloj
+                  GestureDetector(
+                    onTap: () => controller.toggleTimer(),
+                    onLongPress: () {
+                      if (!state.isRunning) {
+                        _showTimePicker(context, controller, state.timeLeft);
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Pausa el reloj para editar")),
+                        );
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: state.isRunning ? Colors.greenAccent : Colors.redAccent,
+                          width: 3,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.white10,
+                      ),
+                      child: Text(
                         "$minutes:$seconds",
                         style: TextStyle(
                           color: state.isRunning ? Colors.greenAccent : Colors.redAccent,
@@ -298,14 +311,77 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                           fontFamily: 'monospace',
                         ),
                       ),
-                      if (!state.isRunning)
-                        const Text("Mantén para editar", style: TextStyle(color: Colors.white38, fontSize: 10))
-                    ],
+                    ),
                   ),
-                ),
+                  if (!state.isRunning)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 4),
+                      child: Text("Mantén para editar", style: TextStyle(color: Colors.white38, fontSize: 10)),
+                    ),
+
+                  const SizedBox(height: 12), // Espacio debajo del reloj
+
+                  // ✅ MODIFICACIÓN AQUI: CONTROLES DE POSESIÓN INDEPENDIENTES
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white12,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white24),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // --- BOTÓN IZQUIERDA (EQUIPO A) ---
+                        // Al tocar la flecha izquierda, establecemos posesión para A
+                        GestureDetector(
+                          onTap: () => controller.setPossession('A'),
+                          behavior: HitTestBehavior.translucent, // Mejora la respuesta táctil
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                            child: Icon(
+                              Icons.arrow_back,
+                              color: state.possession == 'A' ? Colors.orange : Colors.grey.shade700,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+
+                        // Texto central (no hace nada)
+                        const Text(
+                          "POSESIÓN",
+                          style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold),
+                        ),
+
+                        // --- BOTÓN DERECHA (EQUIPO B) ---
+                        // Al tocar la flecha derecha, establecemos posesión para B
+                        GestureDetector(
+                          onTap: () => controller.setPossession('B'),
+                          behavior: HitTestBehavior.translucent, // Mejora la respuesta táctil
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                            child: Icon(
+                              Icons.arrow_forward,
+                              color: state.possession == 'B' ? Colors.blue : Colors.grey.shade700,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
               
-              _scoreText(state.scoreB.toString(), widget.teamBName),
+              // --- EQUIPO B ---
+              Column(
+                children: [
+                  // Indicador visual si tienen la posesión
+                  if (state.possession == 'B') 
+                    const Icon(Icons.arrow_downward, color: Colors.blue, size: 20),
+                  _scoreText(state.scoreB.toString(), widget.teamBName),
+                ],
+              ),
             ],
           ),
         ],
