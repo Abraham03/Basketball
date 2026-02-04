@@ -46,7 +46,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // ✅ FIX: Use the correct method 'initializeNewMatch' instead of 'initMatch'
+      
       ref.read(matchGameProvider.notifier).initializeNewMatch(
         matchId: widget.matchId,
         rosterA: widget.fullRosterA,
@@ -159,14 +159,32 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
             icon: const Icon(Icons.print),
             tooltip: "Vista Previa",
             onPressed: () async {
-              await PdfGenerator.generateAndPreview(gameState, widget.teamAName, widget.teamBName);
+              await PdfGenerator.generateAndPreview(
+                gameState, 
+                widget.teamAName, 
+                widget.teamBName,
+                tournamentName: widget.tournamentName,
+                venueName: widget.venueName,
+                mainReferee: widget.mainReferee,
+                auxReferee: widget.auxReferee,
+                scorekeeper: widget.scorekeeper,
+                );
             },
           ),
           IconButton(
             icon: const Icon(Icons.share),
             tooltip: "Compartir PDF",
             onPressed: () async {
-              await PdfGenerator.generateAndShare(gameState, widget.teamAName, widget.teamBName);
+              await PdfGenerator.generateAndShare(
+                gameState, 
+                widget.teamAName, 
+                widget.teamBName,
+                tournamentName: widget.tournamentName,
+                venueName: widget.venueName,
+                mainReferee: widget.mainReferee,
+                auxReferee: widget.auxReferee,
+                scorekeeper: widget.scorekeeper,
+                );
             },
           ),
         ],

@@ -5,7 +5,7 @@ import 'package:printing/printing.dart';
 import '../../logic/match_game_controller.dart';
 
 class PdfCoords {
-  // --- 1. HEADER ---
+  // --- 1. HEADER (ENCABEZADO) ---
   static const double headerY = 90.0;
   static const double competitionX = 390.0;
   static const double dateX = 195.0;
@@ -14,11 +14,30 @@ class PdfCoords {
   static const double placeY = 105.0;
   static const double gameNoX = 100.0;
 
-  // --- REFEREES ---
-  static const double referee1X = 390.0;
+  // --- REFEREES & OFFICIALS (EN EL HEADER) ---
+  static const double referee1X = 370.0;
   static const double referee1Y = 105.0;
-  static const double referee2X = 390.0;
-  static const double referee2Y = 115.0;
+  static const double referee2X = 510.0;
+  static const double referee2Y = 105.0;
+
+  // Lo ponemos a la derecha de los árbitros o abajo.
+  //static const double scorekeeperX = 370.0; 
+  //static const double scorekeeperY = 115.0;
+
+  // --- FOOTER (FIRMAS AL FINAL DE LA HOJA) ---
+  // Coordenada para los Arbitros en la parte inferior
+  static const double footerY = 795.0; 
+  static const double footerReferee1X = 80.0;   // Árbitro Principal
+  static const double footerReferee2X = 215.0;   // Árbitro Auxiliar
+
+  // Coordenada para firma del Anotador al final
+  static const double footerScorekeeperY = 150.0;
+  static const double footerScorekeeperX = 772.0;
+
+
+  // Coordenada para el Equipo Ganador
+  static const double winningTeamX = 400.0;
+  static const double winningTeamY = 810.0; // Misma altura que score final aprox
 
   // --- 2. TEAM HEADERS ---
   static const double teamANameX = 115.0;
@@ -32,19 +51,19 @@ class PdfCoords {
   static const double teamBName2Y = 55.0;
 
   // --- 3. ROSTER TABLES ---
-  static const double teamAListStartY = 310.0;
+  static const double teamAListStartY = 312.0;
   static const double teamAColNumX = 199.0;
   static const double teamAColNameX = 50.0;
   static const double teamAColFoulsX = 235.0;
-  static const double teamAColEntryX = 215.0; 
+  static const double teamAColEntryX = 215.5; // Ajustado a la columna de entrada
 
-  static const double teamBListStartY = 594.7;
+  static const double teamBListStartY = 594.9;
   static const double teamBColNumX = 199.0;
   static const double teamBColNameX = 50.0;
   static const double teamBColFoulsX = 235.0;
-  static const double teamBColEntryX = 215.0; 
+  static const double teamBColEntryX = 215.5; // Ajustado a la columna de entrada
 
-  static const double rowHeight = 13.0;
+  static const double rowHeight = 13.5;
   static const double foulBoxWidth = 12.0;
 
   // --- 6. FINAL SCORE ---
@@ -102,6 +121,7 @@ class PdfGenerator {
       venueName,
       mainReferee,
       auxReferee,
+      scorekeeper,
     );
     await Printing.layoutPdf(onLayout: (format) async => pdf.save());
   }
@@ -124,10 +144,11 @@ class PdfGenerator {
       venueName,
       mainReferee,
       auxReferee,
+      scorekeeper,
     );
     await Printing.sharePdf(
       bytes: await pdf.save(),
-      filename: 'Acta_${teamAName}_vs_$teamBName.pdf',
+      filename: 'Acta_de_juego_${teamAName}_vs_$teamBName.pdf',
     );
   }
 
@@ -139,13 +160,22 @@ class PdfGenerator {
     String venueName,
     String mainReferee,
     String auxReferee,
+    String scorekeeper,
   ) async {
     final pdf = pw.Document();
 
+    // LÓGICA PARA DETERMINAR EL GANADOR
+    String winningTeam = "---";
+    if (state.scoreA > state.scoreB) {
+      winningTeam = teamAName.toUpperCase();
+    } else if (state.scoreB > state.scoreA) {
+      winningTeam = teamBName.toUpperCase();
+    } else {
+      winningTeam = "EMPATE";
+    }
+
     try {
-      final imageBytes = await rootBundle.load(
-        'assets/images/hoja_anotacion.png',
-      );
+      final imageBytes = await rootBundle.load('assets/images/hoja_anotacion.png');
       final image = pw.MemoryImage(imageBytes.buffer.asUint8List());
 
       pdf.addPage(
@@ -157,6 +187,7 @@ class PdfGenerator {
               children: [
                 pw.Positioned.fill(child: pw.Image(image, fit: pw.BoxFit.fill)),
 
+                // --- HEADER INFO ---
                 _drawText(
                   tournamentName,
                   x: PdfCoords.competitionX,
@@ -188,14 +219,15 @@ class PdfGenerator {
                   fontSize: 9,
                 ),
 
-                if (mainReferee.isNotEmpty)
+                // --- OFFICIALS (HEADER) ---
+                if (mainReferee.isNotEmpty) // Dibuja el arbitro principal
                   _drawText(
                     mainReferee,
                     x: PdfCoords.referee1X,
                     y: PdfCoords.referee1Y,
                     fontSize: 8,
                   ),
-                if (auxReferee.isNotEmpty)
+                if (auxReferee.isNotEmpty) // Dibuja el segundo arbitro
                   _drawText(
                     auxReferee,
                     x: PdfCoords.referee2X,
@@ -203,6 +235,39 @@ class PdfGenerator {
                     fontSize: 8,
                   ),
 
+                // --- OFFICIALS (FOOTER - AL FINAL) ---
+                if (mainReferee.isNotEmpty) // Dibuja el arbitro principal al final
+                  _drawText(
+                    mainReferee,
+                    x: PdfCoords.footerReferee1X,
+                    y: PdfCoords.footerY,
+                    fontSize: 9,
+                  ),
+                if (auxReferee.isNotEmpty) // Dibuja el segundo arbitro al final
+                  _drawText(
+                    auxReferee,
+                    x: PdfCoords.footerReferee2X,
+                    y: PdfCoords.footerY,
+                    fontSize: 9,
+                  ),
+                  // DIBUJA ANOTADOR (FOOTER)
+                if (scorekeeper.isNotEmpty)
+                  _drawText(
+                    scorekeeper, 
+                    x: PdfCoords.footerScorekeeperX, 
+                    y: PdfCoords.footerScorekeeperY, 
+                    fontSize: 9,
+                    isBold: true
+                    ),
+                // DIBUJA EQUIPO GANADOR
+                _drawText(
+                  winningTeam, 
+                  x: PdfCoords.winningTeamX, 
+                  y: PdfCoords.winningTeamY, 
+                  fontSize: 10, 
+                  isBold: true
+                  ),
+                // --- TEAM NAMES ---
                 _drawText(
                   teamAName.toUpperCase(),
                   x: PdfCoords.teamANameX,
@@ -230,6 +295,7 @@ class PdfGenerator {
                   fontSize: 10,
                 ),
 
+                // --- ROSTERS ---
                 ..._buildRosterList(
                   players: state.teamAOnCourt + state.teamABench,
                   stats: state.playerStats,
@@ -237,7 +303,7 @@ class PdfGenerator {
                   startXName: PdfCoords.teamAColNameX,
                   startXFouls: PdfCoords.teamAColFoulsX,
                   startY: PdfCoords.teamAListStartY,
-                  entryX: PdfCoords.teamAColEntryX, // ✅
+                  entryX: PdfCoords.teamAColEntryX,
                 ),
                 ..._buildRosterList(
                   players: state.teamBOnCourt + state.teamBBench,
@@ -246,9 +312,10 @@ class PdfGenerator {
                   startXName: PdfCoords.teamBColNameX,
                   startXFouls: PdfCoords.teamBColFoulsX,
                   startY: PdfCoords.teamBListStartY,
-                  entryX: PdfCoords.teamBColEntryX, // ✅
+                  entryX: PdfCoords.teamBColEntryX,
                 ),
 
+                // --- SCORES ---
                 _drawText(
                   "${state.scoreA}",
                   x: PdfCoords.scoreAX,
@@ -266,41 +333,12 @@ class PdfGenerator {
                   color: PdfColors.blue900,
                 ),
 
-                _drawPeriodScore(
-                  state,
-                  1,
-                  PdfCoords.period1AX,
-                  PdfCoords.period1BX,
-                  PdfCoords.period1Y,
-                ),
-                _drawPeriodScore(
-                  state,
-                  2,
-                  PdfCoords.period2AX,
-                  PdfCoords.period2BX,
-                  PdfCoords.period2Y,
-                ),
-                _drawPeriodScore(
-                  state,
-                  3,
-                  PdfCoords.period3AX,
-                  PdfCoords.period3BX,
-                  PdfCoords.period3Y,
-                ),
-                _drawPeriodScore(
-                  state,
-                  4,
-                  PdfCoords.period4AX,
-                  PdfCoords.period4BX,
-                  PdfCoords.period4Y,
-                ),
+                _drawPeriodScore(state, 1, PdfCoords.period1AX, PdfCoords.period1BX, PdfCoords.period1Y),
+                _drawPeriodScore(state, 2, PdfCoords.period2AX, PdfCoords.period2BX, PdfCoords.period2Y),
+                _drawPeriodScore(state, 3, PdfCoords.period3AX, PdfCoords.period3BX, PdfCoords.period3Y),
+                _drawPeriodScore(state, 4, PdfCoords.period4AX, PdfCoords.period4BX, PdfCoords.period4Y),
                 if (state.periodScores.containsKey(5))
-                  _drawOvertimeScore(
-                    state,
-                    PdfCoords.overtimeAX,
-                    PdfCoords.overtimeBX,
-                    PdfCoords.overtimeY,
-                  ),
+                  _drawOvertimeScore(state, PdfCoords.overtimeAX, PdfCoords.overtimeBX, PdfCoords.overtimeY),
 
                 ..._drawRunningScore(state.scoreLog),
               ],
@@ -321,7 +359,7 @@ class PdfGenerator {
     required double startXName,
     required double startXFouls,
     required double startY,
-    required double entryX, // ✅
+    required double entryX,
   }) {
     List<pw.Widget> widgets = [];
     double currentY = startY;
@@ -340,7 +378,6 @@ class PdfGenerator {
         _drawText(displayName, x: startXName, y: currentY, fontSize: 10),
       );
 
-      // DRAW STARTER MARK
       if (stat.isOnCourt) {
         widgets.add(_drawStarterMark(x: entryX, y: currentY));
       } else if (stat.points > 0 || stat.fouls > 0 || stat.isOnCourt) {
