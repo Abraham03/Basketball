@@ -12,6 +12,7 @@ class ScoreEvent {
   final String playerNumber;
   final int points;
   final int scoreAfter;
+  final String type;
 
   const ScoreEvent({
     required this.period,
@@ -20,6 +21,7 @@ class ScoreEvent {
     required this.playerNumber,
     required this.points,
     required this.scoreAfter,
+    this.type = "POINT",
   });
 }
 
@@ -28,20 +30,23 @@ class PlayerStats {
   final int fouls;
   final bool isOnCourt;
   final String playerNumber; // Guardamos el dorsal aquí
+  final List<String> foulDetails;
 
   const PlayerStats({
     this.points = 0,
     this.fouls = 0,
     this.isOnCourt = false,
     this.playerNumber = "00", // Valor por defecto
+    this.foulDetails = const [],
   });
 
-  PlayerStats copyWith({int? points, int? fouls, bool? isOnCourt, String? playerNumber}) {
+  PlayerStats copyWith({int? points, int? fouls, bool? isOnCourt, String? playerNumber, List<String>? foulDetails,}) {
     return PlayerStats(
       points: points ?? this.points,
       fouls: fouls ?? this.fouls,
       isOnCourt: isOnCourt ?? this.isOnCourt,
       playerNumber: playerNumber ?? this.playerNumber,
+      foulDetails: foulDetails ?? this.foulDetails,
     );
   }
 }
@@ -293,9 +298,9 @@ class MatchGameController extends StateNotifier<MatchState> {
     _saveToDatabase();
   }
 
-  void updateStats(String teamId, String playerId, {int points = 0, int fouls = 0}) {
+  void updateStats(String teamId, String playerId, {int points = 0, int fouls = 0, String? foulType}) {
     final currentStats = state.playerStats[playerId] ?? const PlayerStats();
-
+    // Si ya está expulsado (5 faltas), no dejar hacer nada más
     if (currentStats.fouls >= 5 && (points > 0 || fouls > 0)) return;
 
     _saveToHistory();
@@ -322,16 +327,29 @@ class MatchGameController extends StateNotifier<MatchState> {
     }
     newPeriodScores[state.currentPeriod] = currentPeriodScore;
 
+    // AQUÍ ACTUALIZAMOS LA LISTA DE FALTAS
+    List<String> newFoulDetails = List.from(currentStats.foulDetails);
+    if (fouls > 0) {
+      // Si recibimos un tipo específico (P1, T, etc), lo guardamos. Si no, "P" por defecto.
+      // Pero quitamos el número para el PDF si es P1, P2? No, el PDF suele usar P, P1, P2...
+      // Vamos a guardar el código tal cual viene del botón (P1, P2, P3, T, U, D)
+      newFoulDetails.add(foulType ?? "P"); 
+    }
+
     final newPlayerStatsMap = Map<String, PlayerStats>.from(state.playerStats);
     newPlayerStatsMap[playerId] = currentStats.copyWith(
       points: currentStats.points + points,
       fouls: currentStats.fouls + fouls,
+      foulDetails: newFoulDetails,
     );
 
     List<ScoreEvent> newScoreLog = List.from(state.scoreLog);
-    if (points > 0) {
-      // ✅ Usamos el número real guardado en el estado
+    if (points > 0 || fouls > 0) {
+      // Usamos el número real guardado en el estado
       String dorsal = currentStats.playerNumber;
+      String eventType = "UNKNOWN";
+      if (fouls > 0) eventType = foulType ?? "FOUL";
+      
 
       newScoreLog.add(ScoreEvent(
         period: state.currentPeriod,
@@ -340,6 +358,7 @@ class MatchGameController extends StateNotifier<MatchState> {
         playerNumber: dorsal,
         points: points,
         scoreAfter: scoreAfter,
+        type: eventType,
       ));
     }
 
@@ -352,7 +371,7 @@ class MatchGameController extends StateNotifier<MatchState> {
     );
 
     _saveToDatabase();
-    _logEventToDb(playerId, points, fouls);
+    _logEventToDb(playerId, points, fouls, foulType);
   }
 
   void substitutePlayer(String teamId, String playerOut, String playerIn) {
@@ -383,13 +402,15 @@ class MatchGameController extends StateNotifier<MatchState> {
     await _dao.updateMatchStatus(state.matchId, state.scoreA, state.scoreB, timeStr, "IN_PROGRESS");
   }
 
-  Future<void> _logEventToDb(String player, int points, int fouls) async {
+  Future<void> _logEventToDb(String player, int points, int fouls, String? foulType) async {
     if (state.matchId.isEmpty) return;
     String type = "UNKNOWN";
     if (points == 1) type = "POINT_1";
     if (points == 2) type = "POINT_2";
     if (points == 3) type = "POINT_3";
-    if (fouls > 0) type = "FOUL";
+    if (fouls > 0) {
+      type = foulType ?? "FOUL";
+    }
     
     final timeStr = "${state.timeLeft.inMinutes}:${(state.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}";
     

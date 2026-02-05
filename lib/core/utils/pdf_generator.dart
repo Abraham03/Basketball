@@ -381,17 +381,28 @@ class PdfGenerator {
         widgets.add(_drawText("X", x: entryX, y: currentY, fontSize: 10));
       }
 
-      for (int f = 0; f < stat.fouls; f++) {
-        if (f >= 5) break;
+// 4. FALTAS (Aquí está el cambio) ✅
+      // Iteramos sobre la lista de detalles de faltas
+      for (int f = 0; f < stat.foulDetails.length; f++) {
+        if (f >= 5) break; // Solo caben 5 faltas
+        
         double foulX = startXFouls + (f * PdfCoords.foulBoxWidth);
+        String foulCode = stat.foulDetails[f]; // P1, P2, T, U, D...
+        
+        // Si el código es muy largo (ej: "Personal 1"), lo cortamos o usamos la letra
+        // Pero como en el controller guardamos "P1", "T", etc., ya es corto.
+        
+        // Color rojo para la 5ta falta o expulsiones si quieres
+        PdfColor color = (f == 4 || foulCode == 'D') ? PdfColors.red : PdfColors.black;
+
         widgets.add(
           _drawText(
-            "X",
+            foulCode, // Pintamos el código (P1, P2, T...) en vez de "X"
             x: foulX,
             y: currentY,
-            fontSize: 10,
+            fontSize: 8, // Un poco más pequeño para que quepa P2, P3
             isBold: true,
-            color: f == 4 ? PdfColors.red : PdfColors.black,
+            color: color,
           ),
         );
       }

@@ -25,7 +25,6 @@ class MatchControlScreen extends ConsumerStatefulWidget {
     required this.matchId,
     required this.teamAName,
     required this.teamBName,
-
     required this.mainReferee,
     required this.auxReferee,
     required this.scorekeeper,
@@ -46,7 +45,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      
       ref.read(matchGameProvider.notifier).initializeNewMatch(
         matchId: widget.matchId,
         rosterA: widget.fullRosterA,
@@ -87,7 +85,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
 
       // 2. Alerta de Fin de Periodo
       if ((previous?.timeLeft.inSeconds ?? 1) > 0 && next.timeLeft.inSeconds == 0) {
-        
         bool isTie = next.scoreA == next.scoreB;
         bool isRegularTimeOver = next.currentPeriod >= 4;
 
@@ -105,13 +102,13 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
           if (isTie) {
             title = "¡EMPATE!";
             content = "El partido terminó empatado. ¿Iniciar Tiempo Extra?";
-            actionButtonText = "Iniciar Tiempo Extra"; 
+            actionButtonText = "Iniciar Tiempo Extra";
             action = () => controller.nextPeriod();
           } else {
             title = "Fin del Partido";
             content = "El tiempo ha terminado. Marcador Final: ${next.scoreA} - ${next.scoreB}";
             actionButtonText = "Finalizar";
-            action = () {}; 
+            action = () {};
           }
         }
 
@@ -160,15 +157,15 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
             tooltip: "Vista Previa",
             onPressed: () async {
               await PdfGenerator.generateAndPreview(
-                gameState, 
-                widget.teamAName, 
+                gameState,
+                widget.teamAName,
                 widget.teamBName,
                 tournamentName: widget.tournamentName,
                 venueName: widget.venueName,
                 mainReferee: widget.mainReferee,
                 auxReferee: widget.auxReferee,
                 scorekeeper: widget.scorekeeper,
-                );
+              );
             },
           ),
           IconButton(
@@ -176,22 +173,22 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
             tooltip: "Compartir PDF",
             onPressed: () async {
               await PdfGenerator.generateAndShare(
-                gameState, 
-                widget.teamAName, 
+                gameState,
+                widget.teamAName,
                 widget.teamBName,
                 tournamentName: widget.tournamentName,
                 venueName: widget.venueName,
                 mainReferee: widget.mainReferee,
                 auxReferee: widget.auxReferee,
                 scorekeeper: widget.scorekeeper,
-                );
+              );
             },
           ),
         ],
       ),
       body: Column(
         children: [
-          _buildScoreBoard(context, gameState, controller), 
+          _buildScoreBoard(context, gameState, controller),
           Expanded(
             child: Row(
               children: [
@@ -228,7 +225,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     );
   }
 
-Widget _buildScoreBoard(BuildContext context, MatchState state, MatchGameController controller) {
+  Widget _buildScoreBoard(BuildContext context, MatchState state, MatchGameController controller) {
     final minutes = state.timeLeft.inMinutes.toString().padLeft(2, '0');
     final seconds = (state.timeLeft.inSeconds % 60).toString().padLeft(2, '0');
 
@@ -321,7 +318,7 @@ Widget _buildScoreBoard(BuildContext context, MatchState state, MatchGameControl
 
                   const SizedBox(height: 12), // Espacio debajo del reloj
 
-                  // ✅ MODIFICACIÓN AQUI: CONTROLES DE POSESIÓN INDEPENDIENTES
+                  // CONTROLES DE POSESIÓN
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
@@ -333,10 +330,9 @@ Widget _buildScoreBoard(BuildContext context, MatchState state, MatchGameControl
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         // --- BOTÓN IZQUIERDA (EQUIPO A) ---
-                        // Al tocar la flecha izquierda, establecemos posesión para A
                         GestureDetector(
                           onTap: () => controller.setPossession('A'),
-                          behavior: HitTestBehavior.translucent, // Mejora la respuesta táctil
+                          behavior: HitTestBehavior.translucent,
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                             child: Icon(
@@ -347,17 +343,16 @@ Widget _buildScoreBoard(BuildContext context, MatchState state, MatchGameControl
                           ),
                         ),
 
-                        // Texto central (no hace nada)
+                        // Texto central
                         const Text(
                           "POSESIÓN",
                           style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold),
                         ),
 
                         // --- BOTÓN DERECHA (EQUIPO B) ---
-                        // Al tocar la flecha derecha, establecemos posesión para B
                         GestureDetector(
                           onTap: () => controller.setPossession('B'),
-                          behavior: HitTestBehavior.translucent, // Mejora la respuesta táctil
+                          behavior: HitTestBehavior.translucent,
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                             child: Icon(
@@ -372,12 +367,12 @@ Widget _buildScoreBoard(BuildContext context, MatchState state, MatchGameControl
                   ),
                 ],
               ),
-              
+
               // --- EQUIPO B ---
               Column(
                 children: [
                   // Indicador visual si tienen la posesión
-                  if (state.possession == 'B') 
+                  if (state.possession == 'B')
                     const Icon(Icons.arrow_downward, color: Colors.blue, size: 20),
                   _scoreText(state.scoreB.toString(), widget.teamBName),
                 ],
@@ -447,8 +442,7 @@ Widget _buildScoreBoard(BuildContext context, MatchState state, MatchGameControl
               itemCount: onCourt.length,
               itemBuilder: (context, index) {
                 final playerName = onCourt[index];
-                final stats =
-                    state.playerStats[playerName] ?? const PlayerStats();
+                final stats = state.playerStats[playerName] ?? const PlayerStats();
 
                 Color? cardColor;
                 Color textColor = Colors.black;
@@ -601,10 +595,12 @@ Widget _buildScoreBoard(BuildContext context, MatchState state, MatchGameControl
                     ),
                     child: const Text("+3"),
                   ),
+                  // ✅ BOTÓN DE FALTA MODIFICADO: AHORA ABRE EL NUEVO DIÁLOGO
                   ElevatedButton(
                     onPressed: () {
-                      controller.updateStats(teamId, playerName, fouls: 1);
-                      Navigator.pop(context);
+                      Navigator.pop(context); // Cierra el menú de puntos
+                      // Abre el menú detallado de faltas
+                      _showFoulOptionsDialog(context, controller, teamId, playerName);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
@@ -616,6 +612,52 @@ Widget _buildScoreBoard(BuildContext context, MatchState state, MatchGameControl
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ✅ NUEVO DIÁLOGO DE FALTAS (Ahora sí se usa)
+  void _showFoulOptionsDialog(
+    BuildContext context, 
+    MatchGameController controller, 
+    String teamId, 
+    String playerName
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text("Falta: $playerName"),
+        children: [
+          _foulOption(ctx, controller, teamId, playerName, "Personal 1 Tiro", "P1"),
+          _foulOption(ctx, controller, teamId, playerName, "Personal 2 Tiros", "P2"),
+          _foulOption(ctx, controller, teamId, playerName, "Personal 3 Tiros", "P3"),
+          const Divider(),
+          _foulOption(ctx, controller, teamId, playerName, "Técnica", "T"),
+          _foulOption(ctx, controller, teamId, playerName, "Anti-deportiva", "U"),
+          _foulOption(ctx, controller, teamId, playerName, "Expulsión", "D"),
+        ],
+      ),
+    );
+  }
+
+  // Helper para las opciones de faltas
+  Widget _foulOption(
+    BuildContext ctx, 
+    MatchGameController controller, 
+    String teamId, 
+    String playerName, 
+    String label, 
+    String typeCode
+  ) {
+    return SimpleDialogOption(
+      onPressed: () {
+        // Registra 1 falta y el tipo específico (P1, P2, T, etc.)
+        controller.updateStats(teamId, playerName, fouls: 1, foulType: typeCode);
+        Navigator.pop(ctx);
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Text(label, style: const TextStyle(fontSize: 16)),
       ),
     );
   }
