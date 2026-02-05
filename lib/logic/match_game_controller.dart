@@ -42,7 +42,14 @@ class PlayerStats {
     this.foulDetails = const [],
   });
 
-  PlayerStats copyWith({int? points, int? fouls, bool? isOnCourt, bool? isStarter, String? playerNumber, List<String>? foulDetails,}) {
+  PlayerStats copyWith({
+    int? points,
+    int? fouls,
+    bool? isOnCourt,
+    bool? isStarter,
+    String? playerNumber,
+    List<String>? foulDetails,
+  }) {
     return PlayerStats(
       points: points ?? this.points,
       fouls: fouls ?? this.fouls,
@@ -64,13 +71,13 @@ class MatchState {
   final String possession;
   final Map<int, List<int>> periodScores;
   final List<ScoreEvent> scoreLog;
-  
+
   // Listas de NOMBRES (Strings) para referenciar el mapa
   final List<String> teamAOnCourt;
   final List<String> teamABench;
   final List<String> teamBOnCourt;
   final List<String> teamBBench;
-  
+
   final Map<String, PlayerStats> playerStats;
 
   const MatchState({
@@ -81,7 +88,9 @@ class MatchState {
     this.isRunning = false,
     this.currentPeriod = 1,
     this.possession = '',
-    this.periodScores = const {1: [0, 0]},
+    this.periodScores = const {
+      1: [0, 0],
+    },
     this.scoreLog = const [],
     this.teamAOnCourt = const [],
     this.teamABench = const [],
@@ -148,14 +157,15 @@ class MatchGameController extends StateNotifier<MatchState> {
     // Procesar Equipo A
     for (var player in rosterA) {
       final isStarter = startersA.contains(player.id);
-      final pName = player.name; 
-      
+      final pName = player.name;
+
       initialStats[pName] = PlayerStats(
         isOnCourt: isStarter,
         isStarter: isStarter,
-        playerNumber: player.defaultNumber.toString(), // Guardamos el número real
+        playerNumber: player.defaultNumber
+            .toString(), // Guardamos el número real
       );
-      
+
       if (isStarter) {
         courtA.add(pName);
       } else {
@@ -171,7 +181,8 @@ class MatchGameController extends StateNotifier<MatchState> {
       initialStats[pName] = PlayerStats(
         isOnCourt: isStarter,
         isStarter: isStarter,
-        playerNumber: player.defaultNumber.toString(), // Guardamos el número real
+        playerNumber: player.defaultNumber
+            .toString(), // Guardamos el número real
       );
 
       if (isStarter) {
@@ -194,17 +205,19 @@ class MatchGameController extends StateNotifier<MatchState> {
       possession: '',
       timeLeft: const Duration(minutes: 10),
       scoreLog: [],
-      periodScores: {1: [0, 0]},
+      periodScores: {
+        1: [0, 0],
+      },
     );
   }
 
-// Recibe el equipo ('A' o 'B') directamente
+  // Recibe el equipo ('A' o 'B') directamente
   void setPossession(String team) {
     _saveToHistory();
-    
+
     // Si tocas la flecha del equipo que YA tiene la posesión, la apagamos (opcional)
     if (state.possession == team) {
-      state = state.copyWith(possession: ''); 
+      state = state.copyWith(possession: '');
     } else {
       // Si no, le damos la posesión a ese equipo
       state = state.copyWith(possession: team);
@@ -212,7 +225,7 @@ class MatchGameController extends StateNotifier<MatchState> {
   }
 
   void initMatch(String matchId) {
-     // Legacy stub
+    // Legacy stub
   }
 
   void _saveToHistory() {
@@ -244,8 +257,8 @@ class MatchGameController extends StateNotifier<MatchState> {
   void nextPeriod() {
     _saveToHistory();
     int nextPeriodIdx = state.currentPeriod + 1;
-    Duration newDuration = (nextPeriodIdx > 4) 
-        ? const Duration(minutes: 5) 
+    Duration newDuration = (nextPeriodIdx > 4)
+        ? const Duration(minutes: 5)
         : const Duration(minutes: 10);
 
     final newPeriodScores = Map<int, List<int>>.from(state.periodScores);
@@ -264,8 +277,8 @@ class MatchGameController extends StateNotifier<MatchState> {
 
   void setPeriod(int period) {
     _saveToHistory();
-    Duration newDuration = (period > 4) 
-        ? const Duration(minutes: 5) 
+    Duration newDuration = (period > 4)
+        ? const Duration(minutes: 5)
         : const Duration(minutes: 10);
 
     final newPeriodScores = Map<int, List<int>>.from(state.periodScores);
@@ -283,14 +296,20 @@ class MatchGameController extends StateNotifier<MatchState> {
   }
 
   void toggleTimer() {
-    if (state.isRunning){ _pause();} else {_start();}
+    if (state.isRunning) {
+      _pause();
+    } else {
+      _start();
+    }
   }
 
   void _start() {
     state = state.copyWith(isRunning: true);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (state.timeLeft.inSeconds > 0) {
-        state = state.copyWith(timeLeft: state.timeLeft - const Duration(seconds: 1));
+        state = state.copyWith(
+          timeLeft: state.timeLeft - const Duration(seconds: 1),
+        );
       } else {
         _pause();
       }
@@ -303,7 +322,13 @@ class MatchGameController extends StateNotifier<MatchState> {
     _saveToDatabase();
   }
 
-  void updateStats(String teamId, String playerId, {int points = 0, int fouls = 0, String? foulType}) {
+  void updateStats(
+    String teamId,
+    String playerId, {
+    int points = 0,
+    int fouls = 0,
+    String? foulType,
+  }) {
     final currentStats = state.playerStats[playerId] ?? const PlayerStats();
     // Si ya está expulsado (5 faltas), no dejar hacer nada más
     if (currentStats.fouls >= 5 && (points > 0 || fouls > 0)) return;
@@ -325,10 +350,15 @@ class MatchGameController extends StateNotifier<MatchState> {
     }
 
     final newPeriodScores = Map<int, List<int>>.from(state.periodScores);
-    List<int> currentPeriodScore = List.from(newPeriodScores[state.currentPeriod] ?? [0, 0]);
+    List<int> currentPeriodScore = List.from(
+      newPeriodScores[state.currentPeriod] ?? [0, 0],
+    );
     if (points > 0) {
-      if (teamId == 'A') {currentPeriodScore[0] += points;}
-      else {currentPeriodScore[1] += points;}
+      if (teamId == 'A') {
+        currentPeriodScore[0] += points;
+      } else {
+        currentPeriodScore[1] += points;
+      }
     }
     newPeriodScores[state.currentPeriod] = currentPeriodScore;
 
@@ -338,7 +368,7 @@ class MatchGameController extends StateNotifier<MatchState> {
       // Si recibimos un tipo específico (P1, T, etc), lo guardamos. Si no, "P" por defecto.
       // Pero quitamos el número para el PDF si es P1, P2? No, el PDF suele usar P, P1, P2...
       // Vamos a guardar el código tal cual viene del botón (P1, P2, P3, T, U, D)
-      newFoulDetails.add(foulType ?? "P"); 
+      newFoulDetails.add(foulType ?? "P");
     }
 
     final newPlayerStatsMap = Map<String, PlayerStats>.from(state.playerStats);
@@ -354,17 +384,18 @@ class MatchGameController extends StateNotifier<MatchState> {
       String dorsal = currentStats.playerNumber;
       String eventType = "UNKNOWN";
       if (fouls > 0) eventType = foulType ?? "FOUL";
-      
 
-      newScoreLog.add(ScoreEvent(
-        period: state.currentPeriod,
-        teamId: teamId,
-        playerId: playerId,
-        playerNumber: dorsal,
-        points: points,
-        scoreAfter: scoreAfter,
-        type: eventType,
-      ));
+      newScoreLog.add(
+        ScoreEvent(
+          period: state.currentPeriod,
+          teamId: teamId,
+          playerId: playerId,
+          playerNumber: dorsal,
+          points: points,
+          scoreAfter: scoreAfter,
+          type: eventType,
+        ),
+      );
     }
 
     state = state.copyWith(
@@ -381,33 +412,65 @@ class MatchGameController extends StateNotifier<MatchState> {
 
   void substitutePlayer(String teamId, String playerOut, String playerIn) {
     _saveToHistory();
-    
+
     final newStats = Map<String, PlayerStats>.from(state.playerStats);
-    if(newStats.containsKey(playerOut)) {
-        newStats[playerOut] = newStats[playerOut]!.copyWith(isOnCourt: false);
+    // Al jugador que SALE, solo le cambiamos isOnCourt a false.
+    // isStarter se mantiene igual (si era true, seguirá siendo true).
+    if (newStats.containsKey(playerOut)) {
+      newStats[playerOut] = newStats[playerOut]!.copyWith(isOnCourt: false);
     }
-    if(newStats.containsKey(playerIn)) {
-        newStats[playerIn] = newStats[playerIn]!.copyWith(isOnCourt: true);
+    // Al jugador que ENTRA, solo le cambiamos isOnCourt a true.
+    // isStarter se mantiene igual (si era false, seguirá siendo false).
+    if (newStats.containsKey(playerIn)) {
+      newStats[playerIn] = newStats[playerIn]!.copyWith(isOnCourt: true);
     }
 
     if (teamId == 'A') {
-      final newOnCourt = List<String>.from(state.teamAOnCourt)..remove(playerOut)..add(playerIn);
-      final newBench = List<String>.from(state.teamABench)..remove(playerIn)..add(playerOut);
-      state = state.copyWith(teamAOnCourt: newOnCourt, teamABench: newBench, playerStats: newStats);
+      final newOnCourt = List<String>.from(state.teamAOnCourt)
+        ..remove(playerOut)
+        ..add(playerIn);
+      final newBench = List<String>.from(state.teamABench)
+        ..remove(playerIn)
+        ..add(playerOut);
+      state = state.copyWith(
+        teamAOnCourt: newOnCourt,
+        teamABench: newBench,
+        playerStats: newStats,
+      );
     } else {
-      final newOnCourt = List<String>.from(state.teamBOnCourt)..remove(playerOut)..add(playerIn);
-      final newBench = List<String>.from(state.teamBBench)..remove(playerIn)..add(playerOut);
-      state = state.copyWith(teamBOnCourt: newOnCourt, teamBBench: newBench, playerStats: newStats);
+      final newOnCourt = List<String>.from(state.teamBOnCourt)
+        ..remove(playerOut)
+        ..add(playerIn);
+      final newBench = List<String>.from(state.teamBBench)
+        ..remove(playerIn)
+        ..add(playerOut);
+      state = state.copyWith(
+        teamBOnCourt: newOnCourt,
+        teamBBench: newBench,
+        playerStats: newStats,
+      );
     }
   }
 
   Future<void> _saveToDatabase() async {
     if (state.matchId.isEmpty) return;
-    final timeStr = "${state.timeLeft.inMinutes}:${(state.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}";
-    await _dao.updateMatchStatus(state.matchId, state.scoreA, state.scoreB, timeStr, "IN_PROGRESS");
+    final timeStr =
+        "${state.timeLeft.inMinutes}:${(state.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}";
+    await _dao.updateMatchStatus(
+      state.matchId,
+      state.scoreA,
+      state.scoreB,
+      timeStr,
+      "IN_PROGRESS",
+    );
   }
 
-  Future<void> _logEventToDb(String player, int points, int fouls, String? foulType) async {
+  Future<void> _logEventToDb(
+    String player,
+    int points,
+    int fouls,
+    String? foulType,
+  ) async {
     if (state.matchId.isEmpty) return;
     String type = "UNKNOWN";
     if (points == 1) type = "POINT_1";
@@ -416,9 +479,10 @@ class MatchGameController extends StateNotifier<MatchState> {
     if (fouls > 0) {
       type = foulType ?? "FOUL";
     }
-    
-    final timeStr = "${state.timeLeft.inMinutes}:${(state.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}";
-    
+
+    final timeStr =
+        "${state.timeLeft.inMinutes}:${(state.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}";
+
     await _dao.insertEvent(
       GameEventsCompanion.insert(
         matchId: state.matchId,
@@ -436,7 +500,8 @@ class MatchGameController extends StateNotifier<MatchState> {
   }
 }
 
-final matchGameProvider = StateNotifierProvider<MatchGameController, MatchState>((ref) {
-  final dao = ref.watch(matchesDaoProvider);
-  return MatchGameController(dao);
-});
+final matchGameProvider =
+    StateNotifierProvider<MatchGameController, MatchState>((ref) {
+      final dao = ref.watch(matchesDaoProvider);
+      return MatchGameController(dao);
+    });

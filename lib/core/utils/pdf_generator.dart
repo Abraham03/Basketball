@@ -351,21 +351,32 @@ class PdfGenerator {
 
 
   // AUXILIAR PARA ORDENAR
-  static List<String> _getSortedRoster(List<String> court, List<String> bench, Map<String, PlayerStats> stats) {
-    // 1. Unimos todos los jugadores
+static List<String> _getSortedRoster(List<String> court, List<String> bench, Map<String, PlayerStats> stats) {
+    // 1. Unimos todos los jugadores en una sola lista
     List<String> allPlayers = [...court, ...bench];
     
-    // 2. Ordenamos por número de camiseta
+    // 2. Ordenamos usando una lógica compuesta
     allPlayers.sort((a, b) {
-      // Obtenemos los números del mapa de stats
+      // A. OBTENER NÚMEROS
       String numA = stats[a]?.playerNumber ?? "0";
       String numB = stats[b]?.playerNumber ?? "0";
       
-      // Intentamos convertir a int para ordenar numéricamente (4 antes que 10)
+      // B. CONVERTIR A INT (Para que '4' vaya antes que '10')
+      // Si no es un número válido, lo mandamos al final (999)
       int intA = int.tryParse(numA) ?? 999;
       int intB = int.tryParse(numB) ?? 999;
       
-      return intA.compareTo(intB);
+      // C. COMPARACIÓN PRIMARIA: POR NÚMERO
+      int comparison = intA.compareTo(intB);
+      
+      // Si los números son diferentes, retornamos ese resultado
+      if (comparison != 0) {
+        return comparison;
+      }
+      
+      // D. COMPARACIÓN SECUNDARIA: POR NOMBRE (Desempate)
+      // Esto evita que se "cambien de lugar" si ambos tienen el numero "00"
+      return a.compareTo(b);
     });
     
     return allPlayers;

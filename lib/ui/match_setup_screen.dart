@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/models/catalog_models.dart';
 import '../logic/catalog_provider.dart';
-// ✅ IMPORTANTE: Importamos la pantalla de selección de titulares
+// Importamos la pantalla de selección de titulares
 import 'starters_selection_screen.dart';
 
 class MatchSetupScreen extends ConsumerStatefulWidget {

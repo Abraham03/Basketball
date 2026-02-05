@@ -595,7 +595,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                     ),
                     child: const Text("+3"),
                   ),
-                  // ✅ BOTÓN DE FALTA MODIFICADO: AHORA ABRE EL NUEVO DIÁLOGO
+                  // BOTÓN DE FALTA MODIFICADO: AHORA ABRE EL NUEVO DIÁLOGO
                   ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context); // Cierra el menú de puntos
@@ -616,7 +616,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     );
   }
 
-  // ✅ NUEVO DIÁLOGO DE FALTAS (Ahora sí se usa)
+  // DIÁLOGO DE FALTAS (Ahora sí se usa)
   void _showFoulOptionsDialog(
     BuildContext context, 
     MatchGameController controller, 
@@ -628,7 +628,9 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
       builder: (ctx) => SimpleDialog(
         title: Text("Falta: $playerName"),
         children: [
-          _foulOption(ctx, controller, teamId, playerName, "Personal", "P"),
+          _foulOption(ctx, controller, teamId, playerName, "Personal 1 Tiro", "P1"),
+          _foulOption(ctx, controller, teamId, playerName, "Personal 2 Tiros", "P2"),
+          _foulOption(ctx, controller, teamId, playerName, "Personal 3 Tiros", "P3"),
           const Divider(),
           _foulOption(ctx, controller, teamId, playerName, "Técnica", "T"),
           _foulOption(ctx, controller, teamId, playerName, "Anti-deportiva", "U"),
