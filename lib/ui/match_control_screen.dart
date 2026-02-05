@@ -628,9 +628,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
       builder: (ctx) => SimpleDialog(
         title: Text("Falta: $playerName"),
         children: [
-          _foulOption(ctx, controller, teamId, playerName, "Personal 1 Tiro", "P1"),
-          _foulOption(ctx, controller, teamId, playerName, "Personal 2 Tiros", "P2"),
-          _foulOption(ctx, controller, teamId, playerName, "Personal 3 Tiros", "P3"),
+          _foulOption(ctx, controller, teamId, playerName, "Personal", "P"),
           const Divider(),
           _foulOption(ctx, controller, teamId, playerName, "Técnica", "T"),
           _foulOption(ctx, controller, teamId, playerName, "Anti-deportiva", "U"),

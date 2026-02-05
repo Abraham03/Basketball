@@ -294,7 +294,7 @@ class PdfGenerator {
 
                 // --- ROSTERS ---
                 ..._buildRosterList(
-                  players: state.teamAOnCourt + state.teamABench,
+                  players: _getSortedRoster(state.teamAOnCourt, state.teamABench, state.playerStats),
                   stats: state.playerStats,
                   startXNum: PdfCoords.teamAColNumX,
                   startXName: PdfCoords.teamAColNameX,
@@ -303,7 +303,7 @@ class PdfGenerator {
                   entryX: PdfCoords.teamAColEntryX,
                 ),
                 ..._buildRosterList(
-                  players: state.teamBOnCourt + state.teamBBench,
+                  players: _getSortedRoster(state.teamBOnCourt, state.teamBBench, state.playerStats),
                   stats: state.playerStats,
                   startXNum: PdfCoords.teamBColNumX,
                   startXName: PdfCoords.teamBColNameX,
@@ -349,6 +349,28 @@ class PdfGenerator {
     return pdf;
   }
 
+
+  // AUXILIAR PARA ORDENAR
+  static List<String> _getSortedRoster(List<String> court, List<String> bench, Map<String, PlayerStats> stats) {
+    // 1. Unimos todos los jugadores
+    List<String> allPlayers = [...court, ...bench];
+    
+    // 2. Ordenamos por número de camiseta
+    allPlayers.sort((a, b) {
+      // Obtenemos los números del mapa de stats
+      String numA = stats[a]?.playerNumber ?? "0";
+      String numB = stats[b]?.playerNumber ?? "0";
+      
+      // Intentamos convertir a int para ordenar numéricamente (4 antes que 10)
+      int intA = int.tryParse(numA) ?? 999;
+      int intB = int.tryParse(numB) ?? 999;
+      
+      return intA.compareTo(intB);
+    });
+    
+    return allPlayers;
+  }
+
   static List<pw.Widget> _buildRosterList({
     required List<String> players,
     required Map<String, PlayerStats> stats,
@@ -375,32 +397,30 @@ class PdfGenerator {
         _drawText(displayName, x: startXName, y: currentY, fontSize: 10),
       );
 
-      if (stat.isOnCourt) {
+      if (stat.isStarter) {
         widgets.add(_drawStarterMark(x: entryX, y: currentY));
       } else if (stat.points > 0 || stat.fouls > 0 || stat.isOnCourt) {
         widgets.add(_drawText("X", x: entryX, y: currentY, fontSize: 10));
       }
 
-// 4. FALTAS (Aquí está el cambio) ✅
+    // 4. FALTAS
       // Iteramos sobre la lista de detalles de faltas
       for (int f = 0; f < stat.foulDetails.length; f++) {
         if (f >= 5) break; // Solo caben 5 faltas
         
         double foulX = startXFouls + (f * PdfCoords.foulBoxWidth);
-        String foulCode = stat.foulDetails[f]; // P1, P2, T, U, D...
+        String foulCode = stat.foulDetails[f]; // P, T, U, D...
         
-        // Si el código es muy largo (ej: "Personal 1"), lo cortamos o usamos la letra
-        // Pero como en el controller guardamos "P1", "T", etc., ya es corto.
         
         // Color rojo para la 5ta falta o expulsiones si quieres
         PdfColor color = (f == 4 || foulCode == 'D') ? PdfColors.red : PdfColors.black;
 
         widgets.add(
           _drawText(
-            foulCode, // Pintamos el código (P1, P2, T...) en vez de "X"
+            foulCode, // Pintamos el código (P, T...) en vez de "X"
             x: foulX,
             y: currentY,
-            fontSize: 8, // Un poco más pequeño para que quepa P2, P3
+            fontSize: 8, // Un poco más pequeño para que quepa P
             isBold: true,
             color: color,
           ),

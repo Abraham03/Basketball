@@ -29,6 +29,7 @@ class PlayerStats {
   final int points;
   final int fouls;
   final bool isOnCourt;
+  final bool isStarter;
   final String playerNumber; // Guardamos el dorsal aquí
   final List<String> foulDetails;
 
@@ -36,15 +37,17 @@ class PlayerStats {
     this.points = 0,
     this.fouls = 0,
     this.isOnCourt = false,
+    this.isStarter = false,
     this.playerNumber = "00", // Valor por defecto
     this.foulDetails = const [],
   });
 
-  PlayerStats copyWith({int? points, int? fouls, bool? isOnCourt, String? playerNumber, List<String>? foulDetails,}) {
+  PlayerStats copyWith({int? points, int? fouls, bool? isOnCourt, bool? isStarter, String? playerNumber, List<String>? foulDetails,}) {
     return PlayerStats(
       points: points ?? this.points,
       fouls: fouls ?? this.fouls,
       isOnCourt: isOnCourt ?? this.isOnCourt,
+      isStarter: isStarter ?? this.isStarter,
       playerNumber: playerNumber ?? this.playerNumber,
       foulDetails: foulDetails ?? this.foulDetails,
     );
@@ -149,6 +152,7 @@ class MatchGameController extends StateNotifier<MatchState> {
       
       initialStats[pName] = PlayerStats(
         isOnCourt: isStarter,
+        isStarter: isStarter,
         playerNumber: player.defaultNumber.toString(), // Guardamos el número real
       );
       
@@ -166,6 +170,7 @@ class MatchGameController extends StateNotifier<MatchState> {
 
       initialStats[pName] = PlayerStats(
         isOnCourt: isStarter,
+        isStarter: isStarter,
         playerNumber: player.defaultNumber.toString(), // Guardamos el número real
       );
 
