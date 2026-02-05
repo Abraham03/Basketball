@@ -51,13 +51,13 @@ class PdfCoords {
   static const double teamAListStartY = 312.0;
   static const double teamAColNumX = 199.0;
   static const double teamAColNameX = 50.0;
-  static const double teamAColFoulsX = 235.0;
+  static const double teamAColFoulsX = 233.0;
   static const double teamAColEntryX = 215.5; // Ajustado a la columna de entrada
 
   static const double teamBListStartY = 594.9;
   static const double teamBColNumX = 199.0;
   static const double teamBColNameX = 50.0;
-  static const double teamBColFoulsX = 235.0;
+  static const double teamBColFoulsX = 233.0;
   static const double teamBColEntryX = 215.5; // Ajustado a la columna de entrada
 
   static const double rowHeight = 13.5;
