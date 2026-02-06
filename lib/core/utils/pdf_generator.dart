@@ -97,6 +97,24 @@ class PdfCoords {
   static const double playerNumOffsetX = -18.0;
   static const double runScoreStartY = 157.0;
   static const double runScoreEndY = 680.0;
+
+  // --- 10. TEAM FOULS (FALTAS DE EQUIPO) ---
+  // Ajusta estos valores según tu imagen de fondo
+  static const double teamAFoulsX = 156.0;       // Inicio horizontal de las casillas
+  static const double teamAFoulsPeriod1Y = 150.0; // Altura para Periodo 1
+  static const double teamAFoulsPeriod2Y = 165.0; // Altura para Periodo 2 (Suele estar al lado o abajo)
+  // Si en tu hoja los periodos 1 y 2 están en la misma línea separados:
+  static const double teamAFoulsPeriod2Offset = 60.0; 
+  
+  static const double teamAFoulsPeriod3Y = 168.0; // Altura para Periodo 3
+  static const double teamAFoulsPeriod4Y = 168.0; // Altura para Periodo 4
+  
+  // Mismas distancias relativas para el Equipo B
+  static const double teamBFoulsX = 156.0;
+  static const double teamBFoulsPeriod1Y = 434.0;
+  static const double teamBFoulsPeriod3Y = 450.0;
+
+  static const double teamFoulBoxStep = 12.8; // Distancia entre la casilla 1, 2, 3 y 4
 }
 
 class PdfGenerator {
@@ -292,6 +310,9 @@ class PdfGenerator {
                   fontSize: 10,
                 ),
 
+                // --- FALTAS DE EQUIPO ACUMULATIVAS ---
+                ..._drawTeamFoulsSection(state),
+
                 // --- ROSTERS ---
                 ..._buildRosterList(
                   players: _getSortedRoster(state.teamAOnCourt, state.teamABench, state.playerStats),
@@ -440,6 +461,98 @@ static List<String> _getSortedRoster(List<String> court, List<String> bench, Map
       currentY -= PdfCoords.rowHeight;
     }
     return widgets;
+  }
+
+  static List<pw.Widget> _drawTeamFoulsSection(MatchState state) {
+    List<pw.Widget> widgets = [];
+
+    // --- EQUIPO A ---
+    // Periodo 1
+    widgets.addAll(_drawFoulMarks(
+      count: _countTeamFouls(state, 'A', 1),
+      startX: PdfCoords.teamAFoulsX,
+      startY: PdfCoords.teamAFoulsPeriod1Y,
+    ));
+    // Periodo 2 (Asumiendo que está a la derecha del 1)
+    widgets.addAll(_drawFoulMarks(
+      count: _countTeamFouls(state, 'A', 2),
+      startX: PdfCoords.teamAFoulsX + 80.0, // Ajusta este desplazamiento si están separados
+      startY: PdfCoords.teamAFoulsPeriod1Y,
+    ));
+    // Periodo 3
+    widgets.addAll(_drawFoulMarks(
+      count: _countTeamFouls(state, 'A', 3),
+      startX: PdfCoords.teamAFoulsX,
+      startY: PdfCoords.teamAFoulsPeriod3Y,
+    ));
+    // Periodo 4
+    widgets.addAll(_drawFoulMarks(
+      count: _countTeamFouls(state, 'A', 4),
+      startX: PdfCoords.teamAFoulsX + 80.0, // Ajusta este desplazamiento
+      startY: PdfCoords.teamAFoulsPeriod3Y,
+    ));
+
+    // --- EQUIPO B ---
+    // Periodo 1
+    widgets.addAll(_drawFoulMarks(
+      count: _countTeamFouls(state, 'B', 1),
+      startX: PdfCoords.teamBFoulsX,
+      startY: PdfCoords.teamBFoulsPeriod1Y,
+    ));
+    // Periodo 2
+    widgets.addAll(_drawFoulMarks(
+      count: _countTeamFouls(state, 'B', 2),
+      startX: PdfCoords.teamBFoulsX + 80.0,
+      startY: PdfCoords.teamBFoulsPeriod1Y,
+    ));
+    // Periodo 3
+    widgets.addAll(_drawFoulMarks(
+      count: _countTeamFouls(state, 'B', 3),
+      startX: PdfCoords.teamBFoulsX,
+      startY: PdfCoords.teamBFoulsPeriod3Y,
+    ));
+    // Periodo 4
+    widgets.addAll(_drawFoulMarks(
+      count: _countTeamFouls(state, 'B', 4),
+      startX: PdfCoords.teamBFoulsX + 80.0,
+      startY: PdfCoords.teamBFoulsPeriod3Y,
+    ));
+
+    return widgets;
+  }
+
+// Método para dibujar las X en la sección de faltas acumulativas
+  static List<pw.Widget> _drawFoulMarks({required int count, required double startX, required double startY}) {
+    List<pw.Widget> marks = [];
+    int limit = count > 4 ? 4 : count; // Máximo 4 casillas en hoja estándar
+
+    for (int i = 0; i < limit; i++) {
+      marks.add(
+        _drawText(
+          "X",
+          x: startX + (i * PdfCoords.teamFoulBoxStep), // Avanza a la siguiente casilla
+          y: startY,
+          fontSize: 10,
+          isBold: true,
+          color: PdfColors.black,
+        ),
+      );
+    }
+    return marks;
+  }
+
+  // Cuenta las faltas de un equipo en un periodo específico
+  static int _countTeamFouls(MatchState state, String teamId, int period) {
+    return state.scoreLog.where((event) {
+      // Es del equipo correcto y del periodo correcto
+      bool isMatch = event.teamId == teamId && event.period == period;
+      
+      // Consideramos que es falta si no sumó puntos (points == 0)
+      // O si tu lógica futura guarda eventos con puntos Y faltas, ajusta aquí.
+      bool isFoul = event.points == 0; 
+      
+      return isMatch && isFoul;
+    }).length;
   }
 
   static pw.Widget _drawStarterMark({required double x, required double y}) {
