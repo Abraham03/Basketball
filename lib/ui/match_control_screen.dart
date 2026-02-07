@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/utils/pdf_generator.dart';
 import '../logic/match_game_controller.dart';
 import '../core/models/catalog_models.dart';
+import '../ui/pdf_preview_screen.dart';
 
 class MatchControlScreen extends ConsumerStatefulWidget {
   final String matchId;
@@ -69,7 +70,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
           showDialog(
             context: context,
             builder: (_) => AlertDialog(
-              title: const Text("🚨 Límite de Faltas"),
+              title: const Text("Límite de Faltas"),
               content: Text("El jugador $playerId ha llegado a 5 faltas y debe ser sustituido."),
               backgroundColor: Colors.red.shade50,
               actions: [
@@ -149,6 +150,27 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
               controller.undo();
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text("Acción deshecha"), duration: Duration(milliseconds: 500)),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.visibility), // Icono de "Ver" u "Ojo"
+            tooltip: "Ver Acta (Zoom)",
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PdfPreviewScreen(
+                    state: gameState,
+                    teamAName: widget.teamAName,
+                    teamBName: widget.teamBName,
+                    tournamentName: widget.tournamentName,
+                    venueName: widget.venueName,
+                    mainReferee: widget.mainReferee,
+                    auxReferee: widget.auxReferee,
+                    scorekeeper: widget.scorekeeper,
+                  ),
+                ),
               );
             },
           ),
@@ -271,6 +293,8 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                   if (state.possession == 'A')
                     const Icon(Icons.arrow_downward, color: Colors.orange, size: 20),
                   _scoreText(state.scoreA.toString(), widget.teamAName),
+
+                  TeamFoulsDisplay(fouls: controller.getTeamFouls('A')),
                 ],
               ),
 
@@ -375,6 +399,8 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                   if (state.possession == 'B')
                     const Icon(Icons.arrow_downward, color: Colors.blue, size: 20),
                   _scoreText(state.scoreB.toString(), widget.teamBName),
+                  // <--- FALTAS EQUIPO B
+                  TeamFoulsDisplay(fouls: controller.getTeamFouls('B')),
                 ],
               ),
             ],
@@ -834,6 +860,75 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+// -------------------------------------------------------------------------
+// Widget reutilizable para mostrar las faltas
+// -------------------------------------------------------------------------
+class TeamFoulsDisplay extends StatelessWidget {
+  final int fouls;
+
+  const TeamFoulsDisplay({super.key, required this.fouls});
+
+  @override
+  Widget build(BuildContext context) {
+    // Si llegan a 5 faltas, entran en penalización (Bonus)
+    final isBonus = fouls >= 5;
+    final color = isBonus ? Colors.redAccent : Colors.grey;
+
+    return Column(
+      children: [
+        const SizedBox(height: 8),
+        Text(
+          "FALTAS",
+          style: TextStyle(
+            fontSize: 10,
+            color: Colors.grey.shade500,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.0,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+          decoration: BoxDecoration(
+            color: isBonus ? Colors.red.withValues(alpha:0.2) : Colors.transparent,
+            border: Border.all(
+              color: color,
+              width: isBonus ? 2 : 1,
+            ),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "$fouls",
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: isBonus ? Colors.redAccent : Colors.white,
+                ),
+              ),
+              if (isBonus) ...[
+                const SizedBox(width: 4),
+                const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 16),
+              ]
+            ],
+          ),
+        ),
+        if (isBonus)
+          const Text(
+            "BONUS",
+            style: TextStyle(
+              fontSize: 9,
+              color: Colors.redAccent,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+      ],
     );
   }
 }

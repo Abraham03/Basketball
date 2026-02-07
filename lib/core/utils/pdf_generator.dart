@@ -3,6 +3,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../logic/match_game_controller.dart';
+import 'dart:typed_data';
 
 class PdfCoords {
   // --- 1. HEADER (ENCABEZADO) ---
@@ -117,7 +118,32 @@ class PdfCoords {
   static const double teamFoulBoxStep = 12.8; // Distancia entre la casilla 1, 2, 3 y 4
 }
 
+
 class PdfGenerator {
+
+  // Nuevo método para obtener los bytes y usarlos en el visor
+  static Future<Uint8List> generateBytes(
+    MatchState state,
+    String teamAName,
+    String teamBName, {
+    String tournamentName = "",
+    String venueName = "",
+    String mainReferee = "",
+    String auxReferee = "",
+    String scorekeeper = "",
+  }) async {
+    final pdf = await _buildDocument(
+      state,
+      teamAName,
+      teamBName,
+      tournamentName,
+      venueName,
+      mainReferee,
+      auxReferee,
+      scorekeeper,
+    );
+    return pdf.save();
+  }
   static Future<void> generateAndPreview(
     MatchState state,
     String teamAName,
@@ -583,6 +609,8 @@ static List<String> _getSortedRoster(List<String> court, List<String> bench, Map
     const double stepY = totalHeight / 39.0;
 
     for (var event in log) {
+      // Si el evento no tiene puntos (es solo falta), no lo dibujamos en esta columna
+      if (event.points == 0) continue;
       final PdfColor inkColor = (event.period <= 2)
           ? PdfColors.blue900
           : PdfColors.red;

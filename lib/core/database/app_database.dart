@@ -39,8 +39,13 @@ class AppDatabase extends _$AppDatabase {
 // Función para abrir la conexión nativa
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
+    // 1. Obtener la carpeta de documentos de la app
     final dbFolder = await getApplicationDocumentsDirectory();
+    
+    // 2. Crear la referencia al archivo
     final file = File(p.join(dbFolder.path, 'basketball_league.sqlite'));
-    return NativeDatabase.createInBackground(file);
+
+    // createInBackground a veces da problemas en release si no se configura bien el ProGuard
+    return NativeDatabase(file, logStatements: true); 
   });
 }

@@ -141,6 +141,16 @@ class MatchGameController extends StateNotifier<MatchState> {
 
   MatchGameController(this._dao) : super(const MatchState());
 
+  // Calcula faltas por equipo/periodo
+  int getTeamFouls(String teamId) {
+    return state.scoreLog.where((e) {
+      // Es del equipo correcto, periodo actual y no sumó puntos (asumimos falta)
+      return e.teamId == teamId && 
+             e.period == state.currentPeriod && 
+             e.points == 0;
+    }).length;
+  }
+
   void initializeNewMatch({
     required String matchId,
     required List<models.Player> rosterA,

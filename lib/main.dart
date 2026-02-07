@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'ui/home_menu_screen.dart'; // Importamos tu nuevo menú principal
 
 void main() {
+  // 1. OBLIGATORIO: Asegura que los canales nativos (plugins) estén listos
+  WidgetsFlutterBinding.ensureInitialized();
   // Inicializamos el ProviderScope para que Riverpod funcione en toda la app
   runApp(const ProviderScope(child: MyApp()));
 }
