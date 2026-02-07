@@ -158,6 +158,9 @@ class MatchGameController extends StateNotifier<MatchState> {
     required Set<int> startersA,
     required Set<int> startersB,
   }) {
+
+    _timer?.cancel(); 
+    _timer = null;
     final Map<String, PlayerStats> initialStats = {};
     final List<String> courtA = [];
     final List<String> benchA = [];
@@ -314,6 +317,7 @@ class MatchGameController extends StateNotifier<MatchState> {
   }
 
   void _start() {
+    _timer?.cancel();
     state = state.copyWith(isRunning: true);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (state.timeLeft.inSeconds > 0) {
@@ -328,6 +332,7 @@ class MatchGameController extends StateNotifier<MatchState> {
 
   void _pause() {
     _timer?.cancel();
+    _timer = null;
     state = state.copyWith(isRunning: false);
     _saveToDatabase();
   }

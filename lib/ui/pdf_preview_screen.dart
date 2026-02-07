@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 import '../core/utils/pdf_generator.dart';
@@ -12,6 +14,7 @@ class PdfPreviewScreen extends StatelessWidget {
   final String mainReferee;
   final String auxReferee;
   final String scorekeeper;
+  final Uint8List? protestSignature; 
 
   const PdfPreviewScreen({
     super.key,
@@ -23,6 +26,7 @@ class PdfPreviewScreen extends StatelessWidget {
     required this.mainReferee,
     required this.auxReferee,
     required this.scorekeeper,
+    this.protestSignature,
   });
 
   @override
@@ -44,6 +48,7 @@ class PdfPreviewScreen extends StatelessWidget {
           mainReferee: mainReferee,
           auxReferee: auxReferee,
           scorekeeper: scorekeeper,
+          protestSignature: protestSignature
         ),
         // Opcional: Configura qué acciones permites
         allowPrinting: true,

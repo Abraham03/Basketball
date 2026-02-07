@@ -116,6 +116,11 @@ class PdfCoords {
   static const double teamBFoulsPeriod3Y = 450.0;
 
   static const double teamFoulBoxStep = 12.8; // Distancia entre la casilla 1, 2, 3 y 4
+
+  // Coordenada para la firma de protesta (Ajústalo según tu imagen de fondo)
+  // Normalmente va abajo, cerca de las firmas de los árbitros o en "Captain's Signature in case of protest"
+  static const double protestSignatureX = 175.0; 
+  static const double protestSignatureY = 15.0;  // Muy abajo en la hoja
 }
 
 
@@ -131,6 +136,7 @@ class PdfGenerator {
     String mainReferee = "",
     String auxReferee = "",
     String scorekeeper = "",
+    Uint8List? protestSignature,
   }) async {
     final pdf = await _buildDocument(
       state,
@@ -141,6 +147,7 @@ class PdfGenerator {
       mainReferee,
       auxReferee,
       scorekeeper,
+      protestSignature
     );
     return pdf.save();
   }
@@ -153,6 +160,7 @@ class PdfGenerator {
     String mainReferee = "",
     String auxReferee = "",
     String scorekeeper = "",
+    Uint8List? protestSignature,
   }) async {
     final pdf = await _buildDocument(
       state,
@@ -163,6 +171,7 @@ class PdfGenerator {
       mainReferee,
       auxReferee,
       scorekeeper,
+      protestSignature
     );
     await Printing.layoutPdf(onLayout: (format) async => pdf.save());
   }
@@ -176,6 +185,7 @@ class PdfGenerator {
     String mainReferee = "",
     String auxReferee = "",
     String scorekeeper = "",
+    Uint8List? protestSignature,
   }) async {
     final pdf = await _buildDocument(
       state,
@@ -186,6 +196,7 @@ class PdfGenerator {
       mainReferee,
       auxReferee,
       scorekeeper,
+      protestSignature
     );
     await Printing.sharePdf(
       bytes: await pdf.save(),
@@ -202,6 +213,7 @@ class PdfGenerator {
     String mainReferee,
     String auxReferee,
     String scorekeeper,
+    Uint8List? protestSignature,
   ) async {
     final pdf = pw.Document();
 
@@ -259,6 +271,22 @@ class PdfGenerator {
                   y: PdfCoords.placeY,
                   fontSize: 9,
                 ),
+
+                // --- DIBUJAR LA FIRMA DE PROTESTA SI EXISTE ---
+                if (protestSignature != null)
+                   pw.Positioned(
+                     left: PdfCoords.protestSignatureX,
+                     bottom: PdfCoords.protestSignatureY, // Usamos bottom para anclarlo abajo
+                     child: pw.Column(
+                       children: [
+                         pw.Image(
+                           pw.MemoryImage(protestSignature), 
+                           width: 50, // Ajusta el tamaño de la firma
+                           height: 25
+                         ),
+                       ]
+                     )
+                   ),
 
                 // --- OFFICIALS (HEADER) ---
                 if (mainReferee.isNotEmpty) // Dibuja el arbitro principal
@@ -376,6 +404,8 @@ class PdfGenerator {
                   isBold: true,
                   color: PdfColors.blue900,
                 ),
+
+                
 
                 _drawPeriodScore(state, 1, PdfCoords.period1AX, PdfCoords.period1BX, PdfCoords.period1Y),
                 _drawPeriodScore(state, 2, PdfCoords.period2AX, PdfCoords.period2BX, PdfCoords.period2Y),

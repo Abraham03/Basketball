@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+import '../ui/protest_signature_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/utils/pdf_generator.dart';
@@ -109,7 +111,14 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
             title = "Fin del Partido";
             content = "El tiempo ha terminado. Marcador Final: ${next.scoreA} - ${next.scoreB}";
             actionButtonText = "Finalizar";
-            action = () {};
+            action = () {
+              // Usamos un Future.delayed para asegurar que el diálogo anterior cerró
+              Future.delayed(const Duration(milliseconds: 100), () {
+                if (context.mounted) {
+                  _showFinalOptionsDialog(context, next);
+                }
+              });
+            };
           }
         }
 
@@ -862,6 +871,97 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
       ),
     );
   }
+
+void _showFinalOptionsDialog(BuildContext context, MatchState currentState) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Acta del Partido"),
+        content: const Text("¿Cómo deseas generar el acta final?"),
+        actions: [
+          // OPCIÓN 1: FIRMAR BAJO PROTESTA
+          TextButton.icon(
+            icon: const Icon(Icons.edit_document, color: Colors.red),
+            label: const Text("Firmar bajo Protesta", style: TextStyle(color: Colors.red)),
+            onPressed: () async {
+              Navigator.pop(ctx); // Cerrar diálogo actual
+              _handleProtestFlow(context, currentState); // Iniciar flujo de protesta
+            },
+          ),
+          
+          // OPCIÓN 2: FINALIZAR NORMAL
+          ElevatedButton.icon(
+            icon: const Icon(Icons.check),
+            label: const Text("Finalizar Normal"),
+            onPressed: () {
+              Navigator.pop(ctx);
+              // Navegar directo al PDF sin firma de protesta
+              _goToPdfPreview(context, currentState, null);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Flujo para capturar la firma
+  Future<void> _handleProtestFlow(BuildContext context, MatchState state) async {
+    // 1. Preguntar qué equipo protesta
+    final String? protestingTeam = await showDialog<String>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text("¿Qué equipo protesta?"),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(ctx, widget.teamAName),
+            child: Text("Equipo A: ${widget.teamAName}"),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(ctx, widget.teamBName),
+            child: Text("Equipo B: ${widget.teamBName}"),
+          ),
+        ],
+      ),
+    );
+
+    if (protestingTeam != null && context.mounted) {
+      // 2. Abrir pantalla de firma
+      final Uint8List? signature = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ProtestSignatureScreen(teamName: protestingTeam),
+        ),
+      );
+
+      // 3. Si firmaron, ir al PDF con la firma
+      if (signature != null && context.mounted) {
+        _goToPdfPreview(context, state, signature);
+      }
+    }
+  }
+
+  // Método helper para ir al PDF (para no repetir código)
+  void _goToPdfPreview(BuildContext context, MatchState state, Uint8List? signature) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PdfPreviewScreen(
+          state: state,
+          teamAName: widget.teamAName,
+          teamBName: widget.teamBName,
+          tournamentName: widget.tournamentName,
+          venueName: widget.venueName,
+          mainReferee: widget.mainReferee,
+          auxReferee: widget.auxReferee,
+          scorekeeper: widget.scorekeeper,
+          // Aquí tienes que actualizar tu PdfPreviewScreen para que acepte la firma también
+           protestSignature: signature,
+        ),
+      ),
+    );
+  }
+
 }
 
 // -------------------------------------------------------------------------
