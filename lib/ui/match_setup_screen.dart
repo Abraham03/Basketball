@@ -172,6 +172,8 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
           teamB: selectedTeamB!,
           rosterA: rosterA,
           rosterB: rosterB,
+          tournamentId: selectedTournament!.id,
+          venueId: selectedVenue!.id,
           mainReferee: _referee1Controller.text,
           auxReferee: _referee2Controller.text,
           scorekeeper: _scorekeeperController.text,

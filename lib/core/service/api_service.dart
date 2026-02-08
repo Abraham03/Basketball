@@ -82,5 +82,24 @@ class ApiService {
     if (body['status'] != 'success') throw Exception(body['message']);
   }
   
-  // Aquí agregaremos luego el método syncMatch para subir datos
+
+  // Método para sincronizar el partido completo
+  Future<bool> syncMatchData(Map<String, dynamic> matchPayload) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl?action=sync_match'), // Asegúrate que tu PHP acepte este action
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(matchPayload),
+      );
+
+      if (response.statusCode == 200) {
+        final respData = jsonDecode(response.body);
+        return respData['status'] == 'success';
+      } else {
+        return false;
+      }
+    } catch (e) {
+      return false;
+    }
+  }
 }

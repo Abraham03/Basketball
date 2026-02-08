@@ -9,7 +9,12 @@ class StartersSelectionScreen extends StatefulWidget {
   final List<Player> rosterA;
   final List<Player> rosterB;
   
-  // Datos extra para pasar a la siguiente pantalla y al PDF
+  // --- NUEVOS CAMPOS NECESARIOS ---
+  final int tournamentId;
+  final int venueId;
+  // Nota: teamAId y teamBId los sacamos de los objetos teamA y teamB
+  
+  // Datos extra para visualización
   final String mainReferee;
   final String auxReferee;
   final String scorekeeper;
@@ -23,6 +28,10 @@ class StartersSelectionScreen extends StatefulWidget {
     required this.teamB,
     required this.rosterA,
     required this.rosterB,
+    // Recibimos los IDs
+    required this.tournamentId,
+    required this.venueId,
+    
     required this.mainReferee,
     required this.auxReferee,
     required this.scorekeeper,
@@ -35,7 +44,6 @@ class StartersSelectionScreen extends StatefulWidget {
 }
 
 class _StartersSelectionScreenState extends State<StartersSelectionScreen> {
-  // Guardamos los IDs de los jugadores seleccionados como titulares
   final Set<int> _startersA = {};
   final Set<int> _startersB = {};
 
@@ -138,16 +146,21 @@ class _StartersSelectionScreenState extends State<StartersSelectionScreen> {
           matchId: widget.matchId,
           teamAName: widget.teamA.name,
           teamBName: widget.teamB.name,
-          // Pasamos los datos extras para el PDF
+          
+          // --- AQUÍ PASAMOS LOS NUEVOS DATOS AL JUEGO ---
+          tournamentId: widget.tournamentId,
+          venueId: widget.venueId,
+          teamAId: widget.teamA.id, // Obtenemos el ID del objeto Team
+          teamBId: widget.teamB.id, // Obtenemos el ID del objeto Team
+          
           mainReferee: widget.mainReferee,
           auxReferee: widget.auxReferee,
           scorekeeper: widget.scorekeeper,
           tournamentName: widget.tournamentName,
           venueName: widget.venueName,
-          // Listas de jugadores
+          
           fullRosterA: widget.rosterA,
           fullRosterB: widget.rosterB,
-          // Sets de IDs de titulares
           startersAIds: _startersA,
           startersBIds: _startersB,
         ),

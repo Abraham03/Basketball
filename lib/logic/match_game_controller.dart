@@ -1,14 +1,18 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/database/app_database.dart';
 import '../core/database/daos/matches_dao.dart';
 import '../core/di/dependency_injection.dart';
 import '../core/models/catalog_models.dart' as models;
+import '../core/service/api_service.dart';
 
 class ScoreEvent {
   final int period;
   final String teamId;
   final String playerId;
+  final int dbPlayerId;
   final String playerNumber;
   final int points;
   final int scoreAfter;
@@ -18,6 +22,7 @@ class ScoreEvent {
     required this.period,
     required this.teamId,
     required this.playerId,
+    this.dbPlayerId = 0,
     required this.playerNumber,
     required this.points,
     required this.scoreAfter,
@@ -26,6 +31,7 @@ class ScoreEvent {
 }
 
 class PlayerStats {
+  final int dbId;
   final int points;
   final int fouls;
   final bool isOnCourt;
@@ -34,6 +40,7 @@ class PlayerStats {
   final List<String> foulDetails;
 
   const PlayerStats({
+    this.dbId = 0,
     this.points = 0,
     this.fouls = 0,
     this.isOnCourt = false,
@@ -43,6 +50,7 @@ class PlayerStats {
   });
 
   PlayerStats copyWith({
+    int? dbId,
     int? points,
     int? fouls,
     bool? isOnCourt,
@@ -51,6 +59,7 @@ class PlayerStats {
     List<String>? foulDetails,
   }) {
     return PlayerStats(
+      dbId: dbId ?? this.dbId,
       points: points ?? this.points,
       fouls: fouls ?? this.fouls,
       isOnCourt: isOnCourt ?? this.isOnCourt,
@@ -71,6 +80,13 @@ class MatchState {
   final String possession;
   final Map<int, List<int>> periodScores;
   final List<ScoreEvent> scoreLog;
+  final int? tournamentId;
+  final int? venueId;
+  final int? teamAId; // ID real de la base de datos (ej: 45)
+  final int? teamBId; // ID real de la base de datos (ej: 48)
+  final String mainReferee;
+  final String auxReferee;
+  final String scorekeeper;
 
   // Listas de NOMBRES (Strings) para referenciar el mapa
   final List<String> teamAOnCourt;
@@ -97,6 +113,13 @@ class MatchState {
     this.teamBOnCourt = const [],
     this.teamBBench = const [],
     this.playerStats = const {},
+    this.tournamentId,
+    this.venueId,
+    this.teamAId,
+    this.teamBId,
+    this.mainReferee = '',
+    this.auxReferee = '',
+    this.scorekeeper = '',
   });
 
   MatchState copyWith({
@@ -114,6 +137,13 @@ class MatchState {
     List<String>? teamBOnCourt,
     List<String>? teamBBench,
     Map<String, PlayerStats>? playerStats,
+    int? tournamentId,
+    int? venueId,
+    int? teamAId,
+    int? teamBId,
+    String? mainReferee,
+    String? auxReferee,
+    String? scorekeeper,
   }) {
     return MatchState(
       matchId: matchId ?? this.matchId,
@@ -130,6 +160,13 @@ class MatchState {
       teamBOnCourt: teamBOnCourt ?? this.teamBOnCourt,
       teamBBench: teamBBench ?? this.teamBBench,
       playerStats: playerStats ?? this.playerStats,
+      tournamentId: tournamentId ?? this.tournamentId,
+      venueId: venueId ?? this.venueId,
+      teamAId: teamAId ?? this.teamAId,
+      teamBId: teamBId ?? this.teamBId,
+      mainReferee: mainReferee ?? this.mainReferee,
+      auxReferee: auxReferee ?? this.auxReferee,
+      scorekeeper: scorekeeper ?? this.scorekeeper,
     );
   }
 }
@@ -151,12 +188,87 @@ class MatchGameController extends StateNotifier<MatchState> {
     }).length;
   }
 
+  Future<bool> finalizeAndSync(
+    ApiService api, 
+    Uint8List? signatureBytes, 
+    String teamAName, 
+    String teamBName
+  ) async {
+    
+    // 1. Convertir Firma a Base64
+    String? signatureBase64;
+    if (signatureBytes != null) {
+      signatureBase64 = base64Encode(signatureBytes);
+    }
+
+  // 2. Preparar eventos para JSON
+    final eventsList = state.scoreLog.map((e) {
+      return {
+        "period": e.period,
+        "team_side": e.teamId, // Enviamos 'A' o 'B' como team_side
+        // En tu lógica actual, el playerId es el nombre del jugador
+        "player_name": e.playerId, 
+        "player_id": e.dbPlayerId,
+        
+        // Convertimos a string por seguridad, el backend lo pasará a int
+        "player_number": e.playerNumber, 
+        "points_scored": e.points, // NOMBRE CORREGIDO
+        "score_after": e.scoreAfter, // DATO FALTANTE AGREGADO
+        // "type" no está en tu tabla SQL, así que no es estrictamente necesario, 
+        // pero lo dejamos por si acaso quieres guardarlo en otro lado o futuro.
+        "type": e.type, 
+      };
+    }).toList();
+
+    // 3. Payload Completo
+    final payload = {
+// IDs y Relaciones
+      "match_id": state.matchId,
+      "tournament_id": state.tournamentId,
+      "venue_id": state.venueId,
+      "team_a_id": state.teamAId,
+      "team_b_id": state.teamBId,
+      
+      // Nombres (Redundancia útil para reportes rápidos)
+      "team_a_name": teamAName,
+      "team_b_name": teamBName,
+      
+      // Marcador y Estado
+      "score_a": state.scoreA,
+      "score_b": state.scoreB,
+      "current_period": state.currentPeriod,
+      "time_left": "${state.timeLeft.inMinutes}:${(state.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}",
+      
+      // Oficiales
+      "main_referee": state.mainReferee,
+      "aux_referee": state.auxReferee,
+      "scorekeeper": state.scorekeeper,
+      
+      // Datos extra
+      "match_date": DateTime.now().toIso8601String(), // Enviamos fecha actual
+      "signature_base64": signatureBase64,
+      
+      // Eventos (Tabla score_logs)
+      "events": eventsList,
+    };
+
+    // 4. Enviar
+    return await api.syncMatchData(payload);
+  }
+
   void initializeNewMatch({
     required String matchId,
     required List<models.Player> rosterA,
     required List<models.Player> rosterB,
     required Set<int> startersA,
     required Set<int> startersB,
+    required int tournamentId,
+    required int venueId,
+    required int teamAId,
+    required int teamBId,
+    required String mainReferee,
+    required String auxReferee,
+    required String scorekeeper,
   }) {
 
     _timer?.cancel(); 
@@ -173,6 +285,7 @@ class MatchGameController extends StateNotifier<MatchState> {
       final pName = player.name;
 
       initialStats[pName] = PlayerStats(
+        dbId: player.id,
         isOnCourt: isStarter,
         isStarter: isStarter,
         playerNumber: player.defaultNumber
@@ -192,6 +305,7 @@ class MatchGameController extends StateNotifier<MatchState> {
       final pName = player.name;
 
       initialStats[pName] = PlayerStats(
+        dbId: player.id,
         isOnCourt: isStarter,
         isStarter: isStarter,
         playerNumber: player.defaultNumber
@@ -221,6 +335,13 @@ class MatchGameController extends StateNotifier<MatchState> {
       periodScores: {
         1: [0, 0],
       },
+      tournamentId: tournamentId,
+      venueId: venueId,
+      teamAId: teamAId,
+      teamBId: teamBId,
+      mainReferee: mainReferee,
+      auxReferee: auxReferee,
+      scorekeeper: scorekeeper,
     );
   }
 
@@ -404,7 +525,8 @@ class MatchGameController extends StateNotifier<MatchState> {
         ScoreEvent(
           period: state.currentPeriod,
           teamId: teamId,
-          playerId: playerId,
+          playerId: playerId,// Nombre del jugador
+          dbPlayerId: currentStats.dbId,
           playerNumber: dorsal,
           points: points,
           scoreAfter: scoreAfter,

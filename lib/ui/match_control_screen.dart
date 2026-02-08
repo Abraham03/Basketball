@@ -1,11 +1,14 @@
 import 'dart:typed_data';
-import '../ui/protest_signature_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../core/di/dependency_injection.dart';
 import '../core/utils/pdf_generator.dart';
-import '../logic/match_game_controller.dart';
 import '../core/models/catalog_models.dart';
+import '../logic/match_game_controller.dart';
+import '../ui/protest_signature_screen.dart';
 import '../ui/pdf_preview_screen.dart';
+
 
 class MatchControlScreen extends ConsumerStatefulWidget {
   final String matchId;
@@ -22,6 +25,10 @@ class MatchControlScreen extends ConsumerStatefulWidget {
   final List<Player> fullRosterB;
   final Set<int> startersAIds;
   final Set<int> startersBIds;
+  final int tournamentId; 
+  final int venueId;      
+  final int teamAId;      
+  final int teamBId;      
 
   const MatchControlScreen({
     super.key,
@@ -37,6 +44,10 @@ class MatchControlScreen extends ConsumerStatefulWidget {
     required this.fullRosterB,
     required this.startersAIds,
     required this.startersBIds,
+    required this.tournamentId,
+    required this.venueId,
+    required this.teamAId,
+    required this.teamBId,
   });
 
   @override
@@ -54,6 +65,13 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
         rosterB: widget.fullRosterB,
         startersA: widget.startersAIds,
         startersB: widget.startersBIds,
+        tournamentId: widget.tournamentId,
+        venueId: widget.venueId,
+        teamAId: widget.teamAId,
+        teamBId: widget.teamBId,
+        mainReferee: widget.mainReferee,
+        auxReferee: widget.auxReferee,
+        scorekeeper: widget.scorekeeper,
       );
     });
   }
@@ -545,6 +563,51 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     );
   }
 
+  // Nuevo método para procesar la finalización
+void _finishMatchProcess(
+      BuildContext context, MatchState state, Uint8List? signature) async {
+    // 1. Loading
+    showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (c) => const Center(child: CircularProgressIndicator()));
+
+    try {
+      // Obtenemos dependencias
+      final api = ref.read(apiServiceProvider);
+      final controller = ref.read(matchGameProvider.notifier);
+
+      // 2. Intentar subir
+      bool synced = await controller.finalizeAndSync(
+          api, signature, widget.teamAName, widget.teamBName);
+
+      if (context.mounted) {
+        Navigator.pop(context); // Quitar Loading
+
+        if (synced) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text("✅ Partido sincronizado exitosamente"),
+              backgroundColor: Colors.green));
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text("⚠️ Sin conexión. Se guardó localmente."),
+              backgroundColor: Colors.orange));
+        }
+
+        // 3. Mostrar PDF final
+        _goToPdfPreview(context, state, signature);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context); // Quitar Loading en error
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red));
+        // Aún así vamos al PDF
+        _goToPdfPreview(context, state, signature);
+      }
+    }
+  }
+
   Widget _periodOption(BuildContext context, MatchGameController controller, int period, String label) {
     return SimpleDialogOption(
       onPressed: () {
@@ -883,21 +946,22 @@ void _showFinalOptionsDialog(BuildContext context, MatchState currentState) {
           // OPCIÓN 1: FIRMAR BAJO PROTESTA
           TextButton.icon(
             icon: const Icon(Icons.edit_document, color: Colors.red),
-            label: const Text("Firmar bajo Protesta", style: TextStyle(color: Colors.red)),
-            onPressed: () async {
+            label: const Text("Firmar bajo Protesta",
+                style: TextStyle(color: Colors.red)),
+            onPressed: () {
               Navigator.pop(ctx); // Cerrar diálogo actual
-              _handleProtestFlow(context, currentState); // Iniciar flujo de protesta
+              _handleProtestFlow(context, currentState); // Flujo de protesta
             },
           ),
-          
-          // OPCIÓN 2: FINALIZAR NORMAL
+
+          // OPCIÓN 2: FINALIZAR NORMAL (Sube a la nube)
           ElevatedButton.icon(
-            icon: const Icon(Icons.check),
-            label: const Text("Finalizar Normal"),
+            icon: const Icon(Icons.cloud_upload),
+            label: const Text("Finalizar y Subir"),
             onPressed: () {
               Navigator.pop(ctx);
-              // Navegar directo al PDF sin firma de protesta
-              _goToPdfPreview(context, currentState, null);
+              // Llama a la función de subida (sin firma extra)
+              _finishMatchProcess(context, currentState, null);
             },
           ),
         ],
