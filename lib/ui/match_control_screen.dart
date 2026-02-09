@@ -55,6 +55,10 @@ class MatchControlScreen extends ConsumerStatefulWidget {
 }
 
 class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
+
+  // 1. VARIABLE PARA GUARDAR LA FIRMA EN MEMORIA
+  Uint8List? _capturedSignature;
+
   @override
   void initState() {
     super.initState();
@@ -196,6 +200,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                     mainReferee: widget.mainReferee,
                     auxReferee: widget.auxReferee,
                     scorekeeper: widget.scorekeeper,
+                    protestSignature: _capturedSignature,
                   ),
                 ),
               );
@@ -203,7 +208,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.print),
-            tooltip: "Vista Previa",
+            tooltip: "Guardar",
             onPressed: () async {
               await PdfGenerator.generateAndPreview(
                 gameState,
@@ -214,6 +219,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                 mainReferee: widget.mainReferee,
                 auxReferee: widget.auxReferee,
                 scorekeeper: widget.scorekeeper,
+                protestSignature: _capturedSignature,
               );
             },
           ),
@@ -230,6 +236,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                 mainReferee: widget.mainReferee,
                 auxReferee: widget.auxReferee,
                 scorekeeper: widget.scorekeeper,
+                protestSignature: _capturedSignature,
               );
             },
           ),
@@ -564,8 +571,8 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
   }
 
   // Nuevo método para procesar la finalización
-void _finishMatchProcess(
-      BuildContext context, MatchState state, Uint8List? signature) async {
+void _finishMatchProcess(BuildContext context, MatchState state, 
+  Uint8List? signature, {bool autoShow = true}) async {
     // 1. Loading
     showDialog(
         context: context,
@@ -595,15 +602,21 @@ void _finishMatchProcess(
         }
 
         // 3. Mostrar PDF final
-        _goToPdfPreview(context, state, signature);
+        if (autoShow){
+            _goToPdfPreview(context, state, signature);
+        }
+        
       }
     } catch (e) {
       if (context.mounted) {
-        Navigator.pop(context); // Quitar Loading en error
+        Navigator.pop(context); 
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red));
         // Aún así vamos al PDF
-        _goToPdfPreview(context, state, signature);
+        if(autoShow){
+            _goToPdfPreview(context, state, signature);
+        }
+        
       }
     }
   }
@@ -1000,7 +1013,17 @@ void _showFinalOptionsDialog(BuildContext context, MatchState currentState) {
 
       // 3. Si firmaron, ir al PDF con la firma
       if (signature != null && context.mounted) {
-        _goToPdfPreview(context, state, signature);
+        // --- GUARDA LA FIRMA EN EL WIDGET PARA QUE NO SE PIERDA ---
+        setState(() {
+          _capturedSignature = signature;
+        });
+
+        _finishMatchProcess(
+          context, 
+          state, 
+          signature,
+          autoShow: false,
+          );
       }
     }
   }
