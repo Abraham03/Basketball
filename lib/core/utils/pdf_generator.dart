@@ -56,6 +56,20 @@ class PdfCoords {
   static const double rowHeight = 13.5;
   static const double foulBoxWidth = 12.0;
 
+  // --- 4. TIMEOUTS (NUEVAS COORDENADAS) ---
+  // Ajustadas para estar debajo del nombre y antes de la lista
+  // Equipo A
+  static const double teamATimeoutsX = 28.0; 
+  static const double teamATimeoutsY1 = 153.0; // 1a Mitad (Fila superior)
+  static const double teamATimeoutsY2 = 168.0; // 2a Mitad (Fila inferior)
+  
+  // Equipo B
+  static const double teamBTimeoutsX = 28.0;
+  static const double teamBTimeoutsY1 = 433.0; 
+  static const double teamBTimeoutsY2 = 450.0; 
+  
+  static const double timeoutBoxStep = 12.0; // Espacio entre cuadros de tiempo fuera
+
   // --- 6. FINAL SCORE ---
   static const double scoreBoxY = 772.0;
   static const double scoreAX = 450.0;
@@ -350,6 +364,8 @@ class PdfGenerator {
 
                 ..._drawTeamFoulsSection(state),
 
+                ..._drawTimeouts(state),
+
                 ..._buildRosterList(
                   players: _getSortedRoster(
                     state.teamAOnCourt,
@@ -442,7 +458,36 @@ class PdfGenerator {
     return pdf;
   }
 
-  // --- MODIFICADO: Dibuja líneas azules en casillas vacías y filas vacías ---
+
+  // Función para dibujar los tiempos fuera ---
+  static List<pw.Widget> _drawTimeouts(MatchState state) {
+    List<pw.Widget> widgets = [];
+
+    // EQUIPO A
+    widgets.addAll(_drawTimeoutRow(timeouts: state.teamATimeouts1, maxBoxes: 2, startX: PdfCoords.teamATimeoutsX, y: PdfCoords.teamATimeoutsY1));
+    widgets.addAll(_drawTimeoutRow(timeouts: state.teamATimeouts2, maxBoxes: 3, startX: PdfCoords.teamATimeoutsX, y: PdfCoords.teamATimeoutsY2));
+
+    // EQUIPO B
+    widgets.addAll(_drawTimeoutRow(timeouts: state.teamBTimeouts1, maxBoxes: 2, startX: PdfCoords.teamBTimeoutsX, y: PdfCoords.teamBTimeoutsY1));
+    widgets.addAll(_drawTimeoutRow(timeouts: state.teamBTimeouts2, maxBoxes: 3, startX: PdfCoords.teamBTimeoutsX, y: PdfCoords.teamBTimeoutsY2));
+
+    return widgets;
+  }
+
+  // Helper para fila de tiempos fuera
+  static List<pw.Widget> _drawTimeoutRow({required List<String> timeouts, required int maxBoxes, required double startX, required double y}) {
+    List<pw.Widget> rowWidgets = [];
+    for (int i = 0; i < maxBoxes; i++) {
+      double x = startX + (i * PdfCoords.timeoutBoxStep);
+      String text = (i < timeouts.length) ? timeouts[i] : "";
+      if (text.isNotEmpty) {
+        rowWidgets.add(_drawText(text, x: x, y: y, fontSize: 9, isBold: true));
+      }
+    }
+    return rowWidgets;
+  }
+
+  // --- Dibuja líneas azules en casillas vacías y filas vacías ---
   static List<pw.Widget> _buildRosterList({
     required List<String> players,
     required Map<String, PlayerStats> stats,
@@ -553,7 +598,7 @@ class PdfGenerator {
     return marks;
   }
 
-  // --- NUEVO HELPER: Línea horizontal azul para casillas pequeñas (Faltas) ---
+  // --- HELPER: Línea horizontal azul para casillas pequeñas (Faltas) ---
   static pw.Widget _drawBlueHorizontalMark(double x, double y) {
     return pw.Positioned(
       left: x, // Pequeño margen izquierdo
@@ -566,7 +611,7 @@ class PdfGenerator {
     );
   }
 
-  // --- NUEVO HELPER: Línea horizontal azul larga para tachar filas ---
+  // --- HELPER: Línea horizontal azul larga para tachar filas ---
   static pw.Widget _drawHorizontalLine(double x, double y, double width) {
     return pw.Positioned(
       left: x - 3,
@@ -575,7 +620,7 @@ class PdfGenerator {
     );
   }
 
-  // ... (Resto de funciones auxiliares sin cambios) ...
+
   static List<String> _getSortedRoster(
     List<String> court,
     List<String> bench,

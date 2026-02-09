@@ -281,7 +281,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     );
   }
 
-  Widget _buildScoreBoard(BuildContext context, MatchState state, MatchGameController controller) {
+ Widget _buildScoreBoard(BuildContext context, MatchState state, MatchGameController controller) {
     final minutes = state.timeLeft.inMinutes.toString().padLeft(2, '0');
     final seconds = (state.timeLeft.inSeconds % 60).toString().padLeft(2, '0');
 
@@ -329,6 +329,40 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                   _scoreText(state.scoreA.toString(), widget.teamAName),
 
                   TeamFoulsDisplay(fouls: controller.getTeamFouls('A')),
+                  
+                  // --- BOTÓN TIMEOUT A ---
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: () => controller.addTimeout('A'),
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey.shade800,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        minimumSize: const Size(60, 30),
+                    ),
+                    child: Column(
+                        children: [
+                        const Text("T.F.", style: TextStyle(fontSize: 10, color: Colors.white)),
+                        Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                            // 1a Mitad (Amarillo)
+                            ...state.teamATimeouts1.map((_) => const Padding(
+                                padding: EdgeInsets.all(1),
+                                child: CircleAvatar(radius: 2, backgroundColor: Colors.yellow),
+                            )),
+                            // Separador
+                            if (state.teamATimeouts1.isNotEmpty && state.teamATimeouts2.isNotEmpty)
+                                const SizedBox(width: 2),
+                            // 2a Mitad (Naranja)
+                            ...state.teamATimeouts2.map((_) => const Padding(
+                                padding: EdgeInsets.all(1),
+                                child: CircleAvatar(radius: 2, backgroundColor: Colors.orange),
+                            )),
+                            ],
+                        )
+                        ],
+                    ),
+                   ),
                 ],
               ),
 
@@ -435,6 +469,39 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                   _scoreText(state.scoreB.toString(), widget.teamBName),
                   // <--- FALTAS EQUIPO B
                   TeamFoulsDisplay(fouls: controller.getTeamFouls('B')),
+
+                  // --- BOTÓN TIMEOUT B ---
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: () => controller.addTimeout('B'),
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey.shade800,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        minimumSize: const Size(60, 30),
+                    ),
+                    child: Column(
+                        children: [
+                        const Text("T.F.", style: TextStyle(fontSize: 10, color: Colors.white)),
+                        Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                            // 1a Mitad
+                            ...state.teamBTimeouts1.map((_) => const Padding(
+                                padding: EdgeInsets.all(1),
+                                child: CircleAvatar(radius: 2, backgroundColor: Colors.yellow),
+                            )),
+                            if (state.teamBTimeouts1.isNotEmpty && state.teamBTimeouts2.isNotEmpty)
+                                const SizedBox(width: 2),
+                            // 2a Mitad
+                            ...state.teamBTimeouts2.map((_) => const Padding(
+                                padding: EdgeInsets.all(1),
+                                child: CircleAvatar(radius: 2, backgroundColor: Colors.orange),
+                            )),
+                            ],
+                        )
+                        ],
+                    ),
+                   ),
                 ],
               ),
             ],

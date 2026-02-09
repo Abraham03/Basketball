@@ -94,6 +94,12 @@ class MatchState {
   final List<String> teamBOnCourt;
   final List<String> teamBBench;
 
+  // Tiempos fuera (guardamos el minuto como String, ej: "7")
+  final List<String> teamATimeouts1; // 1a Mitad (Periodos 1-2)
+  final List<String> teamATimeouts2; // 2a Mitad (Periodos 3-4)
+  final List<String> teamBTimeouts1;
+  final List<String> teamBTimeouts2;
+
   final Map<String, PlayerStats> playerStats;
 
   const MatchState({
@@ -120,6 +126,10 @@ class MatchState {
     this.mainReferee = '',
     this.auxReferee = '',
     this.scorekeeper = '',
+    this.teamATimeouts1 = const [],
+    this.teamATimeouts2 = const [],
+    this.teamBTimeouts1 = const [],
+    this.teamBTimeouts2 = const [],
   });
 
   MatchState copyWith({
@@ -144,6 +154,10 @@ class MatchState {
     String? mainReferee,
     String? auxReferee,
     String? scorekeeper,
+    List<String>? teamATimeouts1,
+    List<String>? teamATimeouts2,
+    List<String>? teamBTimeouts1,
+    List<String>? teamBTimeouts2,
   }) {
     return MatchState(
       matchId: matchId ?? this.matchId,
@@ -167,6 +181,10 @@ class MatchState {
       mainReferee: mainReferee ?? this.mainReferee,
       auxReferee: auxReferee ?? this.auxReferee,
       scorekeeper: scorekeeper ?? this.scorekeeper,
+      teamATimeouts1: teamATimeouts1 ?? this.teamATimeouts1,
+      teamATimeouts2: teamATimeouts2 ?? this.teamATimeouts2,
+      teamBTimeouts1: teamBTimeouts1 ?? this.teamBTimeouts1,
+      teamBTimeouts2: teamBTimeouts2 ?? this.teamBTimeouts2,
     );
   }
 }
@@ -187,6 +205,8 @@ class MatchGameController extends StateNotifier<MatchState> {
              e.points == 0;
     }).length;
   }
+
+
 
   Future<bool> finalizeAndSync(
     ApiService api, 
@@ -256,6 +276,77 @@ class MatchGameController extends StateNotifier<MatchState> {
     return await api.syncMatchData(payload);
   }
 
+
+ // Método para agregar Tiempo Fuera
+void addTimeout(String teamId) {
+    _saveToHistory();
+
+    // 1. Calcular minuto
+    int periodMinutes = state.currentPeriod > 4 ? 5 : 10;
+    int currentMinute = periodMinutes - state.timeLeft.inMinutes;
+    if (state.timeLeft.inSeconds % 60 != 0) {
+        currentMinute += 1;
+    }
+    if (currentMinute == 0) currentMinute = 1; 
+    
+    String minStr = currentMinute.toString();
+
+    // Variables de estado
+    bool isFirstHalf = state.currentPeriod <= 2;
+    bool isSecondHalf = state.currentPeriod == 3 || state.currentPeriod == 4;
+    bool isOvertime = state.currentPeriod > 4;
+    // Detectar si estamos en los últimos 2 minutos del 4to cuarto
+    bool isClutchTime = state.currentPeriod == 4 && state.timeLeft.inSeconds <= 120; 
+
+    if (teamId == 'A') {
+      if (isFirstHalf) {
+        if (state.teamATimeouts1.length < 2) {
+          state = state.copyWith(teamATimeouts1: [...state.teamATimeouts1, minStr]);
+        }
+      } else if (isSecondHalf) {
+        List<String> currentList = List.from(state.teamATimeouts2);
+        
+        // REGLA FIBA: Si llegan a los ultimos 2 mins sin usar tiempos, pierden uno.
+        // Lo simulamos llenando un slot con "X" si la lista está vacía.
+        if (isClutchTime && currentList.isEmpty) {
+           currentList.add("X"); // Quemamos el primero
+        }
+
+        if (currentList.length < 3) {
+          currentList.add(minStr);
+          state = state.copyWith(teamATimeouts2: currentList);
+        } 
+      } else if (isOvertime) {
+         if (state.teamATimeouts2.length < 3) { 
+             state = state.copyWith(teamATimeouts2: [...state.teamATimeouts2, minStr]);
+         }
+      }
+    } else {
+      // Equipo B
+      if (isFirstHalf) {
+        if (state.teamBTimeouts1.length < 2) {
+          state = state.copyWith(teamBTimeouts1: [...state.teamBTimeouts1, minStr]);
+        }
+      } else if (isSecondHalf) {
+        List<String> currentList = List.from(state.teamBTimeouts2);
+        
+        // REGLA FIBA (Auto-burn)
+        if (isClutchTime && currentList.isEmpty) {
+           currentList.add("X"); // Quemamos el primero
+        }
+
+        if (currentList.length < 3) {
+          currentList.add(minStr);
+          state = state.copyWith(teamBTimeouts2: currentList);
+        } 
+      } else if (isOvertime) {
+         if (state.teamBTimeouts2.length < 3) {
+             state = state.copyWith(teamBTimeouts2: [...state.teamBTimeouts2, minStr]);
+         }
+      }
+    }
+    _saveToDatabase();
+  }
   void initializeNewMatch({
     required String matchId,
     required List<models.Player> rosterA,
@@ -342,6 +433,11 @@ class MatchGameController extends StateNotifier<MatchState> {
       mainReferee: mainReferee,
       auxReferee: auxReferee,
       scorekeeper: scorekeeper,
+
+      teamATimeouts1: [],
+      teamATimeouts2: [],
+      teamBTimeouts1: [],
+      teamBTimeouts2: [],
     );
   }
 
