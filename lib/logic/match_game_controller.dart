@@ -279,73 +279,135 @@ class MatchGameController extends StateNotifier<MatchState> {
 
  // Método para agregar Tiempo Fuera
 void addTimeout(String teamId) {
-    _saveToHistory();
+  _saveToHistory();
 
-    // 1. Calcular minuto
-    int periodMinutes = state.currentPeriod > 4 ? 5 : 10;
-    int currentMinute = periodMinutes - state.timeLeft.inMinutes;
-    if (state.timeLeft.inSeconds % 60 != 0) {
-        currentMinute += 1;
-    }
-    if (currentMinute == 0) currentMinute = 1; 
-    
-    String minStr = currentMinute.toString();
+  // Cálculo preciso del minuto para la hoja
+  int periodDuration = state.currentPeriod > 4 ? 5 : 10;
+  int secondsElapsed = (periodDuration * 60) - state.timeLeft.inSeconds;
+  int currentMinute = (secondsElapsed / 60).ceil();
+  if (currentMinute == 0) currentMinute = 1;
+  if (currentMinute > periodDuration) currentMinute = periodDuration;
 
-    // Variables de estado
-    bool isFirstHalf = state.currentPeriod <= 2;
-    bool isSecondHalf = state.currentPeriod == 3 || state.currentPeriod == 4;
-    bool isOvertime = state.currentPeriod > 4;
-    // Detectar si estamos en los últimos 2 minutos del 4to cuarto
-    bool isClutchTime = state.currentPeriod == 4 && state.timeLeft.inSeconds <= 120; 
+  String minStr = currentMinute.toString();
 
-    if (teamId == 'A') {
-      if (isFirstHalf) {
-        if (state.teamATimeouts1.length < 2) {
-          state = state.copyWith(teamATimeouts1: [...state.teamATimeouts1, minStr]);
-        }
-      } else if (isSecondHalf) {
-        List<String> currentList = List.from(state.teamATimeouts2);
-        
-        // REGLA FIBA: Si llegan a los ultimos 2 mins sin usar tiempos, pierden uno.
-        // Lo simulamos llenando un slot con "X" si la lista está vacía.
-        if (isClutchTime && currentList.isEmpty) {
-           currentList.add("X"); // Quemamos el primero
-        }
+  bool isClutchTime = state.currentPeriod == 4 && state.timeLeft.inSeconds == 120;
 
-        if (currentList.length < 3) {
-          currentList.add(minStr);
-          state = state.copyWith(teamATimeouts2: currentList);
-        } 
-      } else if (isOvertime) {
-         if (state.teamATimeouts2.length < 3) { 
-             state = state.copyWith(teamATimeouts2: [...state.teamATimeouts2, minStr]);
-         }
+  if (teamId == 'A') {
+    _processTimeoutWithRules(teamId, minStr, state.currentPeriod, isClutchTime);
+  } else {
+    _processTimeoutWithRules(teamId, minStr, state.currentPeriod, isClutchTime);
+  }
+}
+
+void _processTimeoutWithRules(String teamId, String minStr, int period, bool isClutchTime) {
+    List<String> currentList;
+    bool isFirstHalf = period <= 2;
+    bool isSecondHalf = period == 3 || period == 4;
+
+    // A. PRIMERA MITAD (1 y 2)
+    if (isFirstHalf) {
+      currentList = List.from(teamId == 'A' ? state.teamATimeouts1 : state.teamBTimeouts1);
+      if (currentList.length < 2) {
+        currentList.add(minStr);
+        _updateTimeoutList(teamId, 1, currentList);
       }
-    } else {
-      // Equipo B
-      if (isFirstHalf) {
-        if (state.teamBTimeouts1.length < 2) {
-          state = state.copyWith(teamBTimeouts1: [...state.teamBTimeouts1, minStr]);
-        }
-      } else if (isSecondHalf) {
-        List<String> currentList = List.from(state.teamBTimeouts2);
-        
-        // REGLA FIBA (Auto-burn)
-        if (isClutchTime && currentList.isEmpty) {
-           currentList.add("X"); // Quemamos el primero
-        }
+    } 
+    // B. SEGUNDA MITAD (3 y 4)
+    else if (isSecondHalf) {
+      currentList = List.from(teamId == 'A' ? state.teamATimeouts2 : state.teamBTimeouts2);
 
-        if (currentList.length < 3) {
-          currentList.add(minStr);
-          state = state.copyWith(teamBTimeouts2: currentList);
-        } 
-      } else if (isOvertime) {
-         if (state.teamBTimeouts2.length < 3) {
-             state = state.copyWith(teamBTimeouts2: [...state.teamBTimeouts2, minStr]);
-         }
+      // --- REGLA DE ORO (AUTO-BURN) ---
+      // Si estamos en los últimos 2 minutos Y la lista está vacía,
+      // significa que no usaron ningún tiempo antes. Pierden uno (se marca X).
+      if (isClutchTime && currentList.isEmpty) {
+        currentList.add("X"); 
       }
+
+      // Ahora verificamos si hay espacio.
+      // Si se agregó la "X", la longitud es 1. Aún pueden agregar 2 más (Total 3).
+      if (currentList.length < 3) {
+        currentList.add(minStr);
+        _updateTimeoutList(teamId, 2, currentList);
+      } else {
+        // Ya tienen 3 marcas (ej: "X", "9", "10"). No pueden pedir más.
+      }
+    } 
+    // C. TIEMPO EXTRA
+    else {
+       // Lógica simple para OT: Agregamos a la lista de la 2da mitad si cabe, 
+       // o podrías crear una lista nueva si tu PDF lo soporta.
+       // FIBA da 1 tiempo por cada OT.
+       currentList = List.from(teamId == 'A' ? state.teamATimeouts2 : state.teamBTimeouts2);
+       // Aquí podrías permitir ir más allá de 3 si es OT, o resetear.
+       // Por ahora, lo agregamos si hay espacio visual.
+       if (currentList.length < 5) { // Damos un poco más de margen visual para OT
+          currentList.add(minStr);
+          _updateTimeoutList(teamId, 2, currentList);
+       }
     }
-    _saveToDatabase();
+  }
+
+void _updateTimeoutList(String teamId, int half, List<String> newList) {
+  if (teamId == 'A') {
+    state = half == 1 
+      ? state.copyWith(teamATimeouts1: newList) 
+      : state.copyWith(teamATimeouts2: newList);
+  } else {
+    state = half == 1 
+      ? state.copyWith(teamBTimeouts1: newList) 
+      : state.copyWith(teamBTimeouts2: newList);
+  }
+  _saveToDatabase();
+}
+
+// ------------------------------------------------------------------------
+  // TIMER CON CHEQUEO AUTOMÁTICO
+  // ------------------------------------------------------------------------
+  void _start() {
+    _timer?.cancel();
+    state = state.copyWith(isRunning: true);
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (state.timeLeft.inSeconds > 0) {
+        final newTime = state.timeLeft - const Duration(seconds: 1);
+        
+        // Verificamos si al bajar el segundo entramos a 2:00 (120s) exactos en el 4to periodo
+        bool triggerAutoBurn = state.currentPeriod == 4 && newTime.inSeconds == 120;
+
+        state = state.copyWith(timeLeft: newTime);
+
+        if (triggerAutoBurn) {
+           _applyAutoBurn();
+        }
+      } else {
+        _pause();
+      }
+    });
+  }
+
+  // Este método solo se llama automáticamete cuando el reloj cruza 2:00
+  void _applyAutoBurn() {
+    bool changed = false;
+    List<String> listA = List.from(state.teamATimeouts2);
+    List<String> listB = List.from(state.teamBTimeouts2);
+
+    if (listA.isEmpty) {
+      listA.add("X");
+      changed = true;
+    }
+    if (listB.isEmpty) {
+      listB.add("X");
+      changed = true;
+    }
+
+    if (changed) {
+      _saveToHistory();
+
+      state = state.copyWith(
+        teamATimeouts2: listA,
+        teamBTimeouts2: listB,
+      );
+      _saveToDatabase();
+    }
   }
   void initializeNewMatch({
     required String matchId,
@@ -531,20 +593,6 @@ void addTimeout(String teamId) {
     } else {
       _start();
     }
-  }
-
-  void _start() {
-    _timer?.cancel();
-    state = state.copyWith(isRunning: true);
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (state.timeLeft.inSeconds > 0) {
-        state = state.copyWith(
-          timeLeft: state.timeLeft - const Duration(seconds: 1),
-        );
-      } else {
-        _pause();
-      }
-    });
   }
 
   void _pause() {
