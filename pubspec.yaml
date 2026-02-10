@@ -41,6 +41,7 @@ dependencies:
   printing: ^5.11.0
   http: ^1.2.0
   signature: ^5.4.0
+  intl: ^0.20.0
 
 
 dev_dependencies:

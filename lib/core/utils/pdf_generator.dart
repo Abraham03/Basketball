@@ -789,10 +789,12 @@ class PdfGenerator {
       final PdfColor periodColor = (p % 2 != 0)
           ? PdfColors.red
           : PdfColors.blue900;
-      if (runningA > 0 && runningA <= 160)
+      if (runningA > 0 && runningA <= 160) {
         widgets.add(_drawPeriodEndLine(runningA, 'A', stepY, periodColor));
-      if (runningB > 0 && runningB <= 160)
+      }
+      if (runningB > 0 && runningB <= 160) {
         widgets.add(_drawPeriodEndLine(runningB, 'B', stepY, periodColor));
+      }
     }
     return widgets;
   }

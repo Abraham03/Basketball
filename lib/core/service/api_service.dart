@@ -75,6 +75,15 @@ class ApiService {
     }
   }
 
+  // Crear Torneo
+  Future<void> createTournament(String name, String category) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl?action=create_tournament'),
+      body: jsonEncode({"name": name, "category": category}),
+    );
+    _checkResponse(response);
+  }
+
   // Helper para validar respuestas genéricas
   void _checkResponse(http.Response response) {
     if (response.statusCode != 200) throw Exception('HTTP Error: ${response.statusCode}');

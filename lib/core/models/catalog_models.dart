@@ -14,6 +14,8 @@ class Tournament {
       category: json['category'] ?? '',
     );
   }
+
+  get status => null;
 }
 
 class Venue {

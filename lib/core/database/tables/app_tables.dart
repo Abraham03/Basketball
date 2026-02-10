@@ -16,6 +16,18 @@ class Matches extends Table with BaseTable {
   IntColumn get scoreB => integer().withDefault(const Constant(0))();
 }
 
+@DataClassName('Tournament')
+class Tournaments extends Table with BaseTable {
+  TextColumn get name => text().withLength(min: 1, max: 150)();
+  TextColumn get category => text().nullable()();
+  // Estado: ACTIVE, FINISHED
+  TextColumn get status => text().withDefault(const Constant('ACTIVE'))();
+  
+  // Fechas opcionales
+  DateTimeColumn get startDate => dateTime().nullable()();
+  DateTimeColumn get endDate => dateTime().nullable()();
+}
+
 // Tabla de Jugadores (Catálogo Global)
 class Players extends Table with BaseTable {
   TextColumn get fullName => text().withLength(min: 1, max: 100)();

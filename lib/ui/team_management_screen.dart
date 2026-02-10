@@ -85,7 +85,7 @@ class TeamManagementScreen extends ConsumerWidget {
                 await ref.read(apiServiceProvider).createTeam(
                   nameCtrl.text, 
                   shortCtrl.text, 
-                  coachCtrl.text
+                  coachCtrl.text,
                 );
                 // 2. Refrescar la lista de equipos
                 ref.invalidate(catalogProvider);
