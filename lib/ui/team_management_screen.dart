@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/catalog_provider.dart';
-import 'team_detail_screen.dart'; // La crearemos en el siguiente paso
-
+import 'team_detail_screen.dart'; 
+import 'package:drift/drift.dart' as drift; 
+import '../core/database/app_database.dart';
+import '../logic/tournament_provider.dart';
 class TeamManagementScreen extends ConsumerWidget {
-  const TeamManagementScreen({super.key});
+  final String tournamentId;
+  const TeamManagementScreen({super.key, required this.tournamentId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Escuchamos el catálogo. Si cambia (ej: agregamos equipo), se actualiza sola.
-    final catalogAsync = ref.watch(catalogProvider);
+    // provider filtrado por torneo
+    final catalogAsync = ref.watch(tournamentDataByIdProvider(tournamentId));
 
     return Scaffold(
       appBar: AppBar(title: const Text("Gestión de Equipos")),
@@ -75,26 +78,50 @@ class TeamManagementScreen extends ConsumerWidget {
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar")),
-          ElevatedButton(
+ElevatedButton(
             onPressed: () async {
               if (nameCtrl.text.isEmpty) return;
-              Navigator.pop(ctx); // Cerrar diálogo
+              Navigator.pop(ctx); 
               
               try {
-                // 1. Llamar a la API
-                await ref.read(apiServiceProvider).createTeam(
+                // 1. Crear en API y OBTENER ID
+                final newTeamId = await ref.read(apiServiceProvider).createTeam(
                   nameCtrl.text, 
                   shortCtrl.text, 
                   coachCtrl.text,
+                  tournamentId: tournamentId 
                 );
-                // 2. Refrescar la lista de equipos
-                ref.invalidate(catalogProvider);
-
-                // Verificar si el contexto sigue vivo
-                if (!context.mounted) return;
                 
+                // 2. INSERTAR EN BASE DE DATOS LOCAL (Optimistic Update)
+                final db = ref.read(databaseProvider);
+                
+                await db.transaction(() async {
+                  // A. Insertar Equipo
+                  await db.into(db.teams).insert(
+                    TeamsCompanion.insert(
+                      id: drift.Value(newTeamId.toString()), 
+                      name: nameCtrl.text, // Probablemente este sí acepte String directo si es required
+                      shortName: drift.Value(shortCtrl.text),
+                      coachName: drift.Value(coachCtrl.text),
+                    ),
+                    mode: drift.InsertMode.insertOrReplace
+                  );
+
+                  // B. Insertar Relación
+                  await db.into(db.tournamentTeams).insert(
+                    TournamentTeamsCompanion.insert(
+                      tournamentId: tournamentId,
+                      teamId: newTeamId.toString(),
+                    ),
+                    mode: drift.InsertMode.insertOrReplace
+                  );
+                });
+
+                // Al usar StreamProvider, la lista se actualiza sola aquí.
+
+                if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Equipo creado con éxito"))
+                  const SnackBar(content: Text("Equipo creado correctamente"), backgroundColor: Colors.green)
                 );
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(

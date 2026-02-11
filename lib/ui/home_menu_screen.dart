@@ -181,7 +181,7 @@ class HomeMenuScreen extends ConsumerWidget {
                     // Validación: Bloquear si no hay torneo seleccionado
                     onTap: selectedTournamentId == null 
                       ? () => _showNoTournamentAlert(context)
-                      : () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TeamManagementScreen())),
+                      : () => Navigator.push(context, MaterialPageRoute(builder: (_) => TeamManagementScreen(tournamentId: selectedTournamentId))),
                   ),
 
                   // 3. Sincronizar Datos (Descargar de la Nube)

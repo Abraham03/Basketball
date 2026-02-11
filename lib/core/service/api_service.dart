@@ -89,17 +89,28 @@ class ApiService {
     }
   }
 
-  Future<void> createTeam(String name, String shortName, String coach) async {
+Future<int> createTeam(String name, String shortName, String coach, {String? tournamentId}) async {
     try {
+      final bodyData = {
+        "name": name,
+        "shortName": shortName,
+        "coachName": coach,
+        if (tournamentId != null) "tournament_id": tournamentId,
+      };
+
       final response = await http.post(
         Uri.parse('$_baseUrl?action=create_team'),
-        body: jsonEncode({
-          "name": name,
-          "shortName": shortName,
-          "coachName": coach,
-        }),
+        headers: {'Content-Type': 'application/json'}, // IMPORTANTE HEADER
+        body: jsonEncode(bodyData),
       );
-      _checkResponse(response);
+      
+      if (response.statusCode != 200) throw Exception('HTTP Error: ${response.statusCode}');
+      final body = jsonDecode(response.body);
+      if (body['status'] != 'success') throw Exception(body['message']);
+      
+      // Devolvemos el ID nuevo que viene del PHP
+      return body['newId']; 
+
     } catch (e) {
       throw Exception('Error creando equipo: $e');
     }
