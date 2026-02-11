@@ -11,7 +11,7 @@ import 'daos/matches_dao.dart';
 part 'app_database.g.dart'; // Archivo generado automáticamente
 
 @DriftDatabase(
-  tables: [Matches, Players, MatchRosters, GameEvents, Tournaments],
+  tables: [Matches, Players, MatchRosters, GameEvents, Tournaments , Venues, Teams, TournamentTeams],
   daos: [MatchesDao], // Registramos el DAO
 )
 class AppDatabase extends _$AppDatabase {

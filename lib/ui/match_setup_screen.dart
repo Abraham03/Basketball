@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/models/catalog_models.dart';
 import '../logic/catalog_provider.dart';
-// Importamos la pantalla de selección de titulares
+import '../logic/tournament_provider.dart';
 import 'starters_selection_screen.dart';
 
 class MatchSetupScreen extends ConsumerStatefulWidget {
-  const MatchSetupScreen({super.key});
+  final String tournamentId;
+  const MatchSetupScreen({super.key, required this.tournamentId});
 
   @override
   ConsumerState<MatchSetupScreen> createState() => _MatchSetupScreenState();
@@ -27,7 +28,27 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final catalogAsync = ref.watch(catalogProvider);
+    // 1. Provider de datos del partido (Equipos filtrados)
+  final catalogAsync = ref.watch(tournamentDataByIdProvider(widget.tournamentId));
+    // 2. Provider de lista de torneos (Para buscar el nombre)
+  final tournamentsListAsync = ref.watch(tournamentsListProvider);
+  // 3. Lógica para obtener el nombre
+    String currentTournamentName = "Cargando...";
+
+
+   tournamentsListAsync.when(
+      data: (list) {
+        try {
+          // Buscamos el torneo que coincida con el ID recibido
+          final t = list.firstWhere((element) => element.id == widget.tournamentId);
+          currentTournamentName = t.name;
+        } catch (_) {
+          currentTournamentName = "Torneo Desconocido";
+        }
+      },
+      loading: () => currentTournamentName = "...",
+      error: (_, __) => currentTournamentName = "Error",
+    ); 
 
     return Scaffold(
       appBar: AppBar(title: const Text("Configurar Partido")),
@@ -45,14 +66,26 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                   _buildSectionTitle("Datos del Evento"),
                   
                   // 1. TORNEO
-                  DropdownButtonFormField<Tournament>(
-                    decoration: const InputDecoration(labelText: "Torneo", border: OutlineInputBorder()),
-                    initialValue: selectedTournament,
-                    items: catalogData.tournaments.map((t) {
-                      return DropdownMenuItem(value: t, child: Text(t.name));
-                    }).toList(),
-                    onChanged: (val) => setState(() => selectedTournament = val),
-                    validator: (val) => val == null ? 'Requerido' : null,
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(5),
+                      border: Border.all(color: Colors.grey),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text("Torneo Seleccionado:", 
+                          style: TextStyle(fontSize: 12, color: Colors.grey)
+                        ),
+                        Text(
+                          currentTournamentName, // <--- Usamos la variable calculada arriba
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 16),
 
@@ -132,10 +165,10 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                       ),
                       onPressed: () {
                         if (_formKey.currentState!.validate()) {
-                          _goToStarterSelection(catalogData);
+                          _goToStarterSelection(catalogData,currentTournamentName);
                         }
                       },
-                      child: const Text("CONTINUAR A ROSTERS", style: TextStyle(fontSize: 18)),
+                      child: const Text("Seleccionar Jugadores", style: TextStyle(fontSize: 18)),
                     ),
                   ),
                 ],
@@ -154,7 +187,14 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
     );
   }
 
-  void _goToStarterSelection(CatalogData data) {
+  void _goToStarterSelection(CatalogData data, String tournamentName) {
+    // Validación extra por seguridad
+    if (selectedTeamA == null || selectedTeamB == null || selectedVenue == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Por favor selecciona todos los campos")),
+      );
+      return;
+    }
     // 1. Generar ID del partido
     final matchId = DateTime.now().millisecondsSinceEpoch.toString();
 
@@ -172,12 +212,12 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
           teamB: selectedTeamB!,
           rosterA: rosterA,
           rosterB: rosterB,
-          tournamentId: selectedTournament!.id,
+          tournamentId: int.parse(widget.tournamentId),
           venueId: selectedVenue!.id,
           mainReferee: _referee1Controller.text,
           auxReferee: _referee2Controller.text,
           scorekeeper: _scorekeeperController.text,
-          tournamentName: selectedTournament!.name,
+          tournamentName: tournamentName,
           venueName: selectedVenue!.name,
         ),
       ),

@@ -18,6 +18,19 @@ class Tournament {
   get status => null;
 }
 
+class TournamentTeamRelation {
+  final int tournamentId;
+  final int teamId;
+  TournamentTeamRelation({required this.tournamentId, required this.teamId});
+  
+  factory TournamentTeamRelation.fromJson(Map<String, dynamic> json) {
+    return TournamentTeamRelation(
+      tournamentId: int.parse(json['tournament_id'].toString()),
+      teamId: int.parse(json['team_id'].toString()),
+    );
+  }
+}
+
 class Venue {
   final int id;
   final String name;
@@ -86,11 +99,13 @@ class CatalogData {
   final List<Venue> venues;
   final List<Team> teams;
   final List<Player> players;
+  final List<TournamentTeamRelation> relationships; 
 
   CatalogData({
     required this.tournaments,
     required this.venues,
     required this.teams,
     required this.players,
+    required this.relationships,
   });
 }

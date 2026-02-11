@@ -9,7 +9,7 @@ class StartersSelectionScreen extends StatefulWidget {
   final List<Player> rosterA;
   final List<Player> rosterB;
   
-  // --- NUEVOS CAMPOS NECESARIOS ---
+
   final int tournamentId;
   final int venueId;
   // Nota: teamAId y teamBId los sacamos de los objetos teamA y teamB

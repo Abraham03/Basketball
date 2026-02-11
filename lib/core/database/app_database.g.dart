@@ -657,6 +657,471 @@ class MatchesCompanion extends UpdateCompanion<BasketballMatch> {
   }
 }
 
+class $TeamsTable extends Teams with TableInfo<$TeamsTable, Team> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TeamsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    clientDefault: () => const Uuid().v4(),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 100,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _shortNameMeta = const VerificationMeta(
+    'shortName',
+  );
+  @override
+  late final GeneratedColumn<String> shortName = GeneratedColumn<String>(
+    'short_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _coachNameMeta = const VerificationMeta(
+    'coachName',
+  );
+  @override
+  late final GeneratedColumn<String> coachName = GeneratedColumn<String>(
+    'coach_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    createdAt,
+    updatedAt,
+    isSynced,
+    name,
+    shortName,
+    coachName,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'teams';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Team> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('short_name')) {
+      context.handle(
+        _shortNameMeta,
+        shortName.isAcceptableOrUnknown(data['short_name']!, _shortNameMeta),
+      );
+    }
+    if (data.containsKey('coach_name')) {
+      context.handle(
+        _coachNameMeta,
+        coachName.isAcceptableOrUnknown(data['coach_name']!, _coachNameMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Team map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Team(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      ),
+      isSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_synced'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      shortName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}short_name'],
+      ),
+      coachName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}coach_name'],
+      ),
+    );
+  }
+
+  @override
+  $TeamsTable createAlias(String alias) {
+    return $TeamsTable(attachedDatabase, alias);
+  }
+}
+
+class Team extends DataClass implements Insertable<Team> {
+  final String id;
+  final DateTime createdAt;
+  final DateTime? updatedAt;
+  final bool isSynced;
+  final String name;
+  final String? shortName;
+  final String? coachName;
+  const Team({
+    required this.id,
+    required this.createdAt,
+    this.updatedAt,
+    required this.isSynced,
+    required this.name,
+    this.shortName,
+    this.coachName,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
+    map['is_synced'] = Variable<bool>(isSynced);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || shortName != null) {
+      map['short_name'] = Variable<String>(shortName);
+    }
+    if (!nullToAbsent || coachName != null) {
+      map['coach_name'] = Variable<String>(coachName);
+    }
+    return map;
+  }
+
+  TeamsCompanion toCompanion(bool nullToAbsent) {
+    return TeamsCompanion(
+      id: Value(id),
+      createdAt: Value(createdAt),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
+      isSynced: Value(isSynced),
+      name: Value(name),
+      shortName: shortName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(shortName),
+      coachName: coachName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coachName),
+    );
+  }
+
+  factory Team.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Team(
+      id: serializer.fromJson<String>(json['id']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
+      name: serializer.fromJson<String>(json['name']),
+      shortName: serializer.fromJson<String?>(json['shortName']),
+      coachName: serializer.fromJson<String?>(json['coachName']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+      'isSynced': serializer.toJson<bool>(isSynced),
+      'name': serializer.toJson<String>(name),
+      'shortName': serializer.toJson<String?>(shortName),
+      'coachName': serializer.toJson<String?>(coachName),
+    };
+  }
+
+  Team copyWith({
+    String? id,
+    DateTime? createdAt,
+    Value<DateTime?> updatedAt = const Value.absent(),
+    bool? isSynced,
+    String? name,
+    Value<String?> shortName = const Value.absent(),
+    Value<String?> coachName = const Value.absent(),
+  }) => Team(
+    id: id ?? this.id,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+    isSynced: isSynced ?? this.isSynced,
+    name: name ?? this.name,
+    shortName: shortName.present ? shortName.value : this.shortName,
+    coachName: coachName.present ? coachName.value : this.coachName,
+  );
+  Team copyWithCompanion(TeamsCompanion data) {
+    return Team(
+      id: data.id.present ? data.id.value : this.id,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+      name: data.name.present ? data.name.value : this.name,
+      shortName: data.shortName.present ? data.shortName.value : this.shortName,
+      coachName: data.coachName.present ? data.coachName.value : this.coachName,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Team(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('name: $name, ')
+          ..write('shortName: $shortName, ')
+          ..write('coachName: $coachName')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    createdAt,
+    updatedAt,
+    isSynced,
+    name,
+    shortName,
+    coachName,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Team &&
+          other.id == this.id &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.isSynced == this.isSynced &&
+          other.name == this.name &&
+          other.shortName == this.shortName &&
+          other.coachName == this.coachName);
+}
+
+class TeamsCompanion extends UpdateCompanion<Team> {
+  final Value<String> id;
+  final Value<DateTime> createdAt;
+  final Value<DateTime?> updatedAt;
+  final Value<bool> isSynced;
+  final Value<String> name;
+  final Value<String?> shortName;
+  final Value<String?> coachName;
+  final Value<int> rowid;
+  const TeamsCompanion({
+    this.id = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.name = const Value.absent(),
+    this.shortName = const Value.absent(),
+    this.coachName = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TeamsCompanion.insert({
+    this.id = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    required String name,
+    this.shortName = const Value.absent(),
+    this.coachName = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : name = Value(name);
+  static Insertable<Team> custom({
+    Expression<String>? id,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<bool>? isSynced,
+    Expression<String>? name,
+    Expression<String>? shortName,
+    Expression<String>? coachName,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (isSynced != null) 'is_synced': isSynced,
+      if (name != null) 'name': name,
+      if (shortName != null) 'short_name': shortName,
+      if (coachName != null) 'coach_name': coachName,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TeamsCompanion copyWith({
+    Value<String>? id,
+    Value<DateTime>? createdAt,
+    Value<DateTime?>? updatedAt,
+    Value<bool>? isSynced,
+    Value<String>? name,
+    Value<String?>? shortName,
+    Value<String?>? coachName,
+    Value<int>? rowid,
+  }) {
+    return TeamsCompanion(
+      id: id ?? this.id,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isSynced: isSynced ?? this.isSynced,
+      name: name ?? this.name,
+      shortName: shortName ?? this.shortName,
+      coachName: coachName ?? this.coachName,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (shortName.present) {
+      map['short_name'] = Variable<String>(shortName.value);
+    }
+    if (coachName.present) {
+      map['coach_name'] = Variable<String>(coachName.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TeamsCompanion(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('name: $name, ')
+          ..write('shortName: $shortName, ')
+          ..write('coachName: $coachName, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $PlayersTable extends Players with TableInfo<$PlayersTable, Player> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -710,12 +1175,10 @@ class $PlayersTable extends Players with TableInfo<$PlayersTable, Player> {
     ),
     defaultValue: const Constant(false),
   );
-  static const VerificationMeta _fullNameMeta = const VerificationMeta(
-    'fullName',
-  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
-  late final GeneratedColumn<String> fullName = GeneratedColumn<String>(
-    'full_name',
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
     aliasedName,
     false,
     additionalChecks: GeneratedColumn.checkTextLength(
@@ -725,38 +1188,53 @@ class $PlayersTable extends Players with TableInfo<$PlayersTable, Player> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _photoPathMeta = const VerificationMeta(
-    'photoPath',
-  );
+  static const VerificationMeta _teamIdMeta = const VerificationMeta('teamId');
   @override
-  late final GeneratedColumn<String> photoPath = GeneratedColumn<String>(
-    'photo_path',
+  late final GeneratedColumn<int> teamId = GeneratedColumn<int>(
+    'team_id',
     aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES teams (id) ON DELETE CASCADE',
+    ),
   );
-  static const VerificationMeta _teamNameReferenceMeta = const VerificationMeta(
-    'teamNameReference',
+  static const VerificationMeta _defaultNumberMeta = const VerificationMeta(
+    'defaultNumber',
   );
   @override
-  late final GeneratedColumn<String> teamNameReference =
-      GeneratedColumn<String>(
-        'team_name_reference',
-        aliasedName,
-        true,
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-      );
+  late final GeneratedColumn<int> defaultNumber = GeneratedColumn<int>(
+    'default_number',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _activeMeta = const VerificationMeta('active');
+  @override
+  late final GeneratedColumn<bool> active = GeneratedColumn<bool>(
+    'active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("active" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
     createdAt,
     updatedAt,
     isSynced,
-    fullName,
-    photoPath,
-    teamNameReference,
+    name,
+    teamId,
+    defaultNumber,
+    active,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -791,27 +1269,35 @@ class $PlayersTable extends Players with TableInfo<$PlayersTable, Player> {
         isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
       );
     }
-    if (data.containsKey('full_name')) {
+    if (data.containsKey('name')) {
       context.handle(
-        _fullNameMeta,
-        fullName.isAcceptableOrUnknown(data['full_name']!, _fullNameMeta),
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
       );
     } else if (isInserting) {
-      context.missing(_fullNameMeta);
+      context.missing(_nameMeta);
     }
-    if (data.containsKey('photo_path')) {
+    if (data.containsKey('team_id')) {
       context.handle(
-        _photoPathMeta,
-        photoPath.isAcceptableOrUnknown(data['photo_path']!, _photoPathMeta),
+        _teamIdMeta,
+        teamId.isAcceptableOrUnknown(data['team_id']!, _teamIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_teamIdMeta);
+    }
+    if (data.containsKey('default_number')) {
+      context.handle(
+        _defaultNumberMeta,
+        defaultNumber.isAcceptableOrUnknown(
+          data['default_number']!,
+          _defaultNumberMeta,
+        ),
       );
     }
-    if (data.containsKey('team_name_reference')) {
+    if (data.containsKey('active')) {
       context.handle(
-        _teamNameReferenceMeta,
-        teamNameReference.isAcceptableOrUnknown(
-          data['team_name_reference']!,
-          _teamNameReferenceMeta,
-        ),
+        _activeMeta,
+        active.isAcceptableOrUnknown(data['active']!, _activeMeta),
       );
     }
     return context;
@@ -839,18 +1325,22 @@ class $PlayersTable extends Players with TableInfo<$PlayersTable, Player> {
         DriftSqlType.bool,
         data['${effectivePrefix}is_synced'],
       )!,
-      fullName: attachedDatabase.typeMapping.read(
+      name: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}full_name'],
+        data['${effectivePrefix}name'],
       )!,
-      photoPath: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}photo_path'],
-      ),
-      teamNameReference: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}team_name_reference'],
-      ),
+      teamId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}team_id'],
+      )!,
+      defaultNumber: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}default_number'],
+      )!,
+      active: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}active'],
+      )!,
     );
   }
 
@@ -865,17 +1355,19 @@ class Player extends DataClass implements Insertable<Player> {
   final DateTime createdAt;
   final DateTime? updatedAt;
   final bool isSynced;
-  final String fullName;
-  final String? photoPath;
-  final String? teamNameReference;
+  final String name;
+  final int teamId;
+  final int defaultNumber;
+  final bool active;
   const Player({
     required this.id,
     required this.createdAt,
     this.updatedAt,
     required this.isSynced,
-    required this.fullName,
-    this.photoPath,
-    this.teamNameReference,
+    required this.name,
+    required this.teamId,
+    required this.defaultNumber,
+    required this.active,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -886,13 +1378,10 @@ class Player extends DataClass implements Insertable<Player> {
       map['updated_at'] = Variable<DateTime>(updatedAt);
     }
     map['is_synced'] = Variable<bool>(isSynced);
-    map['full_name'] = Variable<String>(fullName);
-    if (!nullToAbsent || photoPath != null) {
-      map['photo_path'] = Variable<String>(photoPath);
-    }
-    if (!nullToAbsent || teamNameReference != null) {
-      map['team_name_reference'] = Variable<String>(teamNameReference);
-    }
+    map['name'] = Variable<String>(name);
+    map['team_id'] = Variable<int>(teamId);
+    map['default_number'] = Variable<int>(defaultNumber);
+    map['active'] = Variable<bool>(active);
     return map;
   }
 
@@ -904,13 +1393,10 @@ class Player extends DataClass implements Insertable<Player> {
           ? const Value.absent()
           : Value(updatedAt),
       isSynced: Value(isSynced),
-      fullName: Value(fullName),
-      photoPath: photoPath == null && nullToAbsent
-          ? const Value.absent()
-          : Value(photoPath),
-      teamNameReference: teamNameReference == null && nullToAbsent
-          ? const Value.absent()
-          : Value(teamNameReference),
+      name: Value(name),
+      teamId: Value(teamId),
+      defaultNumber: Value(defaultNumber),
+      active: Value(active),
     );
   }
 
@@ -924,11 +1410,10 @@ class Player extends DataClass implements Insertable<Player> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
       isSynced: serializer.fromJson<bool>(json['isSynced']),
-      fullName: serializer.fromJson<String>(json['fullName']),
-      photoPath: serializer.fromJson<String?>(json['photoPath']),
-      teamNameReference: serializer.fromJson<String?>(
-        json['teamNameReference'],
-      ),
+      name: serializer.fromJson<String>(json['name']),
+      teamId: serializer.fromJson<int>(json['teamId']),
+      defaultNumber: serializer.fromJson<int>(json['defaultNumber']),
+      active: serializer.fromJson<bool>(json['active']),
     );
   }
   @override
@@ -939,9 +1424,10 @@ class Player extends DataClass implements Insertable<Player> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
       'isSynced': serializer.toJson<bool>(isSynced),
-      'fullName': serializer.toJson<String>(fullName),
-      'photoPath': serializer.toJson<String?>(photoPath),
-      'teamNameReference': serializer.toJson<String?>(teamNameReference),
+      'name': serializer.toJson<String>(name),
+      'teamId': serializer.toJson<int>(teamId),
+      'defaultNumber': serializer.toJson<int>(defaultNumber),
+      'active': serializer.toJson<bool>(active),
     };
   }
 
@@ -950,19 +1436,19 @@ class Player extends DataClass implements Insertable<Player> {
     DateTime? createdAt,
     Value<DateTime?> updatedAt = const Value.absent(),
     bool? isSynced,
-    String? fullName,
-    Value<String?> photoPath = const Value.absent(),
-    Value<String?> teamNameReference = const Value.absent(),
+    String? name,
+    int? teamId,
+    int? defaultNumber,
+    bool? active,
   }) => Player(
     id: id ?? this.id,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
     isSynced: isSynced ?? this.isSynced,
-    fullName: fullName ?? this.fullName,
-    photoPath: photoPath.present ? photoPath.value : this.photoPath,
-    teamNameReference: teamNameReference.present
-        ? teamNameReference.value
-        : this.teamNameReference,
+    name: name ?? this.name,
+    teamId: teamId ?? this.teamId,
+    defaultNumber: defaultNumber ?? this.defaultNumber,
+    active: active ?? this.active,
   );
   Player copyWithCompanion(PlayersCompanion data) {
     return Player(
@@ -970,11 +1456,12 @@ class Player extends DataClass implements Insertable<Player> {
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
-      fullName: data.fullName.present ? data.fullName.value : this.fullName,
-      photoPath: data.photoPath.present ? data.photoPath.value : this.photoPath,
-      teamNameReference: data.teamNameReference.present
-          ? data.teamNameReference.value
-          : this.teamNameReference,
+      name: data.name.present ? data.name.value : this.name,
+      teamId: data.teamId.present ? data.teamId.value : this.teamId,
+      defaultNumber: data.defaultNumber.present
+          ? data.defaultNumber.value
+          : this.defaultNumber,
+      active: data.active.present ? data.active.value : this.active,
     );
   }
 
@@ -985,9 +1472,10 @@ class Player extends DataClass implements Insertable<Player> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('isSynced: $isSynced, ')
-          ..write('fullName: $fullName, ')
-          ..write('photoPath: $photoPath, ')
-          ..write('teamNameReference: $teamNameReference')
+          ..write('name: $name, ')
+          ..write('teamId: $teamId, ')
+          ..write('defaultNumber: $defaultNumber, ')
+          ..write('active: $active')
           ..write(')'))
         .toString();
   }
@@ -998,9 +1486,10 @@ class Player extends DataClass implements Insertable<Player> {
     createdAt,
     updatedAt,
     isSynced,
-    fullName,
-    photoPath,
-    teamNameReference,
+    name,
+    teamId,
+    defaultNumber,
+    active,
   );
   @override
   bool operator ==(Object other) =>
@@ -1010,9 +1499,10 @@ class Player extends DataClass implements Insertable<Player> {
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.isSynced == this.isSynced &&
-          other.fullName == this.fullName &&
-          other.photoPath == this.photoPath &&
-          other.teamNameReference == this.teamNameReference);
+          other.name == this.name &&
+          other.teamId == this.teamId &&
+          other.defaultNumber == this.defaultNumber &&
+          other.active == this.active);
 }
 
 class PlayersCompanion extends UpdateCompanion<Player> {
@@ -1020,18 +1510,20 @@ class PlayersCompanion extends UpdateCompanion<Player> {
   final Value<DateTime> createdAt;
   final Value<DateTime?> updatedAt;
   final Value<bool> isSynced;
-  final Value<String> fullName;
-  final Value<String?> photoPath;
-  final Value<String?> teamNameReference;
+  final Value<String> name;
+  final Value<int> teamId;
+  final Value<int> defaultNumber;
+  final Value<bool> active;
   final Value<int> rowid;
   const PlayersCompanion({
     this.id = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.isSynced = const Value.absent(),
-    this.fullName = const Value.absent(),
-    this.photoPath = const Value.absent(),
-    this.teamNameReference = const Value.absent(),
+    this.name = const Value.absent(),
+    this.teamId = const Value.absent(),
+    this.defaultNumber = const Value.absent(),
+    this.active = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   PlayersCompanion.insert({
@@ -1039,19 +1531,22 @@ class PlayersCompanion extends UpdateCompanion<Player> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.isSynced = const Value.absent(),
-    required String fullName,
-    this.photoPath = const Value.absent(),
-    this.teamNameReference = const Value.absent(),
+    required String name,
+    required int teamId,
+    this.defaultNumber = const Value.absent(),
+    this.active = const Value.absent(),
     this.rowid = const Value.absent(),
-  }) : fullName = Value(fullName);
+  }) : name = Value(name),
+       teamId = Value(teamId);
   static Insertable<Player> custom({
     Expression<String>? id,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<bool>? isSynced,
-    Expression<String>? fullName,
-    Expression<String>? photoPath,
-    Expression<String>? teamNameReference,
+    Expression<String>? name,
+    Expression<int>? teamId,
+    Expression<int>? defaultNumber,
+    Expression<bool>? active,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1059,9 +1554,10 @@ class PlayersCompanion extends UpdateCompanion<Player> {
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (isSynced != null) 'is_synced': isSynced,
-      if (fullName != null) 'full_name': fullName,
-      if (photoPath != null) 'photo_path': photoPath,
-      if (teamNameReference != null) 'team_name_reference': teamNameReference,
+      if (name != null) 'name': name,
+      if (teamId != null) 'team_id': teamId,
+      if (defaultNumber != null) 'default_number': defaultNumber,
+      if (active != null) 'active': active,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1071,9 +1567,10 @@ class PlayersCompanion extends UpdateCompanion<Player> {
     Value<DateTime>? createdAt,
     Value<DateTime?>? updatedAt,
     Value<bool>? isSynced,
-    Value<String>? fullName,
-    Value<String?>? photoPath,
-    Value<String?>? teamNameReference,
+    Value<String>? name,
+    Value<int>? teamId,
+    Value<int>? defaultNumber,
+    Value<bool>? active,
     Value<int>? rowid,
   }) {
     return PlayersCompanion(
@@ -1081,9 +1578,10 @@ class PlayersCompanion extends UpdateCompanion<Player> {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isSynced: isSynced ?? this.isSynced,
-      fullName: fullName ?? this.fullName,
-      photoPath: photoPath ?? this.photoPath,
-      teamNameReference: teamNameReference ?? this.teamNameReference,
+      name: name ?? this.name,
+      teamId: teamId ?? this.teamId,
+      defaultNumber: defaultNumber ?? this.defaultNumber,
+      active: active ?? this.active,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1103,14 +1601,17 @@ class PlayersCompanion extends UpdateCompanion<Player> {
     if (isSynced.present) {
       map['is_synced'] = Variable<bool>(isSynced.value);
     }
-    if (fullName.present) {
-      map['full_name'] = Variable<String>(fullName.value);
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
     }
-    if (photoPath.present) {
-      map['photo_path'] = Variable<String>(photoPath.value);
+    if (teamId.present) {
+      map['team_id'] = Variable<int>(teamId.value);
     }
-    if (teamNameReference.present) {
-      map['team_name_reference'] = Variable<String>(teamNameReference.value);
+    if (defaultNumber.present) {
+      map['default_number'] = Variable<int>(defaultNumber.value);
+    }
+    if (active.present) {
+      map['active'] = Variable<bool>(active.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -1125,9 +1626,10 @@ class PlayersCompanion extends UpdateCompanion<Player> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('isSynced: $isSynced, ')
-          ..write('fullName: $fullName, ')
-          ..write('photoPath: $photoPath, ')
-          ..write('teamNameReference: $teamNameReference, ')
+          ..write('name: $name, ')
+          ..write('teamId: $teamId, ')
+          ..write('defaultNumber: $defaultNumber, ')
+          ..write('active: $active, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2828,14 +3330,850 @@ class TournamentsCompanion extends UpdateCompanion<Tournament> {
   }
 }
 
+class $VenuesTable extends Venues with TableInfo<$VenuesTable, Venue> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $VenuesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    clientDefault: () => const Uuid().v4(),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 100,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _addressMeta = const VerificationMeta(
+    'address',
+  );
+  @override
+  late final GeneratedColumn<String> address = GeneratedColumn<String>(
+    'address',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    createdAt,
+    updatedAt,
+    isSynced,
+    name,
+    address,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'venues';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Venue> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('address')) {
+      context.handle(
+        _addressMeta,
+        address.isAcceptableOrUnknown(data['address']!, _addressMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Venue map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Venue(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      ),
+      isSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_synced'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      address: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}address'],
+      ),
+    );
+  }
+
+  @override
+  $VenuesTable createAlias(String alias) {
+    return $VenuesTable(attachedDatabase, alias);
+  }
+}
+
+class Venue extends DataClass implements Insertable<Venue> {
+  final String id;
+  final DateTime createdAt;
+  final DateTime? updatedAt;
+  final bool isSynced;
+  final String name;
+  final String? address;
+  const Venue({
+    required this.id,
+    required this.createdAt,
+    this.updatedAt,
+    required this.isSynced,
+    required this.name,
+    this.address,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
+    map['is_synced'] = Variable<bool>(isSynced);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || address != null) {
+      map['address'] = Variable<String>(address);
+    }
+    return map;
+  }
+
+  VenuesCompanion toCompanion(bool nullToAbsent) {
+    return VenuesCompanion(
+      id: Value(id),
+      createdAt: Value(createdAt),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
+      isSynced: Value(isSynced),
+      name: Value(name),
+      address: address == null && nullToAbsent
+          ? const Value.absent()
+          : Value(address),
+    );
+  }
+
+  factory Venue.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Venue(
+      id: serializer.fromJson<String>(json['id']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
+      name: serializer.fromJson<String>(json['name']),
+      address: serializer.fromJson<String?>(json['address']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+      'isSynced': serializer.toJson<bool>(isSynced),
+      'name': serializer.toJson<String>(name),
+      'address': serializer.toJson<String?>(address),
+    };
+  }
+
+  Venue copyWith({
+    String? id,
+    DateTime? createdAt,
+    Value<DateTime?> updatedAt = const Value.absent(),
+    bool? isSynced,
+    String? name,
+    Value<String?> address = const Value.absent(),
+  }) => Venue(
+    id: id ?? this.id,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+    isSynced: isSynced ?? this.isSynced,
+    name: name ?? this.name,
+    address: address.present ? address.value : this.address,
+  );
+  Venue copyWithCompanion(VenuesCompanion data) {
+    return Venue(
+      id: data.id.present ? data.id.value : this.id,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+      name: data.name.present ? data.name.value : this.name,
+      address: data.address.present ? data.address.value : this.address,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Venue(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('name: $name, ')
+          ..write('address: $address')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, createdAt, updatedAt, isSynced, name, address);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Venue &&
+          other.id == this.id &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.isSynced == this.isSynced &&
+          other.name == this.name &&
+          other.address == this.address);
+}
+
+class VenuesCompanion extends UpdateCompanion<Venue> {
+  final Value<String> id;
+  final Value<DateTime> createdAt;
+  final Value<DateTime?> updatedAt;
+  final Value<bool> isSynced;
+  final Value<String> name;
+  final Value<String?> address;
+  final Value<int> rowid;
+  const VenuesCompanion({
+    this.id = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.name = const Value.absent(),
+    this.address = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  VenuesCompanion.insert({
+    this.id = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    required String name,
+    this.address = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : name = Value(name);
+  static Insertable<Venue> custom({
+    Expression<String>? id,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<bool>? isSynced,
+    Expression<String>? name,
+    Expression<String>? address,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (isSynced != null) 'is_synced': isSynced,
+      if (name != null) 'name': name,
+      if (address != null) 'address': address,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  VenuesCompanion copyWith({
+    Value<String>? id,
+    Value<DateTime>? createdAt,
+    Value<DateTime?>? updatedAt,
+    Value<bool>? isSynced,
+    Value<String>? name,
+    Value<String?>? address,
+    Value<int>? rowid,
+  }) {
+    return VenuesCompanion(
+      id: id ?? this.id,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isSynced: isSynced ?? this.isSynced,
+      name: name ?? this.name,
+      address: address ?? this.address,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (address.present) {
+      map['address'] = Variable<String>(address.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('VenuesCompanion(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('name: $name, ')
+          ..write('address: $address, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TournamentTeamsTable extends TournamentTeams
+    with TableInfo<$TournamentTeamsTable, TournamentTeam> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TournamentTeamsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    clientDefault: () => const Uuid().v4(),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _tournamentIdMeta = const VerificationMeta(
+    'tournamentId',
+  );
+  @override
+  late final GeneratedColumn<String> tournamentId = GeneratedColumn<String>(
+    'tournament_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES tournaments (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _teamIdMeta = const VerificationMeta('teamId');
+  @override
+  late final GeneratedColumn<String> teamId = GeneratedColumn<String>(
+    'team_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES teams (id) ON DELETE CASCADE',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    createdAt,
+    updatedAt,
+    isSynced,
+    tournamentId,
+    teamId,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'tournament_teams';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TournamentTeam> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
+    if (data.containsKey('tournament_id')) {
+      context.handle(
+        _tournamentIdMeta,
+        tournamentId.isAcceptableOrUnknown(
+          data['tournament_id']!,
+          _tournamentIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_tournamentIdMeta);
+    }
+    if (data.containsKey('team_id')) {
+      context.handle(
+        _teamIdMeta,
+        teamId.isAcceptableOrUnknown(data['team_id']!, _teamIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_teamIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {tournamentId, teamId},
+  ];
+  @override
+  TournamentTeam map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TournamentTeam(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      ),
+      isSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_synced'],
+      )!,
+      tournamentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tournament_id'],
+      )!,
+      teamId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}team_id'],
+      )!,
+    );
+  }
+
+  @override
+  $TournamentTeamsTable createAlias(String alias) {
+    return $TournamentTeamsTable(attachedDatabase, alias);
+  }
+}
+
+class TournamentTeam extends DataClass implements Insertable<TournamentTeam> {
+  final String id;
+  final DateTime createdAt;
+  final DateTime? updatedAt;
+  final bool isSynced;
+  final String tournamentId;
+  final String teamId;
+  const TournamentTeam({
+    required this.id,
+    required this.createdAt,
+    this.updatedAt,
+    required this.isSynced,
+    required this.tournamentId,
+    required this.teamId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
+    map['is_synced'] = Variable<bool>(isSynced);
+    map['tournament_id'] = Variable<String>(tournamentId);
+    map['team_id'] = Variable<String>(teamId);
+    return map;
+  }
+
+  TournamentTeamsCompanion toCompanion(bool nullToAbsent) {
+    return TournamentTeamsCompanion(
+      id: Value(id),
+      createdAt: Value(createdAt),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
+      isSynced: Value(isSynced),
+      tournamentId: Value(tournamentId),
+      teamId: Value(teamId),
+    );
+  }
+
+  factory TournamentTeam.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TournamentTeam(
+      id: serializer.fromJson<String>(json['id']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
+      tournamentId: serializer.fromJson<String>(json['tournamentId']),
+      teamId: serializer.fromJson<String>(json['teamId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+      'isSynced': serializer.toJson<bool>(isSynced),
+      'tournamentId': serializer.toJson<String>(tournamentId),
+      'teamId': serializer.toJson<String>(teamId),
+    };
+  }
+
+  TournamentTeam copyWith({
+    String? id,
+    DateTime? createdAt,
+    Value<DateTime?> updatedAt = const Value.absent(),
+    bool? isSynced,
+    String? tournamentId,
+    String? teamId,
+  }) => TournamentTeam(
+    id: id ?? this.id,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+    isSynced: isSynced ?? this.isSynced,
+    tournamentId: tournamentId ?? this.tournamentId,
+    teamId: teamId ?? this.teamId,
+  );
+  TournamentTeam copyWithCompanion(TournamentTeamsCompanion data) {
+    return TournamentTeam(
+      id: data.id.present ? data.id.value : this.id,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+      tournamentId: data.tournamentId.present
+          ? data.tournamentId.value
+          : this.tournamentId,
+      teamId: data.teamId.present ? data.teamId.value : this.teamId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TournamentTeam(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('tournamentId: $tournamentId, ')
+          ..write('teamId: $teamId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, createdAt, updatedAt, isSynced, tournamentId, teamId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TournamentTeam &&
+          other.id == this.id &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.isSynced == this.isSynced &&
+          other.tournamentId == this.tournamentId &&
+          other.teamId == this.teamId);
+}
+
+class TournamentTeamsCompanion extends UpdateCompanion<TournamentTeam> {
+  final Value<String> id;
+  final Value<DateTime> createdAt;
+  final Value<DateTime?> updatedAt;
+  final Value<bool> isSynced;
+  final Value<String> tournamentId;
+  final Value<String> teamId;
+  final Value<int> rowid;
+  const TournamentTeamsCompanion({
+    this.id = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.tournamentId = const Value.absent(),
+    this.teamId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TournamentTeamsCompanion.insert({
+    this.id = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    required String tournamentId,
+    required String teamId,
+    this.rowid = const Value.absent(),
+  }) : tournamentId = Value(tournamentId),
+       teamId = Value(teamId);
+  static Insertable<TournamentTeam> custom({
+    Expression<String>? id,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<bool>? isSynced,
+    Expression<String>? tournamentId,
+    Expression<String>? teamId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (isSynced != null) 'is_synced': isSynced,
+      if (tournamentId != null) 'tournament_id': tournamentId,
+      if (teamId != null) 'team_id': teamId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TournamentTeamsCompanion copyWith({
+    Value<String>? id,
+    Value<DateTime>? createdAt,
+    Value<DateTime?>? updatedAt,
+    Value<bool>? isSynced,
+    Value<String>? tournamentId,
+    Value<String>? teamId,
+    Value<int>? rowid,
+  }) {
+    return TournamentTeamsCompanion(
+      id: id ?? this.id,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isSynced: isSynced ?? this.isSynced,
+      tournamentId: tournamentId ?? this.tournamentId,
+      teamId: teamId ?? this.teamId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (tournamentId.present) {
+      map['tournament_id'] = Variable<String>(tournamentId.value);
+    }
+    if (teamId.present) {
+      map['team_id'] = Variable<String>(teamId.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TournamentTeamsCompanion(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('tournamentId: $tournamentId, ')
+          ..write('teamId: $teamId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $MatchesTable matches = $MatchesTable(this);
+  late final $TeamsTable teams = $TeamsTable(this);
   late final $PlayersTable players = $PlayersTable(this);
   late final $MatchRostersTable matchRosters = $MatchRostersTable(this);
   late final $GameEventsTable gameEvents = $GameEventsTable(this);
   late final $TournamentsTable tournaments = $TournamentsTable(this);
+  late final $VenuesTable venues = $VenuesTable(this);
+  late final $TournamentTeamsTable tournamentTeams = $TournamentTeamsTable(
+    this,
+  );
   late final MatchesDao matchesDao = MatchesDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -2843,13 +4181,23 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     matches,
+    teams,
     players,
     matchRosters,
     gameEvents,
     tournaments,
+    venues,
+    tournamentTeams,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'teams',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('players', kind: UpdateKind.delete)],
+    ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
         'matches',
@@ -2870,6 +4218,20 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('game_events', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'tournaments',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('tournament_teams', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'teams',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('tournament_teams', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -3388,15 +4750,355 @@ typedef $$MatchesTableProcessedTableManager =
       BasketballMatch,
       PrefetchHooks Function({bool matchRostersRefs, bool gameEventsRefs})
     >;
+typedef $$TeamsTableCreateCompanionBuilder =
+    TeamsCompanion Function({
+      Value<String> id,
+      Value<DateTime> createdAt,
+      Value<DateTime?> updatedAt,
+      Value<bool> isSynced,
+      required String name,
+      Value<String?> shortName,
+      Value<String?> coachName,
+      Value<int> rowid,
+    });
+typedef $$TeamsTableUpdateCompanionBuilder =
+    TeamsCompanion Function({
+      Value<String> id,
+      Value<DateTime> createdAt,
+      Value<DateTime?> updatedAt,
+      Value<bool> isSynced,
+      Value<String> name,
+      Value<String?> shortName,
+      Value<String?> coachName,
+      Value<int> rowid,
+    });
+
+final class $$TeamsTableReferences
+    extends BaseReferences<_$AppDatabase, $TeamsTable, Team> {
+  $$TeamsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$TournamentTeamsTable, List<TournamentTeam>>
+  _tournamentTeamsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.tournamentTeams,
+    aliasName: $_aliasNameGenerator(db.teams.id, db.tournamentTeams.teamId),
+  );
+
+  $$TournamentTeamsTableProcessedTableManager get tournamentTeamsRefs {
+    final manager = $$TournamentTeamsTableTableManager(
+      $_db,
+      $_db.tournamentTeams,
+    ).filter((f) => f.teamId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _tournamentTeamsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$TeamsTableFilterComposer extends Composer<_$AppDatabase, $TeamsTable> {
+  $$TeamsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get shortName => $composableBuilder(
+    column: $table.shortName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get coachName => $composableBuilder(
+    column: $table.coachName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> tournamentTeamsRefs(
+    Expression<bool> Function($$TournamentTeamsTableFilterComposer f) f,
+  ) {
+    final $$TournamentTeamsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.tournamentTeams,
+      getReferencedColumn: (t) => t.teamId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TournamentTeamsTableFilterComposer(
+            $db: $db,
+            $table: $db.tournamentTeams,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$TeamsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TeamsTable> {
+  $$TeamsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get shortName => $composableBuilder(
+    column: $table.shortName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get coachName => $composableBuilder(
+    column: $table.coachName,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TeamsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TeamsTable> {
+  $$TeamsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get shortName =>
+      $composableBuilder(column: $table.shortName, builder: (column) => column);
+
+  GeneratedColumn<String> get coachName =>
+      $composableBuilder(column: $table.coachName, builder: (column) => column);
+
+  Expression<T> tournamentTeamsRefs<T extends Object>(
+    Expression<T> Function($$TournamentTeamsTableAnnotationComposer a) f,
+  ) {
+    final $$TournamentTeamsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.tournamentTeams,
+      getReferencedColumn: (t) => t.teamId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TournamentTeamsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tournamentTeams,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$TeamsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TeamsTable,
+          Team,
+          $$TeamsTableFilterComposer,
+          $$TeamsTableOrderingComposer,
+          $$TeamsTableAnnotationComposer,
+          $$TeamsTableCreateCompanionBuilder,
+          $$TeamsTableUpdateCompanionBuilder,
+          (Team, $$TeamsTableReferences),
+          Team,
+          PrefetchHooks Function({bool tournamentTeamsRefs})
+        > {
+  $$TeamsTableTableManager(_$AppDatabase db, $TeamsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TeamsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TeamsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TeamsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> shortName = const Value.absent(),
+                Value<String?> coachName = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TeamsCompanion(
+                id: id,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                isSynced: isSynced,
+                name: name,
+                shortName: shortName,
+                coachName: coachName,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                required String name,
+                Value<String?> shortName = const Value.absent(),
+                Value<String?> coachName = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TeamsCompanion.insert(
+                id: id,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                isSynced: isSynced,
+                name: name,
+                shortName: shortName,
+                coachName: coachName,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) =>
+                    (e.readTable(table), $$TeamsTableReferences(db, table, e)),
+              )
+              .toList(),
+          prefetchHooksCallback: ({tournamentTeamsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (tournamentTeamsRefs) db.tournamentTeams,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (tournamentTeamsRefs)
+                    await $_getPrefetchedData<
+                      Team,
+                      $TeamsTable,
+                      TournamentTeam
+                    >(
+                      currentTable: table,
+                      referencedTable: $$TeamsTableReferences
+                          ._tournamentTeamsRefsTable(db),
+                      managerFromTypedResult: (p0) => $$TeamsTableReferences(
+                        db,
+                        table,
+                        p0,
+                      ).tournamentTeamsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.teamId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$TeamsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TeamsTable,
+      Team,
+      $$TeamsTableFilterComposer,
+      $$TeamsTableOrderingComposer,
+      $$TeamsTableAnnotationComposer,
+      $$TeamsTableCreateCompanionBuilder,
+      $$TeamsTableUpdateCompanionBuilder,
+      (Team, $$TeamsTableReferences),
+      Team,
+      PrefetchHooks Function({bool tournamentTeamsRefs})
+    >;
 typedef $$PlayersTableCreateCompanionBuilder =
     PlayersCompanion Function({
       Value<String> id,
       Value<DateTime> createdAt,
       Value<DateTime?> updatedAt,
       Value<bool> isSynced,
-      required String fullName,
-      Value<String?> photoPath,
-      Value<String?> teamNameReference,
+      required String name,
+      required int teamId,
+      Value<int> defaultNumber,
+      Value<bool> active,
       Value<int> rowid,
     });
 typedef $$PlayersTableUpdateCompanionBuilder =
@@ -3405,9 +5107,10 @@ typedef $$PlayersTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<DateTime?> updatedAt,
       Value<bool> isSynced,
-      Value<String> fullName,
-      Value<String?> photoPath,
-      Value<String?> teamNameReference,
+      Value<String> name,
+      Value<int> teamId,
+      Value<int> defaultNumber,
+      Value<bool> active,
       Value<int> rowid,
     });
 
@@ -3481,18 +5184,18 @@ class $$PlayersTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get fullName => $composableBuilder(
-    column: $table.fullName,
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get photoPath => $composableBuilder(
-    column: $table.photoPath,
+  ColumnFilters<int> get defaultNumber => $composableBuilder(
+    column: $table.defaultNumber,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get teamNameReference => $composableBuilder(
-    column: $table.teamNameReference,
+  ColumnFilters<bool> get active => $composableBuilder(
+    column: $table.active,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3576,18 +5279,18 @@ class $$PlayersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get fullName => $composableBuilder(
-    column: $table.fullName,
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get photoPath => $composableBuilder(
-    column: $table.photoPath,
+  ColumnOrderings<int> get defaultNumber => $composableBuilder(
+    column: $table.defaultNumber,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get teamNameReference => $composableBuilder(
-    column: $table.teamNameReference,
+  ColumnOrderings<bool> get active => $composableBuilder(
+    column: $table.active,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -3613,16 +5316,16 @@ class $$PlayersTableAnnotationComposer
   GeneratedColumn<bool> get isSynced =>
       $composableBuilder(column: $table.isSynced, builder: (column) => column);
 
-  GeneratedColumn<String> get fullName =>
-      $composableBuilder(column: $table.fullName, builder: (column) => column);
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
 
-  GeneratedColumn<String> get photoPath =>
-      $composableBuilder(column: $table.photoPath, builder: (column) => column);
-
-  GeneratedColumn<String> get teamNameReference => $composableBuilder(
-    column: $table.teamNameReference,
+  GeneratedColumn<int> get defaultNumber => $composableBuilder(
+    column: $table.defaultNumber,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get active =>
+      $composableBuilder(column: $table.active, builder: (column) => column);
 
   Expression<T> matchRostersRefs<T extends Object>(
     Expression<T> Function($$MatchRostersTableAnnotationComposer a) f,
@@ -3707,18 +5410,20 @@ class $$PlayersTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
-                Value<String> fullName = const Value.absent(),
-                Value<String?> photoPath = const Value.absent(),
-                Value<String?> teamNameReference = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int> teamId = const Value.absent(),
+                Value<int> defaultNumber = const Value.absent(),
+                Value<bool> active = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PlayersCompanion(
                 id: id,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 isSynced: isSynced,
-                fullName: fullName,
-                photoPath: photoPath,
-                teamNameReference: teamNameReference,
+                name: name,
+                teamId: teamId,
+                defaultNumber: defaultNumber,
+                active: active,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3727,18 +5432,20 @@ class $$PlayersTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
-                required String fullName,
-                Value<String?> photoPath = const Value.absent(),
-                Value<String?> teamNameReference = const Value.absent(),
+                required String name,
+                required int teamId,
+                Value<int> defaultNumber = const Value.absent(),
+                Value<bool> active = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PlayersCompanion.insert(
                 id: id,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 isSynced: isSynced,
-                fullName: fullName,
-                photoPath: photoPath,
-                teamNameReference: teamNameReference,
+                name: name,
+                teamId: teamId,
+                defaultNumber: defaultNumber,
+                active: active,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -4815,6 +6522,34 @@ typedef $$TournamentsTableUpdateCompanionBuilder =
       Value<int> rowid,
     });
 
+final class $$TournamentsTableReferences
+    extends BaseReferences<_$AppDatabase, $TournamentsTable, Tournament> {
+  $$TournamentsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$TournamentTeamsTable, List<TournamentTeam>>
+  _tournamentTeamsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.tournamentTeams,
+    aliasName: $_aliasNameGenerator(
+      db.tournaments.id,
+      db.tournamentTeams.tournamentId,
+    ),
+  );
+
+  $$TournamentTeamsTableProcessedTableManager get tournamentTeamsRefs {
+    final manager = $$TournamentTeamsTableTableManager(
+      $_db,
+      $_db.tournamentTeams,
+    ).filter((f) => f.tournamentId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _tournamentTeamsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
 class $$TournamentsTableFilterComposer
     extends Composer<_$AppDatabase, $TournamentsTable> {
   $$TournamentsTableFilterComposer({
@@ -4868,6 +6603,31 @@ class $$TournamentsTableFilterComposer
     column: $table.endDate,
     builder: (column) => ColumnFilters(column),
   );
+
+  Expression<bool> tournamentTeamsRefs(
+    Expression<bool> Function($$TournamentTeamsTableFilterComposer f) f,
+  ) {
+    final $$TournamentTeamsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.tournamentTeams,
+      getReferencedColumn: (t) => t.tournamentId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TournamentTeamsTableFilterComposer(
+            $db: $db,
+            $table: $db.tournamentTeams,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$TournamentsTableOrderingComposer
@@ -4960,6 +6720,31 @@ class $$TournamentsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get endDate =>
       $composableBuilder(column: $table.endDate, builder: (column) => column);
+
+  Expression<T> tournamentTeamsRefs<T extends Object>(
+    Expression<T> Function($$TournamentTeamsTableAnnotationComposer a) f,
+  ) {
+    final $$TournamentTeamsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.tournamentTeams,
+      getReferencedColumn: (t) => t.tournamentId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TournamentTeamsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tournamentTeams,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$TournamentsTableTableManager
@@ -4973,12 +6758,9 @@ class $$TournamentsTableTableManager
           $$TournamentsTableAnnotationComposer,
           $$TournamentsTableCreateCompanionBuilder,
           $$TournamentsTableUpdateCompanionBuilder,
-          (
-            Tournament,
-            BaseReferences<_$AppDatabase, $TournamentsTable, Tournament>,
-          ),
+          (Tournament, $$TournamentsTableReferences),
           Tournament,
-          PrefetchHooks Function()
+          PrefetchHooks Function({bool tournamentTeamsRefs})
         > {
   $$TournamentsTableTableManager(_$AppDatabase db, $TournamentsTable table)
     : super(
@@ -5040,9 +6822,47 @@ class $$TournamentsTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$TournamentsTableReferences(db, table, e),
+                ),
+              )
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({tournamentTeamsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (tournamentTeamsRefs) db.tournamentTeams,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (tournamentTeamsRefs)
+                    await $_getPrefetchedData<
+                      Tournament,
+                      $TournamentsTable,
+                      TournamentTeam
+                    >(
+                      currentTable: table,
+                      referencedTable: $$TournamentsTableReferences
+                          ._tournamentTeamsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$TournamentsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).tournamentTeamsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where(
+                            (e) => e.tournamentId == item.id,
+                          ),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
         ),
       );
 }
@@ -5057,12 +6877,661 @@ typedef $$TournamentsTableProcessedTableManager =
       $$TournamentsTableAnnotationComposer,
       $$TournamentsTableCreateCompanionBuilder,
       $$TournamentsTableUpdateCompanionBuilder,
-      (
-        Tournament,
-        BaseReferences<_$AppDatabase, $TournamentsTable, Tournament>,
-      ),
+      (Tournament, $$TournamentsTableReferences),
       Tournament,
+      PrefetchHooks Function({bool tournamentTeamsRefs})
+    >;
+typedef $$VenuesTableCreateCompanionBuilder =
+    VenuesCompanion Function({
+      Value<String> id,
+      Value<DateTime> createdAt,
+      Value<DateTime?> updatedAt,
+      Value<bool> isSynced,
+      required String name,
+      Value<String?> address,
+      Value<int> rowid,
+    });
+typedef $$VenuesTableUpdateCompanionBuilder =
+    VenuesCompanion Function({
+      Value<String> id,
+      Value<DateTime> createdAt,
+      Value<DateTime?> updatedAt,
+      Value<bool> isSynced,
+      Value<String> name,
+      Value<String?> address,
+      Value<int> rowid,
+    });
+
+class $$VenuesTableFilterComposer
+    extends Composer<_$AppDatabase, $VenuesTable> {
+  $$VenuesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get address => $composableBuilder(
+    column: $table.address,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$VenuesTableOrderingComposer
+    extends Composer<_$AppDatabase, $VenuesTable> {
+  $$VenuesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get address => $composableBuilder(
+    column: $table.address,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$VenuesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $VenuesTable> {
+  $$VenuesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get address =>
+      $composableBuilder(column: $table.address, builder: (column) => column);
+}
+
+class $$VenuesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $VenuesTable,
+          Venue,
+          $$VenuesTableFilterComposer,
+          $$VenuesTableOrderingComposer,
+          $$VenuesTableAnnotationComposer,
+          $$VenuesTableCreateCompanionBuilder,
+          $$VenuesTableUpdateCompanionBuilder,
+          (Venue, BaseReferences<_$AppDatabase, $VenuesTable, Venue>),
+          Venue,
+          PrefetchHooks Function()
+        > {
+  $$VenuesTableTableManager(_$AppDatabase db, $VenuesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$VenuesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$VenuesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$VenuesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> address = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => VenuesCompanion(
+                id: id,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                isSynced: isSynced,
+                name: name,
+                address: address,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                required String name,
+                Value<String?> address = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => VenuesCompanion.insert(
+                id: id,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                isSynced: isSynced,
+                name: name,
+                address: address,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$VenuesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $VenuesTable,
+      Venue,
+      $$VenuesTableFilterComposer,
+      $$VenuesTableOrderingComposer,
+      $$VenuesTableAnnotationComposer,
+      $$VenuesTableCreateCompanionBuilder,
+      $$VenuesTableUpdateCompanionBuilder,
+      (Venue, BaseReferences<_$AppDatabase, $VenuesTable, Venue>),
+      Venue,
       PrefetchHooks Function()
+    >;
+typedef $$TournamentTeamsTableCreateCompanionBuilder =
+    TournamentTeamsCompanion Function({
+      Value<String> id,
+      Value<DateTime> createdAt,
+      Value<DateTime?> updatedAt,
+      Value<bool> isSynced,
+      required String tournamentId,
+      required String teamId,
+      Value<int> rowid,
+    });
+typedef $$TournamentTeamsTableUpdateCompanionBuilder =
+    TournamentTeamsCompanion Function({
+      Value<String> id,
+      Value<DateTime> createdAt,
+      Value<DateTime?> updatedAt,
+      Value<bool> isSynced,
+      Value<String> tournamentId,
+      Value<String> teamId,
+      Value<int> rowid,
+    });
+
+final class $$TournamentTeamsTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $TournamentTeamsTable, TournamentTeam> {
+  $$TournamentTeamsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $TournamentsTable _tournamentIdTable(_$AppDatabase db) =>
+      db.tournaments.createAlias(
+        $_aliasNameGenerator(
+          db.tournamentTeams.tournamentId,
+          db.tournaments.id,
+        ),
+      );
+
+  $$TournamentsTableProcessedTableManager get tournamentId {
+    final $_column = $_itemColumn<String>('tournament_id')!;
+
+    final manager = $$TournamentsTableTableManager(
+      $_db,
+      $_db.tournaments,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_tournamentIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $TeamsTable _teamIdTable(_$AppDatabase db) => db.teams.createAlias(
+    $_aliasNameGenerator(db.tournamentTeams.teamId, db.teams.id),
+  );
+
+  $$TeamsTableProcessedTableManager get teamId {
+    final $_column = $_itemColumn<String>('team_id')!;
+
+    final manager = $$TeamsTableTableManager(
+      $_db,
+      $_db.teams,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_teamIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$TournamentTeamsTableFilterComposer
+    extends Composer<_$AppDatabase, $TournamentTeamsTable> {
+  $$TournamentTeamsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$TournamentsTableFilterComposer get tournamentId {
+    final $$TournamentsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tournamentId,
+      referencedTable: $db.tournaments,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TournamentsTableFilterComposer(
+            $db: $db,
+            $table: $db.tournaments,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TeamsTableFilterComposer get teamId {
+    final $$TeamsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.teamId,
+      referencedTable: $db.teams,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TeamsTableFilterComposer(
+            $db: $db,
+            $table: $db.teams,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TournamentTeamsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TournamentTeamsTable> {
+  $$TournamentTeamsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$TournamentsTableOrderingComposer get tournamentId {
+    final $$TournamentsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tournamentId,
+      referencedTable: $db.tournaments,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TournamentsTableOrderingComposer(
+            $db: $db,
+            $table: $db.tournaments,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TeamsTableOrderingComposer get teamId {
+    final $$TeamsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.teamId,
+      referencedTable: $db.teams,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TeamsTableOrderingComposer(
+            $db: $db,
+            $table: $db.teams,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TournamentTeamsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TournamentTeamsTable> {
+  $$TournamentTeamsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
+
+  $$TournamentsTableAnnotationComposer get tournamentId {
+    final $$TournamentsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tournamentId,
+      referencedTable: $db.tournaments,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TournamentsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tournaments,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TeamsTableAnnotationComposer get teamId {
+    final $$TeamsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.teamId,
+      referencedTable: $db.teams,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TeamsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.teams,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TournamentTeamsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TournamentTeamsTable,
+          TournamentTeam,
+          $$TournamentTeamsTableFilterComposer,
+          $$TournamentTeamsTableOrderingComposer,
+          $$TournamentTeamsTableAnnotationComposer,
+          $$TournamentTeamsTableCreateCompanionBuilder,
+          $$TournamentTeamsTableUpdateCompanionBuilder,
+          (TournamentTeam, $$TournamentTeamsTableReferences),
+          TournamentTeam,
+          PrefetchHooks Function({bool tournamentId, bool teamId})
+        > {
+  $$TournamentTeamsTableTableManager(
+    _$AppDatabase db,
+    $TournamentTeamsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TournamentTeamsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TournamentTeamsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TournamentTeamsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<String> tournamentId = const Value.absent(),
+                Value<String> teamId = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TournamentTeamsCompanion(
+                id: id,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                isSynced: isSynced,
+                tournamentId: tournamentId,
+                teamId: teamId,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                required String tournamentId,
+                required String teamId,
+                Value<int> rowid = const Value.absent(),
+              }) => TournamentTeamsCompanion.insert(
+                id: id,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                isSynced: isSynced,
+                tournamentId: tournamentId,
+                teamId: teamId,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$TournamentTeamsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({tournamentId = false, teamId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (tournamentId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.tournamentId,
+                                referencedTable:
+                                    $$TournamentTeamsTableReferences
+                                        ._tournamentIdTable(db),
+                                referencedColumn:
+                                    $$TournamentTeamsTableReferences
+                                        ._tournamentIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+                    if (teamId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.teamId,
+                                referencedTable:
+                                    $$TournamentTeamsTableReferences
+                                        ._teamIdTable(db),
+                                referencedColumn:
+                                    $$TournamentTeamsTableReferences
+                                        ._teamIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$TournamentTeamsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TournamentTeamsTable,
+      TournamentTeam,
+      $$TournamentTeamsTableFilterComposer,
+      $$TournamentTeamsTableOrderingComposer,
+      $$TournamentTeamsTableAnnotationComposer,
+      $$TournamentTeamsTableCreateCompanionBuilder,
+      $$TournamentTeamsTableUpdateCompanionBuilder,
+      (TournamentTeam, $$TournamentTeamsTableReferences),
+      TournamentTeam,
+      PrefetchHooks Function({bool tournamentId, bool teamId})
     >;
 
 class $AppDatabaseManager {
@@ -5070,6 +7539,8 @@ class $AppDatabaseManager {
   $AppDatabaseManager(this._db);
   $$MatchesTableTableManager get matches =>
       $$MatchesTableTableManager(_db, _db.matches);
+  $$TeamsTableTableManager get teams =>
+      $$TeamsTableTableManager(_db, _db.teams);
   $$PlayersTableTableManager get players =>
       $$PlayersTableTableManager(_db, _db.players);
   $$MatchRostersTableTableManager get matchRosters =>
@@ -5078,4 +7549,8 @@ class $AppDatabaseManager {
       $$GameEventsTableTableManager(_db, _db.gameEvents);
   $$TournamentsTableTableManager get tournaments =>
       $$TournamentsTableTableManager(_db, _db.tournaments);
+  $$VenuesTableTableManager get venues =>
+      $$VenuesTableTableManager(_db, _db.venues);
+  $$TournamentTeamsTableTableManager get tournamentTeams =>
+      $$TournamentTeamsTableTableManager(_db, _db.tournamentTeams);
 }

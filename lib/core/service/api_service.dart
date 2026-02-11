@@ -8,6 +8,49 @@ class ApiService {
   // ⚠️ CAMBIA ESTO POR TU URL REAL DE HOSTINGER
   static const String _baseUrl = 'https://techsolutions.management/api.php';
 
+  // Nuevo método para traer datos filtrados por torneo
+  Future<CatalogData> fetchTournamentData(String tournamentId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl?action=get_tournament_data&tournament_id=$tournamentId'),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonResponse = json.decode(response.body);
+
+        if (jsonResponse['status'] == 'success') {
+          final data = jsonResponse['data'];
+
+          // Nota: Como tu backend getTournamentData no devuelve 'venues', 
+          // usaremos una lista vacía o deberás ajustar tu PHP si quieres venues específicas.
+          // Aquí asumimos que los Venues son globales y quizá quieras obtenerlos aparte,
+          // pero para evitar errores, pasamos lista vacía o lo que venga.
+          return CatalogData(
+            tournaments: [], // Ya sabemos en qué torneo estamos
+            venues: (data['venues'] as List)
+                .map((e) => Venue.fromJson(e))
+                .toList(),      // Ya devuelve la lista global
+            teams: (data['teams'] as List)
+                .map((e) => Team.fromJson(e))
+                .toList(),
+            players: (data['players'] as List)
+                .map((e) => Player.fromJson(e))
+                .toList(),
+            relationships: (data['tournament_teams'] as List)
+                .map((e) => TournamentTeamRelation.fromJson(e))
+                .toList(),
+          );
+        } else {
+          throw Exception('API Error: ${jsonResponse['message']}');
+        }
+      } else {
+        throw Exception('HTTP Error: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error cargando datos del torneo: $e');
+    }
+  }
+
   Future<CatalogData> fetchCatalogs() async {
     try {
       final response = await http.get(Uri.parse('$_baseUrl?action=get_data'));
@@ -30,6 +73,9 @@ class ApiService {
                 .toList(),
             players: (data['players'] as List)
                 .map((e) => Player.fromJson(e))
+                .toList(),
+            relationships: (data['tournament_teams'] as List)
+                .map((e) => TournamentTeamRelation.fromJson(e))
                 .toList(),
           );
         } else {

@@ -16,6 +16,13 @@ class Matches extends Table with BaseTable {
   IntColumn get scoreB => integer().withDefault(const Constant(0))();
 }
 
+@DataClassName('Team')
+class Teams extends Table with BaseTable {
+  TextColumn get name => text().withLength(min: 1, max: 100)();
+  TextColumn get shortName => text().nullable()();
+  TextColumn get coachName => text().nullable()();
+}
+
 @DataClassName('Tournament')
 class Tournaments extends Table with BaseTable {
   TextColumn get name => text().withLength(min: 1, max: 150)();
@@ -30,9 +37,26 @@ class Tournaments extends Table with BaseTable {
 
 // Tabla de Jugadores (Catálogo Global)
 class Players extends Table with BaseTable {
-  TextColumn get fullName => text().withLength(min: 1, max: 100)();
-  TextColumn get photoPath => text().nullable()(); // Ruta local
-  TextColumn get teamNameReference => text().nullable()();
+  // Reemplazamos 'fullName' por 'name' si quieres coincidir exacto, o lo mapeamos.
+  // En tu DB real es 'name', así que usaremos 'name' para ser consistentes.
+  TextColumn get name => text().withLength(min: 1, max: 100)();
+  
+  // Columnas nuevas que coinciden con tu DB real
+  IntColumn get teamId => integer().references(Teams, #id, onDelete: KeyAction.cascade)();
+  IntColumn get defaultNumber => integer().withDefault(const Constant(0))();
+  BoolColumn get active => boolean().withDefault(const Constant(true))();
+  
+  // Eliminamos las viejas que no usas o eran temporales
+  // TextColumn get teamNameReference => ... (ELIMINADO)
+  
+  // Opcional: Foto si la usas en la app, aunque no esté en el SQL que me pasaste
+  //TextColumn get photoPath => text().nullable()(); 
+}
+
+@DataClassName('Venue')
+class Venues extends Table with BaseTable {
+  TextColumn get name => text().withLength(min: 1, max: 100)();
+  TextColumn get address => text().nullable()();
 }
 
 // Tabla Intermedia (Roster) - Jugador en un Partido específico
@@ -72,4 +96,15 @@ class GameEvents extends Table with BaseTable {
 
   IntColumn get period => integer()(); // 1, 2, 3, 4
   TextColumn get clockTime => text()(); // "04:59"
+}
+
+@DataClassName('TournamentTeam')
+class TournamentTeams extends Table with BaseTable {
+  // Referencias a las otras tablas (Foreign Keys)
+  TextColumn get tournamentId => text().references(Tournaments, #id, onDelete: KeyAction.cascade)();
+  TextColumn get teamId => text().references(Teams, #id, onDelete: KeyAction.cascade)();
+
+  // Clave compuesta para evitar duplicados (Un equipo no puede estar 2 veces en el mismo torneo)
+  @override
+  List<Set<Column>> get uniqueKeys => [{tournamentId, teamId}];
 }

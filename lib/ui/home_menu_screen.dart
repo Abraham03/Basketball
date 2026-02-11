@@ -165,7 +165,12 @@ class HomeMenuScreen extends ConsumerWidget {
                     // Validación: Bloquear si no hay torneo seleccionado
                     onTap: selectedTournamentId == null 
                       ? () => _showNoTournamentAlert(context)
-                      : () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MatchSetupScreen())),
+                      : () => Navigator.push(
+                        context, 
+                        MaterialPageRoute(
+                          builder: (_) => MatchSetupScreen(tournamentId: selectedTournamentId)
+                          )
+                          ),
                   ),
                   
                   // 2. Gestionar Equipos
@@ -221,6 +226,7 @@ class HomeMenuScreen extends ConsumerWidget {
   // --- LÓGICA DE SINCRONIZACIÓN (Backend PHP -> Local SQLite) ---
   Future<void> _syncData(BuildContext context, WidgetRef ref) async {
     // A. Mostrar indicador de carga
+    ScaffoldMessenger.of(context).hideCurrentSnackBar(); // Limpiar previos
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Row(children: [
@@ -228,7 +234,7 @@ class HomeMenuScreen extends ConsumerWidget {
           SizedBox(width: 15),
           Text("Descargando datos del servidor..."),
         ]),
-        duration: Duration(days: 1), // Duración larga (se cierra manualmente)
+        duration: Duration(seconds: 25), // Duración larga (se cierra manualmente)
       ),
     );
 
@@ -243,35 +249,74 @@ class HomeMenuScreen extends ConsumerWidget {
       // D. Guardar en SQLite usando una Transacción (Atomicidad)
       await db.transaction(() async {
         
-        // 1. Insertar Torneos
-        // Nota: Si 'db.tournaments' da error, asegúrate de haber agregado la tabla a AppDatabase en app_database.dart
+// 1. Insertar Torneos
         for (var t in catalogData.tournaments) {
           await db.into(db.tournaments).insert(
             TournamentsCompanion.insert(
-              id: drift.Value(t.id.toString()), // Convertimos ID a String para BaseTable
+              id: drift.Value(t.id.toString()),
               name: t.name,
               category: drift.Value(t.category),
               status: drift.Value(t.status ?? 'ACTIVE'),
             ),
-            mode: drift.InsertMode.insertOrReplace, // Actualiza si ya existe
+            mode: drift.InsertMode.insertOrReplace,
           );
         }
 
-        // 2. Insertar Equipos (Opcional - Descomentar cuando tengas la tabla Teams lista)
-        /*
+        // 2. Insertar Equipos (DESCOMENTADO Y CORREGIDO)
         for (var team in catalogData.teams) {
           await db.into(db.teams).insert(
              TeamsCompanion.insert(
                id: drift.Value(team.id.toString()),
                name: team.name,
-               // ... otros campos
+               shortName: drift.Value(team.shortName),
+               coachName: drift.Value(team.coachName),
              ),
              mode: drift.InsertMode.insertOrReplace,
           );
         }
-        */
+
+        // 3. Insertar Sedes / Canchas (AGREGADO)
+        for (var venue in catalogData.venues) {
+          await db.into(db.venues).insert(
+             VenuesCompanion.insert(
+               id: drift.Value(venue.id.toString()),
+               name: venue.name,
+               address: drift.Value(venue.address),
+             ),
+             mode: drift.InsertMode.insertOrReplace,
+          );
+        }
       });
 
+
+// 4. Insertar Relaciones Torneo-Equipo
+        await db.delete(db.tournamentTeams).go(); 
+        
+        for (var rel in catalogData.relationships) {
+          await db.into(db.tournamentTeams).insert(
+             TournamentTeamsCompanion.insert(
+               // CORRECCIÓN: NO USAR drift.Value() AQUÍ
+               tournamentId: rel.tournamentId.toString(), 
+               teamId: rel.teamId.toString(),
+             ),
+             mode: drift.InsertMode.insertOrReplace,
+          );
+        }
+
+
+        // 5. Insertar Jugadores (CORREGIDO)
+        for (var p in catalogData.players) {
+          await db.into(db.players).insert(
+             PlayersCompanion.insert(
+               id: drift.Value(p.id.toString()), // Drift usa String en BaseTable
+               name: p.name, // Coincide con la columna nueva
+               teamId: p.teamId, // Entero directo
+               defaultNumber: drift.Value(p.defaultNumber),
+               active: drift.Value(true), // Asumimos activos si vienen de la API
+             ),
+             mode: drift.InsertMode.insertOrReplace,
+          );
+        }
       // E. Forzar recarga de la lista de torneos en la UI
       ref.invalidate(tournamentsListProvider);
 
@@ -288,6 +333,7 @@ class HomeMenuScreen extends ConsumerWidget {
       }
 
     } catch (e) {
+
       // G. Manejo de Errores (Red, Base de datos, etc.)
       if (context.mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
