@@ -116,7 +116,7 @@ Future<int> createTeam(String name, String shortName, String coach, {String? tou
     }
   }
 
-  Future<void> addPlayer(int teamId, String name, int number) async {
+Future<int> addPlayer(int teamId, String name, int number) async {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl?action=add_player'),
@@ -126,12 +126,16 @@ Future<int> createTeam(String name, String shortName, String coach, {String? tou
           "number": number,
         }),
       );
-      _checkResponse(response);
+      
+      _checkResponse(response); // Tu helper verifica status success
+      
+      final body = jsonDecode(response.body);
+      return body['newId']; // Devolvemos el ID
+      
     } catch (e) {
       throw Exception('Error agregando jugador: $e');
     }
   }
-
   // Crear Torneo
   Future<void> createTournament(String name, String category) async {
     final response = await http.post(

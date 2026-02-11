@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../core/models/catalog_models.dart';
+// Importamos tu modelo de negocio normalmente
+import '../core/models/catalog_models.dart'; 
 import '../logic/catalog_provider.dart';
+import '../logic/tournament_provider.dart';
+// Importamos la base de datos con un ALIAS para evitar conflicto de nombres
+import '../core/database/app_database.dart' as db_app; 
+import 'package:drift/drift.dart' as drift;
 
 class TeamDetailScreen extends ConsumerWidget {
   final Team team;
@@ -75,13 +80,32 @@ class TeamDetailScreen extends ConsumerWidget {
               Navigator.pop(ctx);
 
               try {
-                await ref.read(apiServiceProvider).addPlayer(
+                final newId = await ref.read(apiServiceProvider).addPlayer(
                   team.id,
                   nameCtrl.text,
                   int.tryParse(numberCtrl.text) ?? 0,
                 );
                 // Refrescar para ver el nuevo jugador
+                final db = ref.read(databaseProvider);
+
+                await db.into(db.players).insert(
+                  db_app.PlayersCompanion.insert(
+                    id: drift.Value(newId.toString()), // ID que viene de la API
+                    teamId: team.id,
+                    name: nameCtrl.text,
+                    defaultNumber: drift.Value(int.tryParse(numberCtrl.text) ?? 0),
+                    active: const drift.Value(true),
+                  ),
+                  mode: drift.InsertMode.insertOrReplace
+                );
+
+                // 3. Forzar refresco visual (Importante si usas catalogProvider normal)
                 ref.invalidate(catalogProvider);
+
+                if(!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Jugador agregado"), backgroundColor: Colors.green)
+                );
               } catch (e) {
 
                 if(!context.mounted) return;
