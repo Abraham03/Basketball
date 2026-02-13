@@ -174,6 +174,37 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
         title: const Text("En Juego"),
         backgroundColor: Colors.black87,
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.home),
+          tooltip: "Volver al Menú Principal",
+          onPressed: () {
+            // Mostramos un diálogo de confirmación para evitar salidas accidentales
+            showDialog(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: const Text("¿Salir al Menú?"),
+                content: const Text("El partido se guardará localmente y podrás continuar después."),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx), // Cerrar diálogo
+                    child: const Text("Cancelar"),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(ctx); // Cerrar diálogo
+                      
+                      // Volver al HomeMenuScreen borrando todo el historial de navegación
+                      // Asumiendo que HomeMenuScreen es la ruta '/' o la primera en el stack
+                      Navigator.of(context).popUntil((route) => route.isFirst);
+                    },
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                    child: const Text("Salir"),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.undo),
