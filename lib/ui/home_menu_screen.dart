@@ -526,8 +526,6 @@ class HomeMenuScreen extends ConsumerWidget {
             tournamentId: relation?.tournamentId,
           );
 
-          print("Equipo subido. ID Temporal: ${team.id} -> ID Real: $realId");
-
           await db.transaction(() async {
             await (db.update(db.tournamentTeams)
                   ..where((t) => t.teamId.equals(team.id)))
@@ -557,7 +555,8 @@ class HomeMenuScreen extends ConsumerWidget {
 
           uploadedTeams++;
         } catch (e) {
-          print("Error subiendo equipo ${team.name}: $e");
+          // Aquí manejas la excepción específica de BD y la lanzas como una de tu dominio
+          throw Exception('Error al subir equipo: $e');
         }
       }
 
@@ -593,7 +592,8 @@ class HomeMenuScreen extends ConsumerWidget {
 
           uploadedPlayers++;
         } catch (e) {
-          print("Error subiendo jugador ${player.name}: $e");
+          // Aquí manejas la excepción específica de BD y la lanzas como una de tu dominio
+          throw Exception('Error al subir jugador: $e');
         }
       }
 

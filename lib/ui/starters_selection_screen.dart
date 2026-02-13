@@ -175,14 +175,12 @@ class _StartersSelectionScreenState extends ConsumerState<StartersSelectionScree
 
       // 2. Insertar en BD Local
       await dao.createMatch(newMatch);
-      print("DEBUG: Partido creado en BD con ID: ${widget.matchId}");
 
       // 3. (Opcional) Guardar Rosters en BD local
       // Esto ayuda si quieres persistir qué jugadores estuvieron en el partido
        await _saveRostersToDb(dao); 
 
     } catch (e) {
-      print("ERROR creando partido: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Error al iniciar: $e"), backgroundColor: Colors.red),
@@ -250,6 +248,5 @@ class _StartersSelectionScreenState extends ConsumerState<StartersSelectionScree
     }
 
     await dao.addRosterToMatch(widget.matchId, rosterEntries);
-    print("DEBUG: Roster guardado en BD local (${rosterEntries.length} jugadores).");
   }
 }

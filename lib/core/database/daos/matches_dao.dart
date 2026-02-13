@@ -10,7 +10,6 @@ class MatchesDao extends DatabaseAccessor<AppDatabase> with _$MatchesDaoMixin {
 
   // Crear un partido
   Future<void> createMatch(MatchesCompanion match) async {
-    print("DEBUG: createMatch: Creando partido");
     try {
       await into(matches).insert(match);
     } catch (e) {
@@ -30,7 +29,6 @@ class MatchesDao extends DatabaseAccessor<AppDatabase> with _$MatchesDaoMixin {
     String clockTime,
     String status,
   ) async {
-    print("DEBUG: UpdateMatchStatus: Actualizando estatus match $matchId a NO SINCRONIZADO");
     await (update(matches)..where((t) => t.id.equals(matchId))).write(
       MatchesCompanion(
         scoreA: Value(scoreA),
@@ -51,7 +49,6 @@ class MatchesDao extends DatabaseAccessor<AppDatabase> with _$MatchesDaoMixin {
     String auxRef,
     String scorek,
   ) async {
-    print("DEBUG: updateMatchMedatada: Actualizando metadatos match $matchId a NO SINCRONIZADO");
     await (update(matches)..where((t) => t.id.equals(matchId))).write(
       MatchesCompanion(
         teamAId: Value(teamAId),
@@ -66,7 +63,6 @@ class MatchesDao extends DatabaseAccessor<AppDatabase> with _$MatchesDaoMixin {
 
   // Agrega también el campo para la firma
   Future<int> saveSignature(String matchId, String signatureBase64) async {
-    print("DEBUG: saveSignature: Guardando firma match $matchId a NO SINCRONIZADO");
     // Convertimos a String explícitamente por seguridad
     final idStr = matchId.toString();
       final rowAffected = await (update(matches)..where((t) => t.id.equals(idStr))).write(
@@ -76,13 +72,11 @@ class MatchesDao extends DatabaseAccessor<AppDatabase> with _$MatchesDaoMixin {
       ),
     );
 
-    print("DEBUG: saveSignature: Row affected: $rowAffected");
     return rowAffected;
   }
 
   // Marcar un partido como SINCRONIZADO
   Future<void> markAsSynced(String matchId) async {
-    print("DEBUG: markAsSynced: Marcando partido $matchId como SINCRONIZADO");
     await (update(matches)..where((t) => t.id.equals(matchId))).write(
       const MatchesCompanion(
         isSynced: Value(true),
@@ -92,7 +86,6 @@ class MatchesDao extends DatabaseAccessor<AppDatabase> with _$MatchesDaoMixin {
 
   // Registra cada punto o falta como un evento individual
   Future<void> insertEvent(GameEventsCompanion event) async {
-    print("DEBUG: insertEvent: Agregando evento a match ${event.matchId}");
     await into(gameEvents).insert(event);
   }
 
@@ -102,7 +95,6 @@ class MatchesDao extends DatabaseAccessor<AppDatabase> with _$MatchesDaoMixin {
     String matchId,
     List<MatchRostersCompanion> roster,
   ) async {
-    print("DEBUG: addRosterToMatch: Agregando equipo $matchId");
     return transaction(() async {
       for (var player in roster) {
         await into(matchRosters).insert(player);
