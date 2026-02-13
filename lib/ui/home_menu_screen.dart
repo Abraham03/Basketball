@@ -186,7 +186,7 @@ class HomeMenuScreen extends ConsumerWidget {
 
                   // 3. Sincronizar Datos (Descargar de la Nube)
                   _DashboardCard(
-                    title: "Sincronizar",
+                    title: "Descargar Datos de la Nube",
                     icon: Icons.cloud_sync,
                     color: Colors.purple,
                     onTap: () => _syncData(context, ref),
@@ -194,14 +194,11 @@ class HomeMenuScreen extends ConsumerWidget {
 
                   // 4. Configuración
                   _DashboardCard(
-                    title: "Configuración",
+                    title: "Subir Datos a la Nube",
                     icon: Icons.settings,
                     color: Colors.grey,
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Próximamente: Ajustes de la App")),
-                      );
-                    },
+                    onTap: () => _uploadPendingData(context, ref),
+                    
                   ),
                 ],
               ),
@@ -257,6 +254,7 @@ class HomeMenuScreen extends ConsumerWidget {
               name: t.name,
               category: drift.Value(t.category),
               status: drift.Value(t.status ?? 'ACTIVE'),
+              isSynced: const drift.Value(true),
             ),
             mode: drift.InsertMode.insertOrReplace,
           );
@@ -270,6 +268,7 @@ class HomeMenuScreen extends ConsumerWidget {
                name: team.name,
                shortName: drift.Value(team.shortName),
                coachName: drift.Value(team.coachName),
+               isSynced: const drift.Value(true),
              ),
              mode: drift.InsertMode.insertOrReplace,
           );
@@ -282,6 +281,7 @@ class HomeMenuScreen extends ConsumerWidget {
                id: drift.Value(venue.id.toString()),
                name: venue.name,
                address: drift.Value(venue.address),
+               isSynced: const drift.Value(true),
              ),
              mode: drift.InsertMode.insertOrReplace,
           );
@@ -298,6 +298,7 @@ class HomeMenuScreen extends ConsumerWidget {
                // CORRECCIÓN: NO USAR drift.Value() AQUÍ
                tournamentId: rel.tournamentId.toString(), 
                teamId: rel.teamId.toString(),
+               isSynced: const drift.Value(true),
              ),
              mode: drift.InsertMode.insertOrReplace,
           );
@@ -312,7 +313,8 @@ class HomeMenuScreen extends ConsumerWidget {
                name: p.name, // Coincide con la columna nueva
                teamId: p.teamId, // Entero directo
                defaultNumber: drift.Value(p.defaultNumber),
-               active: drift.Value(true), // Asumimos activos si vienen de la API
+               active: const drift.Value(true), // Asumimos activos si vienen de la API
+               isSynced: const drift.Value(true),
              ),
              mode: drift.InsertMode.insertOrReplace,
           );
@@ -352,6 +354,200 @@ class HomeMenuScreen extends ConsumerWidget {
       }
     }
   }
+
+// --- LÓGICA DE SUBIDA (Local SQLite -> Nube PHP) ---
+  Future<void> _uploadPendingData(BuildContext context, WidgetRef ref) async {
+    final db = ref.read(databaseProvider);
+    final api = ref.read(apiServiceProvider);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Iniciando diagnóstico y subida...")),
+        );
+
+    int uploadedMatches = 0;
+    int uploadedPlayers = 0;
+    int uploadedTeams = 0;
+
+    try {
+      // ---------------------------------------------------------
+      // 1. SUBIR EQUIPOS (Teams)
+      // ---------------------------------------------------------
+      // Es importante subir equipos antes que jugadores o partidos para mantener integridad referencial
+      final pendingTeams = await (db.select(db.teams)
+            ..where((tbl) => tbl.isSynced.equals(false)))
+          .get();
+
+      for (var team in pendingTeams) {
+        try {           
+           // Usar createTeam existente (creará duplicado si no se maneja en backend)
+           await api.createTeam(team.name, team.shortName ?? '', team.coachName ?? '');
+           
+           // Marcar como sincronizado
+           await (db.update(db.teams)
+              ..where((tbl) => tbl.id.equals(team.id)))
+            .write(const TeamsCompanion(isSynced: drift.Value(true)));
+            
+           uploadedTeams++;
+        } catch (e) {
+          print("Error subiendo equipo ${team.name}: $e");
+        }
+      }
+
+      // ---------------------------------------------------------
+      // 2. SUBIR JUGADORES (Players)
+      // ---------------------------------------------------------
+      final pendingPlayers = await (db.select(db.players)
+            ..where((tbl) => tbl.isSynced.equals(false)))
+          .get();
+
+      for (var player in pendingPlayers) {
+        try {
+          await api.addPlayer(player.teamId, player.name, player.defaultNumber);
+          
+          await (db.update(db.players)
+              ..where((tbl) => tbl.id.equals(player.id)))
+            .write(const PlayersCompanion(isSynced: drift.Value(true)));
+            
+          uploadedPlayers++;
+        } catch (e) {
+          print("Error subiendo jugador ${player.name}: $e");
+        }
+      }
+
+// ---------------------------------------------------------
+      // 3. SUBIR PARTIDOS Y EVENTOS (Matches)
+      // ---------------------------------------------------------
+      print("--- INICIO DIAGNÓSTICO BD ---");
+      final allMatches = await db.select(db.matches).get();
+      print("Total Partidos en BD: ${allMatches.length}");
+      
+      for (var m in allMatches) {
+        print("Partido ID: '${m.id}' (Tipo: ${m.id.runtimeType})");
+        print("  - Status: ${m.status}");
+        print("  - isSynced: ${m.isSynced}");
+        print("  - Firmado: ${m.signatureData != null ? 'SÍ' : 'NO'}");
+      }
+      print("--- FIN DIAGNÓSTICO BD ---");
+      // -------------------------------------------------------
+
+      // Tu consulta original
+      final pendingMatches = await (db.select(db.matches)
+            ..where((tbl) => tbl.isSynced.equals(false)))
+          .get();
+      
+      print("DEBUG: Partidos pendientes encontrados por filtro: ${pendingMatches.length}");    
+
+      for (var match in pendingMatches) {
+        print("DEBUG: Intentando subir partido ${match.id}"); 
+        // 3.1. Obtener eventos con JOIN para sacar datos del jugador (número, lado, nombre)
+        // Necesitamos unir: GameEvents -> MatchRosters (para numero/lado) -> Players (para nombre)
+        final query = db.select(db.gameEvents).join([
+          drift.leftOuterJoin(
+            db.matchRosters, 
+            db.matchRosters.matchId.equalsExp(db.gameEvents.matchId) & 
+            db.matchRosters.playerId.equalsExp(db.gameEvents.playerId)
+          ),
+          drift.leftOuterJoin(
+            db.players,
+            db.players.id.equalsExp(db.gameEvents.playerId)
+          )
+        ]);
+        
+        query.where(db.gameEvents.matchId.equals(match.id));
+        
+        // Ordenar por tiempo para que el log tenga sentido (opcional)
+        // query.orderBy([drift.OrderingTerm.asc(db.gameEvents.createdAt)]); 
+
+        final rows = await query.get();
+
+        // Variables para calcular el "score_after" acumulado (si tu PHP lo requiere exacto)
+        int runningScoreA = 0;
+        int runningScoreB = 0;
+
+        final eventsList = rows.map((row) {
+          final event = row.readTable(db.gameEvents);
+          final roster = row.readTableOrNull(db.matchRosters);
+          final player = row.readTableOrNull(db.players);
+
+          // Lógica de conversión: TYPE -> PUNTOS
+          int points = 0;
+          if (event.type == 'POINT_1' || event.type == 'FREE_THROW') points = 1;
+          if (event.type == 'POINT_2') points = 2;
+          if (event.type == 'POINT_3') points = 3;
+
+          // Calcular score acumulado
+          if (points > 0 && roster != null) {
+            if (roster.teamSide == 'A') runningScoreA += points;
+            if (roster.teamSide == 'B') runningScoreB += points;
+          }
+          final currentScore = (roster?.teamSide == 'A') ? runningScoreA : runningScoreB;
+
+          return {
+            "period": event.period,
+            "team_side": roster?.teamSide ?? 'A', // Default 'A' si no hay roster (ej. timeout)
+            "player_id": event.playerId, // Puede ser nulo (ej. timeout)
+            "player_name": player?.name ?? '',
+            "player_number": roster?.jerseyNumber ?? 0,
+            "points_scored": points,
+            "score_after": currentScore, // Tu PHP lo pide
+          };
+        }).toList();
+
+        // 3.2. Construir payload completo (Coincidiendo con MatchRepository.php)
+        final matchPayload = {
+          "match_id": match.id,
+          "tournament_id": match.tournamentId,
+          "venue_id": match.venueId, 
+          "team_a_id": match.teamAId, 
+          "team_b_id": match.teamBId,
+          "team_a_name": match.teamAName,
+          "team_b_name": match.teamBName,
+          "score_a": match.scoreA,
+          "score_b": match.scoreB,
+          "current_period": 4, // Puedes guardar el periodo actual en Matches si quieres precisión
+          "time_left": "00:00", // O match.timeLeft si lo guardas
+          
+          // Oficiales (Requerido por PHP)
+          "main_referee": match.mainReferee ,
+          "aux_referee": match.auxReferee,
+          "scorekeeper": match.scorekeeper,
+          
+          // Firma (Requerido por PHP)
+          "signature_base64": match.signatureData, // match.signatureData <--- AGREGAR A TABLA (TextColumn grande)
+          
+          "status": match.status,
+          "events": eventsList,
+        };
+
+        // 3.3. Enviar a la nube
+        final success = await api.syncMatchData(matchPayload);
+
+        // 3.4. Marcar como sincronizado
+        if (success) {
+          await (db.update(db.matches)
+                ..where((tbl) => tbl.id.equals(match.id)))
+              .write(const MatchesCompanion(isSynced: drift.Value(true)));
+          uploadedMatches++;
+        }
+      }
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Sincronización completada.\nEquipos: $uploadedTeams\nJugadores: $uploadedPlayers\nPartidos: $uploadedMatches"),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error durante la subida: $e"), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
 }
 
 // ============================================

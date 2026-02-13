@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
-import '../core/models/catalog_models.dart';
-import 'match_control_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:drift/drift.dart' as drift; // Alias para Drift
 
-class StartersSelectionScreen extends StatefulWidget {
+// Importamos la BD con alias para evitar conflictos
+import '../core/database/app_database.dart' as db;
+import '../core/di/dependency_injection.dart';
+
+// Importamos los modelos de catálogo con alias
+import '../core/models/catalog_models.dart' as catalog;
+
+import 'match_control_screen.dart';
+class StartersSelectionScreen extends ConsumerStatefulWidget {
   final String matchId;
-  final Team teamA;
-  final Team teamB;
-  final List<Player> rosterA;
-  final List<Player> rosterB;
+  final catalog.Team teamA;
+  final catalog.Team teamB;
+  final List<catalog.Player> rosterA;
+  final List<catalog.Player> rosterB;
   
 
   final int tournamentId;
@@ -40,12 +48,13 @@ class StartersSelectionScreen extends StatefulWidget {
   });
 
   @override
-  State<StartersSelectionScreen> createState() => _StartersSelectionScreenState();
-}
+  ConsumerState<StartersSelectionScreen> createState() => _StartersSelectionScreenState();
+  }
 
-class _StartersSelectionScreenState extends State<StartersSelectionScreen> {
+class _StartersSelectionScreenState extends ConsumerState<StartersSelectionScreen> {
   final Set<int> _startersA = {};
   final Set<int> _startersB = {};
+  bool _isCreating = false; // Para evitar doble clic
 
   @override
   Widget build(BuildContext context) {
@@ -91,8 +100,10 @@ class _StartersSelectionScreenState extends State<StartersSelectionScreen> {
                     backgroundColor: Colors.deepOrange,
                     foregroundColor: Colors.white,
                   ),
-                  onPressed: _canProceed() ? _startGame : null,
-                  child: const Text("COMENZAR PARTIDO", style: TextStyle(fontSize: 18)),
+                  onPressed: (_canProceed() && !_isCreating) ? _startGame : null,
+                  child: _isCreating 
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text("COMENZAR PARTIDO", style: TextStyle(fontSize: 18)),
                 ),
               ),
             ],
@@ -102,7 +113,7 @@ class _StartersSelectionScreenState extends State<StartersSelectionScreen> {
     );
   }
 
-  Widget _buildSelectionList(List<Player> roster, Set<int> selectedIds, Color color) {
+  Widget _buildSelectionList(List<catalog.Player> roster, Set<int> selectedIds, Color color) {
     return ListView.builder(
       itemCount: roster.length,
       itemBuilder: (context, index) {
@@ -138,7 +149,50 @@ class _StartersSelectionScreenState extends State<StartersSelectionScreen> {
     return _startersA.length == 5 && _startersB.length == 5;
   }
 
-  void _startGame() {
+  Future <void> _startGame() async {
+    setState(() => _isCreating = true);
+
+    try {
+      final dao = ref.read(matchesDaoProvider);
+
+      // 1. Crear objeto Match
+      final newMatch = db.MatchesCompanion.insert(
+        id: drift.Value(widget.matchId.toString()),
+        tournamentId: drift.Value(widget.tournamentId.toString()),
+        venueId: drift.Value(widget.venueId.toString()),
+        teamAName: widget.teamA.name,
+        teamBName: widget.teamB.name,
+        teamAId: drift.Value(widget.teamA.id),
+        teamBId: drift.Value(widget.teamB.id),
+        mainReferee: drift.Value(widget.mainReferee),
+        auxReferee: drift.Value(widget.auxReferee),
+        scorekeeper: drift.Value(widget.scorekeeper),
+        status: const drift.Value('IN_PROGRESS'),
+        isSynced: const drift.Value(false),
+        scoreA: const drift.Value(0),
+        scoreB: const drift.Value(0),
+      );
+
+      // 2. Insertar en BD Local
+      await dao.createMatch(newMatch);
+      print("DEBUG: Partido creado en BD con ID: ${widget.matchId}");
+
+      // 3. (Opcional) Guardar Rosters en BD local
+      // Esto ayuda si quieres persistir qué jugadores estuvieron en el partido
+       await _saveRostersToDb(dao); 
+
+    } catch (e) {
+      print("ERROR creando partido: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error al iniciar: $e"), backgroundColor: Colors.red),
+        );
+      }
+      setState(() => _isCreating = false);
+      return;
+    }
+
+    if (!mounted) return;
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -166,5 +220,36 @@ class _StartersSelectionScreenState extends State<StartersSelectionScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _saveRostersToDb(dynamic dao) async {
+    List<db.MatchRostersCompanion> rosterEntries = [];
+
+    // Procesar Equipo A
+    for (var player in widget.rosterA) {
+      rosterEntries.add(db.MatchRostersCompanion.insert(
+        matchId: widget.matchId,
+        playerId: player.id.toString(), // Asumiendo que player.id es int
+        teamSide: 'A',
+        jerseyNumber: player.defaultNumber,
+        isCaptain: const drift.Value(false), // O lógica de capitán si la tienes
+        isSynced: const drift.Value(false),
+      ));
+    }
+
+    // Procesar Equipo B
+    for (var player in widget.rosterB) {
+      rosterEntries.add(db.MatchRostersCompanion.insert(
+        matchId: widget.matchId,
+        playerId: player.id.toString(),
+        teamSide: 'B',
+        jerseyNumber: player.defaultNumber,
+        isCaptain: const drift.Value(false),
+        isSynced: const drift.Value(false),
+      ));
+    }
+
+    await dao.addRosterToMatch(widget.matchId, rosterEntries);
+    print("DEBUG: Roster guardado en BD local (${rosterEntries.length} jugadores).");
   }
 }

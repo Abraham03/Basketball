@@ -169,6 +169,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     });
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         title: const Text("En Juego"),
         backgroundColor: Colors.black87,
@@ -249,7 +250,10 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: _buildTeamColumn(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _buildTeamColumn(
                     context,
                     widget.teamAName,
                     Colors.orange.shade50,
@@ -259,10 +263,16 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                     controller,
                     gameState,
                   ),
+                      ),
+                    ]
+                  ) 
                 ),
                 const VerticalDivider(width: 1, thickness: 1, color: Colors.grey),
                 Expanded(
-                  child: _buildTeamColumn(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child:  _buildTeamColumn(
                     context,
                     widget.teamBName,
                     Colors.blue.shade50,
@@ -271,6 +281,9 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                     gameState.teamBBench,
                     controller,
                     gameState,
+                  ),
+                      ),
+                    ]
                   ),
                 ),
               ],

@@ -157,7 +157,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                   // BOTÓN CONTINUAR
                   SizedBox(
                     width: double.infinity,
-                    height: 50,
+                    height: 65,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blueAccent,
@@ -168,7 +168,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                           _goToStarterSelection(catalogData,currentTournamentName);
                         }
                       },
-                      child: const Text("Seleccionar Jugadores", style: TextStyle(fontSize: 18)),
+                      child: const Text("Seleccionar Jugadores", style: TextStyle(fontSize: 20)),
                     ),
                   ),
                 ],

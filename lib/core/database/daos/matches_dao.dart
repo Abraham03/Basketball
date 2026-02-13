@@ -10,6 +10,7 @@ class MatchesDao extends DatabaseAccessor<AppDatabase> with _$MatchesDaoMixin {
 
   // Crear un partido
   Future<void> createMatch(MatchesCompanion match) async {
+    print("DEBUG: createMatch: Creando partido");
     try {
       await into(matches).insert(match);
     } catch (e) {
@@ -18,13 +19,7 @@ class MatchesDao extends DatabaseAccessor<AppDatabase> with _$MatchesDaoMixin {
     }
   }
 
-  // Obtener partidos pendientes (Stream para UI reactiva)
-  Stream<List<BasketballMatch>> watchPendingMatches() {
-    return (select(matches)
-          ..where((tbl) => tbl.status.equals('PENDING'))
-          ..orderBy([(t) => OrderingTerm(expression: t.scheduledDate)]))
-        .watch();
-  }
+
 
   // --- ACTUALIZACIÓN (NUEVO) ---
   // Guardar el estado actual del partido (Persistencia Real)
@@ -35,20 +30,69 @@ class MatchesDao extends DatabaseAccessor<AppDatabase> with _$MatchesDaoMixin {
     String clockTime,
     String status,
   ) async {
+    print("DEBUG: UpdateMatchStatus: Actualizando estatus match $matchId a NO SINCRONIZADO");
     await (update(matches)..where((t) => t.id.equals(matchId))).write(
       MatchesCompanion(
         scoreA: Value(scoreA),
         scoreB: Value(scoreB),
-        // Podríamos agregar un campo 'clockTime' a la tabla Matches si quisieras persistir el string exacto
-        // Por ahora usamos el status para saber si sigue en juego
         status: Value(status),
         updatedAt: Value(DateTime.now()),
+        isSynced: const Value(false),
+      ),
+    );
+  }
+
+  // Método para guardar metadatos del partido (Árbitros, IDs, etc.)
+  Future<void> updateMatchMetadata(
+    String matchId,
+    int teamAId,
+    int teamBId,
+    String mainRef,
+    String auxRef,
+    String scorek,
+  ) async {
+    print("DEBUG: updateMatchMedatada: Actualizando metadatos match $matchId a NO SINCRONIZADO");
+    await (update(matches)..where((t) => t.id.equals(matchId))).write(
+      MatchesCompanion(
+        teamAId: Value(teamAId),
+        teamBId: Value(teamBId),
+        mainReferee: Value(mainRef),
+        auxReferee: Value(auxRef),
+        scorekeeper: Value(scorek),
+        isSynced: const Value(false),
+      ),
+    );
+  }
+
+  // Agrega también el campo para la firma
+  Future<int> saveSignature(String matchId, String signatureBase64) async {
+    print("DEBUG: saveSignature: Guardando firma match $matchId a NO SINCRONIZADO");
+    // Convertimos a String explícitamente por seguridad
+    final idStr = matchId.toString();
+      final rowAffected = await (update(matches)..where((t) => t.id.equals(idStr))).write(
+      MatchesCompanion(
+        signatureData: Value(signatureBase64),
+        isSynced: const Value(false),
+      ),
+    );
+
+    print("DEBUG: saveSignature: Row affected: $rowAffected");
+    return rowAffected;
+  }
+
+  // Marcar un partido como SINCRONIZADO
+  Future<void> markAsSynced(String matchId) async {
+    print("DEBUG: markAsSynced: Marcando partido $matchId como SINCRONIZADO");
+    await (update(matches)..where((t) => t.id.equals(matchId))).write(
+      const MatchesCompanion(
+        isSynced: Value(true),
       ),
     );
   }
 
   // Registra cada punto o falta como un evento individual
   Future<void> insertEvent(GameEventsCompanion event) async {
+    print("DEBUG: insertEvent: Agregando evento a match ${event.matchId}");
     await into(gameEvents).insert(event);
   }
 
@@ -58,6 +102,7 @@ class MatchesDao extends DatabaseAccessor<AppDatabase> with _$MatchesDaoMixin {
     String matchId,
     List<MatchRostersCompanion> roster,
   ) async {
+    print("DEBUG: addRosterToMatch: Agregando equipo $matchId");
     return transaction(() async {
       for (var player in roster) {
         await into(matchRosters).insert(player);

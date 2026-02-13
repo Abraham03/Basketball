@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 // Importamos tu modelo de negocio normalmente
 import '../core/models/catalog_models.dart'; 
 import '../logic/catalog_provider.dart';
@@ -79,14 +80,16 @@ class TeamDetailScreen extends ConsumerWidget {
               if (nameCtrl.text.isEmpty) return;
               Navigator.pop(ctx);
 
+                              // Refrescar para ver el nuevo jugador
+                final db = ref.read(databaseProvider);
+
               try {
                 final newId = await ref.read(apiServiceProvider).addPlayer(
                   team.id,
                   nameCtrl.text,
                   int.tryParse(numberCtrl.text) ?? 0,
                 );
-                // Refrescar para ver el nuevo jugador
-                final db = ref.read(databaseProvider);
+
 
                 await db.into(db.players).insert(
                   db_app.PlayersCompanion.insert(
@@ -95,6 +98,7 @@ class TeamDetailScreen extends ConsumerWidget {
                     name: nameCtrl.text,
                     defaultNumber: drift.Value(int.tryParse(numberCtrl.text) ?? 0),
                     active: const drift.Value(true),
+                    isSynced: const drift.Value(true),
                   ),
                   mode: drift.InsertMode.insertOrReplace
                 );
@@ -107,11 +111,28 @@ class TeamDetailScreen extends ConsumerWidget {
                   const SnackBar(content: Text("Jugador agregado"), backgroundColor: Colors.green)
                 );
               } catch (e) {
+                // ERROR (Sin internet): Guardar localmente como PENDIENTE
+                // Nota: Necesitas generar un ID temporal local (ej. UUID) si la API falla
+                final tempId = const Uuid().v4();
+
+                await db.into(db.players).insert(
+                  db_app.PlayersCompanion.insert(
+                    id: drift.Value(tempId), 
+                    teamId: team.id,
+                    name: nameCtrl.text,
+                    defaultNumber: drift.Value(int.tryParse(numberCtrl.text) ?? 0),
+                    active: const drift.Value(true),
+                    isSynced: const drift.Value(false), 
+                  )
+                );
+                
+                ref.invalidate(catalogProvider);
+
 
                 if(!context.mounted) return;
 
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red)
+                  SnackBar(content: Text("Sin conexión. Jugador guardado localmente ($tempId)"), backgroundColor: Colors.red)
                 );
                 
               }

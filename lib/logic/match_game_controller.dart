@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:drift/drift.dart' as drift;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/database/app_database.dart';
 import '../core/database/daos/matches_dao.dart';
@@ -219,6 +220,7 @@ class MatchGameController extends StateNotifier<MatchState> {
     String? signatureBase64;
     if (signatureBytes != null) {
       signatureBase64 = base64Encode(signatureBytes);
+      await _dao.saveSignature(state.matchId, signatureBase64);
     }
 
   // 2. Preparar eventos para JSON
@@ -272,8 +274,17 @@ class MatchGameController extends StateNotifier<MatchState> {
       "events": eventsList,
     };
 
-    // 4. Enviar
-    return await api.syncMatchData(payload);
+// 4. Intentar enviar
+    try {
+        final success = await api.syncMatchData(payload);
+        if (success) {
+            // Si subió, marcamos como synced en local
+            await _dao.markAsSynced(state.matchId);
+        }
+        return success;
+    } catch (e) {
+        return false; // Falló red, pero los datos ya están en SQLite gracias a _dao.saveSignature
+    }
   }
 
 
@@ -426,6 +437,14 @@ void _updateTimeoutList(String teamId, int half, List<String> newList) {
 
     _timer?.cancel(); 
     _timer = null;
+    _dao.updateMatchMetadata(
+      matchId,
+      teamAId,
+      teamBId,
+      mainReferee,
+      auxReferee,
+      scorekeeper
+    );
     final Map<String, PlayerStats> initialStats = {};
     final List<String> courtA = [];
     final List<String> benchA = [];
@@ -688,7 +707,7 @@ void _updateTimeoutList(String teamId, int half, List<String> newList) {
     );
 
     _saveToDatabase();
-    _logEventToDb(playerId, points, fouls, foulType);
+    _logEventToDb(currentStats.dbId.toString(), points, fouls, foulType);
   }
 
   void substitutePlayer(String teamId, String playerOut, String playerIn) {
@@ -747,7 +766,7 @@ void _updateTimeoutList(String teamId, int half, List<String> newList) {
   }
 
   Future<void> _logEventToDb(
-    String player,
+    String playeridDb,
     int points,
     int fouls,
     String? foulType,
@@ -767,9 +786,11 @@ void _updateTimeoutList(String teamId, int half, List<String> newList) {
     await _dao.insertEvent(
       GameEventsCompanion.insert(
         matchId: state.matchId,
+        playerId: drift.Value(playeridDb),
         type: type,
         period: state.currentPeriod,
         clockTime: timeStr,
+        isSynced: const drift.Value(false),
       ),
     );
   }
