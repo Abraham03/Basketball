@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 // Importamos tu modelo de negocio normalmente
-import '../core/models/catalog_models.dart'; 
+import '../core/models/catalog_models.dart';
 import '../logic/catalog_provider.dart';
 import '../logic/tournament_provider.dart';
 // Importamos la base de datos con un ALIAS para evitar conflicto de nombres
-import '../core/database/app_database.dart' as db_app; 
+import '../core/database/app_database.dart' as db_app;
 import 'package:drift/drift.dart' as drift;
 
 class TeamDetailScreen extends ConsumerWidget {
@@ -15,7 +14,7 @@ class TeamDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final catalogAsync = ref.watch(catalogProvider);
+    final playersAsync = ref.watch(teamPlayersStreamProvider(team.id));
 
     return Scaffold(
       appBar: AppBar(title: Text("Plantilla: ${team.name}")),
@@ -24,15 +23,29 @@ class TeamDetailScreen extends ConsumerWidget {
         label: const Text("Agregar Jugador"),
         icon: const Icon(Icons.person_add),
       ),
-      body: catalogAsync.when(
+      body: playersAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, _) => const Center(child: Text("Error al cargar")),
-        data: (data) {
+        data: (players) {
           // Filtramos solo los jugadores de ESTE equipo
-          final players = data.players.where((p) => p.teamId == team.id).toList();
 
           if (players.isEmpty) {
-            return const Center(child: Text("Este equipo no tiene jugadores aún."));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text("Este equipo no tiene jugadores aún."),
+                  if (team.id < 0)
+                    const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Text(
+                        "(Equipo local sin sincronizar)",
+                        style: TextStyle(color: Colors.orange),
+                      ),
+                    ),
+                ],
+              ),
+            );
           }
 
           return ListView.separated(
@@ -40,12 +53,29 @@ class TeamDetailScreen extends ConsumerWidget {
             separatorBuilder: (_, __) => const Divider(),
             itemBuilder: (context, index) {
               final player = players[index];
+              // Convertir ID a int para verificar si es negativo (local)
+              final isLocal =
+                  int.tryParse(player.id) != null && int.parse(player.id) < 0;
+
               return ListTile(
                 leading: CircleAvatar(
                   backgroundColor: Colors.orangeAccent,
                   child: Text("#${player.defaultNumber}"),
                 ),
                 title: Text(player.name),
+                subtitle: isLocal
+                    ? const Text(
+                        "Pendiente de sincronizar",
+                        style: TextStyle(fontSize: 10, color: Colors.orange),
+                      )
+                    : null,
+                trailing: isLocal
+                    ? const Icon(Icons.cloud_off, color: Colors.orange)
+                    : const Icon(
+                        Icons.check_circle,
+                        color: Colors.green,
+                        size: 16,
+                      ),
               );
             },
           );
@@ -65,76 +95,90 @@ class TeamDetailScreen extends ConsumerWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Nombre")),
             TextField(
-              controller: numberCtrl, 
+              controller: nameCtrl,
+              decoration: const InputDecoration(labelText: "Nombre"),
+            ),
+            TextField(
+              controller: numberCtrl,
               decoration: const InputDecoration(labelText: "Número (#)"),
               keyboardType: TextInputType.number,
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar")),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancelar"),
+          ),
           ElevatedButton(
             onPressed: () async {
               if (nameCtrl.text.isEmpty) return;
               Navigator.pop(ctx);
 
-                              // Refrescar para ver el nuevo jugador
-                final db = ref.read(databaseProvider);
+              final db = ref.read(databaseProvider);
+              final api = ref.read(apiServiceProvider);
+              final playerNum = int.tryParse(numberCtrl.text) ?? 0;
 
               try {
-                final newId = await ref.read(apiServiceProvider).addPlayer(
+                // 1. INTENTO ONLINE
+                final newId = await api.addPlayer(
                   team.id,
                   nameCtrl.text,
-                  int.tryParse(numberCtrl.text) ?? 0,
+                  playerNum,
                 );
 
+                // 2. ÉXITO: GUARDAR SINCRONIZADO
+                await db
+                    .into(db.players)
+                    .insert(
+                      db_app.PlayersCompanion.insert(
+                        id: drift.Value(newId.toString()), // ID de API
+                        teamId: team.id,
+                        name: nameCtrl.text,
+                        defaultNumber: drift.Value(playerNum),
+                        active: const drift.Value(true),
+                        isSynced: const drift.Value(true),
+                      ),
+                      mode: drift.InsertMode.insertOrReplace,
+                    );
 
-                await db.into(db.players).insert(
-                  db_app.PlayersCompanion.insert(
-                    id: drift.Value(newId.toString()), // ID que viene de la API
-                    teamId: team.id,
-                    name: nameCtrl.text,
-                    defaultNumber: drift.Value(int.tryParse(numberCtrl.text) ?? 0),
-                    active: const drift.Value(true),
-                    isSynced: const drift.Value(true),
-                  ),
-                  mode: drift.InsertMode.insertOrReplace
-                );
-
-                // 3. Forzar refresco visual (Importante si usas catalogProvider normal)
-                ref.invalidate(catalogProvider);
-
-                if(!context.mounted) return;
+                if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Jugador agregado"), backgroundColor: Colors.green)
+                  const SnackBar(
+                    content: Text("Jugador agregado"),
+                    backgroundColor: Colors.green,
+                  ),
                 );
               } catch (e) {
-                // ERROR (Sin internet): Guardar localmente como PENDIENTE
-                // Nota: Necesitas generar un ID temporal local (ej. UUID) si la API falla
-                final tempId = const Uuid().v4();
+                // 3. FALLO (OFFLINE): GUARDAR PENDIENTE
+                print("Modo Offline Jugador: $e");
 
-                await db.into(db.players).insert(
-                  db_app.PlayersCompanion.insert(
-                    id: drift.Value(tempId), 
-                    teamId: team.id,
-                    name: nameCtrl.text,
-                    defaultNumber: drift.Value(int.tryParse(numberCtrl.text) ?? 0),
-                    active: const drift.Value(true),
-                    isSynced: const drift.Value(false), 
-                  )
-                );
-                
-                ref.invalidate(catalogProvider);
+                // ID Temporal Negativo
+                final tempId = -DateTime.now().millisecondsSinceEpoch;
 
+                await db
+                    .into(db.players)
+                    .insert(
+                      db_app.PlayersCompanion.insert(
+                        id: drift.Value(
+                          tempId.toString(),
+                        ), // Convertir a String para Drift
+                        teamId: team.id,
+                        name: nameCtrl.text,
+                        defaultNumber: drift.Value(playerNum),
+                        active: const drift.Value(true),
+                        isSynced: const drift.Value(false), // Pendiente
+                      ),
+                    );
 
-                if(!context.mounted) return;
-
+                if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("Sin conexión. Jugador guardado localmente ($tempId)"), backgroundColor: Colors.red)
+                  const SnackBar(
+                    content: Text("Sin conexión. Jugador guardado localmente."),
+                    backgroundColor: Colors.orange,
+                  ),
                 );
-                
               }
             },
             child: const Text("Agregar"),
@@ -144,3 +188,9 @@ class TeamDetailScreen extends ConsumerWidget {
     );
   }
 }
+
+final teamPlayersStreamProvider = StreamProvider.family<List<db_app.Player>, int>((ref, teamId) {
+  final db = ref.watch(databaseProvider);
+  // Observar la tabla players filtrando por teamId
+  return (db.select(db.players)..where((p) => p.teamId.equals(teamId))).watch();
+});

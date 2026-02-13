@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/catalog_provider.dart';
-import 'team_detail_screen.dart'; 
-import 'package:drift/drift.dart' as drift; 
+import 'team_detail_screen.dart';
+import 'package:drift/drift.dart' as drift;
 import '../core/database/app_database.dart';
 import '../logic/tournament_provider.dart';
+
 class TeamManagementScreen extends ConsumerWidget {
   final String tournamentId;
   const TeamManagementScreen({super.key, required this.tournamentId});
@@ -36,7 +37,9 @@ class TeamManagementScreen extends ConsumerWidget {
                 child: ListTile(
                   leading: CircleAvatar(
                     backgroundColor: Colors.blueAccent,
-                    child: Text(team.shortName.isNotEmpty ? team.shortName : team.name[0]),
+                    child: Text(
+                      team.shortName.isNotEmpty ? team.shortName : team.name[0],
+                    ),
                   ),
                   title: Text(team.name),
                   subtitle: Text("Coach: ${team.coachName}"),
@@ -71,63 +74,122 @@ class TeamManagementScreen extends ConsumerWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Nombre Equipo")),
-            TextField(controller: shortCtrl, decoration: const InputDecoration(labelText: "Abreviatura (Ej: CHI)")),
-            TextField(controller: coachCtrl, decoration: const InputDecoration(labelText: "Entrenador")),
+            TextField(
+              controller: nameCtrl,
+              decoration: const InputDecoration(labelText: "Nombre Equipo"),
+            ),
+            TextField(
+              controller: shortCtrl,
+              decoration: const InputDecoration(
+                labelText: "Abreviatura (Ej: CHI)",
+              ),
+            ),
+            TextField(
+              controller: coachCtrl,
+              decoration: const InputDecoration(labelText: "Entrenador"),
+            ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar")),
-ElevatedButton(
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancelar"),
+          ),
+          ElevatedButton(
             onPressed: () async {
               if (nameCtrl.text.isEmpty) return;
-              Navigator.pop(ctx); 
-              
+              Navigator.pop(ctx);
+
+              final db = ref.read(databaseProvider);
+              final api = ref.read(apiServiceProvider);
+
               try {
-                // 1. Crear en API y OBTENER ID
-                final newTeamId = await ref.read(apiServiceProvider).createTeam(
-                  nameCtrl.text, 
-                  shortCtrl.text, 
+                // 1. INTENTO DE SUBIDA INMEDIATA
+                final newTeamId = await api.createTeam(
+                  nameCtrl.text,
+                  shortCtrl.text,
                   coachCtrl.text,
-                  tournamentId: tournamentId 
+                  tournamentId: tournamentId,
                 );
-                
-                // 2. INSERTAR EN BASE DE DATOS LOCAL (Optimistic Update)
-                final db = ref.read(databaseProvider);
-                
+
+                // 2. SI HAY ÉXITO: GUARDAR EN LOCAL COMO SINCRONIZADO (isSynced = true)
                 await db.transaction(() async {
-                  // A. Insertar Equipo
-                  await db.into(db.teams).insert(
-                    TeamsCompanion.insert(
-                      id: drift.Value(newTeamId.toString()), 
-                      name: nameCtrl.text, // Probablemente este sí acepte String directo si es required
-                      shortName: drift.Value(shortCtrl.text),
-                      coachName: drift.Value(coachCtrl.text),
-                    ),
-                    mode: drift.InsertMode.insertOrReplace
-                  );
-
-                  // B. Insertar Relación
-                  await db.into(db.tournamentTeams).insert(
-                    TournamentTeamsCompanion.insert(
-                      tournamentId: tournamentId,
-                      teamId: newTeamId.toString(),
-                    ),
-                    mode: drift.InsertMode.insertOrReplace
-                  );
+                  await db
+                      .into(db.teams)
+                      .insert(
+                        TeamsCompanion.insert(
+                          id: drift.Value(newTeamId.toString()),
+                          name: nameCtrl.text,
+                          shortName: drift.Value(shortCtrl.text),
+                          coachName: drift.Value(coachCtrl.text),
+                          isSynced: const drift.Value(true,
+                          ), // YA ESTÁ EN LA NUBE
+                        ),
+                        mode: drift.InsertMode.insertOrReplace,
+                      );
+                  // ... insertar relación torneo ...
+                  await db
+                      .into(db.tournamentTeams)
+                      .insert(
+                        TournamentTeamsCompanion.insert(
+                          tournamentId: tournamentId,
+                          teamId: newTeamId.toString(),
+                          isSynced: const drift.Value(true),
+                        ),
+                        mode: drift.InsertMode.insertOrReplace,
+                      );
                 });
-
-                // Al usar StreamProvider, la lista se actualiza sola aquí.
 
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Equipo creado correctamente"), backgroundColor: Colors.green)
+                  const SnackBar(
+                    content: Text("Equipo creado y sincronizado"),
+                    backgroundColor: Colors.green,
+                  ),
                 );
               } catch (e) {
+                // 3. SI FALLA (OFFLINE): GUARDAR EN LOCAL COMO PENDIENTE (isSynced = false)
+                print("Modo Offline activado para Equipo: $e");
+
+                // Generar ID temporal local
+                final tempId = (-DateTime.now().millisecondsSinceEpoch).toString();
+
+                await db.transaction(() async {
+                  await db
+                      .into(db.teams)
+                      .insert(
+                        TeamsCompanion.insert(
+                          id: drift.Value(tempId), // ID TEMPORAL
+                          name: nameCtrl.text,
+                          shortName: drift.Value(shortCtrl.text),
+                          coachName: drift.Value(coachCtrl.text),
+                          isSynced: const drift.Value(
+                            false,
+                          ), // PENDIENTE DE SUBIR
+                        ),
+                      );
+                  await db
+                      .into(db.tournamentTeams)
+                      .insert(
+                        TournamentTeamsCompanion.insert(
+                          tournamentId: tournamentId,
+                          teamId: tempId,
+                          isSynced: const drift.Value(false),
+                        ),
+                      );
+                });
+
+                if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red)
+                  const SnackBar(
+                    content: Text("Sin conexión. Equipo guardado localmente."),
+                    backgroundColor: Colors.orange,
+                  ),
                 );
               }
+
+              // Recargar UI
+              ref.invalidate(tournamentDataByIdProvider(tournamentId));
             },
             child: const Text("Guardar"),
           ),
