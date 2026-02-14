@@ -6,7 +6,7 @@ import '../models/catalog_models.dart';
 
 class ApiService {
   // ⚠️ CAMBIA ESTO POR TU URL REAL DE HOSTINGER
-  static const String _baseUrl = 'https://techsolutions.management/api.php';
+  static const String _baseUrl = 'https://basket.techsolutions.management/api.php';
 
   // Nuevo método para traer datos filtrados por torneo
   Future<CatalogData> fetchTournamentData(String tournamentId) async {
