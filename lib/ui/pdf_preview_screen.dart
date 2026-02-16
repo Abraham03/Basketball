@@ -15,6 +15,10 @@ class PdfPreviewScreen extends StatelessWidget {
   final String auxReferee;
   final String scorekeeper;
   final Uint8List? protestSignature; 
+  final String coachA;
+  final String coachB;
+  final int? captainAId;
+  final int? captainBId;
 
   const PdfPreviewScreen({
     super.key,
@@ -27,6 +31,10 @@ class PdfPreviewScreen extends StatelessWidget {
     required this.auxReferee,
     required this.scorekeeper,
     this.protestSignature,
+    this.coachA = "",
+    this.coachB = "",
+    this.captainAId,
+    this.captainBId,
   });
 
   @override
@@ -48,7 +56,11 @@ class PdfPreviewScreen extends StatelessWidget {
           mainReferee: mainReferee,
           auxReferee: auxReferee,
           scorekeeper: scorekeeper,
-          protestSignature: protestSignature
+          protestSignature: protestSignature,
+          coachA: coachA,
+          coachB: coachB,
+          captainAId: captainAId,
+          captainBId: captainBId,
         ),
         // Opcional: Configura qué acciones permites
         allowPrinting: true,

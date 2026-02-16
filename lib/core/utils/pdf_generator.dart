@@ -42,19 +42,26 @@ class PdfCoords {
 
   // --- 3. ROSTER TABLES ---
   static const double teamAListStartY = 367.0;
-  static const double teamAColNumX = 199.0;
+  static const double teamAColNumX = 195.5;
   static const double teamAColNameX = 50.0;
-  static const double teamAColFoulsX = 234.0;
+  static const double teamAColFoulsX = 232.5;
   static const double teamAColEntryX = 215.5;
 
   static const double teamBListStartY = 650.0;
-  static const double teamBColNumX = 199.0;
+  static const double teamBColNumX = 195.5;
   static const double teamBColNameX = 50.0;
-  static const double teamBColFoulsX = 234.0;
+  static const double teamBColFoulsX = 232.5;
   static const double teamBColEntryX = 215.5;
 
   static const double rowHeight = 13.5;
   static const double foulBoxWidth = 12.0;
+
+  // --- COACHES  ---
+  // Ubicados debajo de la lista de jugadores
+  static const double coachAX = 50.0;
+  static const double coachAY = 380.0; // Debajo de teamAListStartY
+  static const double coachBX = 50.0;
+  static const double coachBY = 664.0; // Debajo de teamBListStartY
 
   // --- 4. TIMEOUTS (NUEVAS COORDENADAS) ---
   // Ajustadas para estar debajo del nombre y antes de la lista
@@ -135,6 +142,10 @@ class PdfGenerator {
     String mainReferee = "",
     String auxReferee = "",
     String scorekeeper = "",
+    required String coachA,
+    required String coachB,
+    int? captainAId,
+    int? captainBId,
     Uint8List? protestSignature,
   }) async {
     final pdf = await _buildDocument(
@@ -146,6 +157,10 @@ class PdfGenerator {
       mainReferee,
       auxReferee,
       scorekeeper,
+      coachA,
+      coachB,
+      captainAId,
+      captainBId,
       protestSignature,
     );
     return pdf.save();
@@ -160,6 +175,10 @@ class PdfGenerator {
     String mainReferee = "",
     String auxReferee = "",
     String scorekeeper = "",
+    required String coachA,
+    required String coachB,
+    int? captainAId,
+    int? captainBId,
     Uint8List? protestSignature,
   }) async {
     final pdf = await _buildDocument(
@@ -171,6 +190,10 @@ class PdfGenerator {
       mainReferee,
       auxReferee,
       scorekeeper,
+      coachA,
+      coachB,
+      captainAId,
+      captainBId,
       protestSignature,
     );
     final fileName = _createFileName(teamAName, teamBName);
@@ -189,6 +212,10 @@ class PdfGenerator {
     String mainReferee = "",
     String auxReferee = "",
     String scorekeeper = "",
+    required String coachA,
+    required String coachB,
+    int? captainAId,
+    int? captainBId,
     Uint8List? protestSignature,
   }) async {
     final pdf = await _buildDocument(
@@ -200,6 +227,10 @@ class PdfGenerator {
       mainReferee,
       auxReferee,
       scorekeeper,
+      coachA,
+      coachB,
+      captainAId,
+      captainBId,
       protestSignature,
     );
     final fileName = _createFileName(teamAName, teamBName);
@@ -215,6 +246,10 @@ class PdfGenerator {
     String mainReferee,
     String auxReferee,
     String scorekeeper,
+    String coachA,
+    String coachB,
+    int? captainAId,
+    int? captainBId,
     Uint8List? protestSignature,
   ) async {
     final pdf = pw.Document();
@@ -362,6 +397,21 @@ class PdfGenerator {
                   fontSize: 10,
                 ),
 
+                _drawText(
+                  coachA,
+                  x: PdfCoords.coachAX,
+                  y: PdfCoords.coachAY,
+                  fontSize: 10,
+                  isBold: true,
+                ),
+                _drawText(
+                  coachB,
+                  x: PdfCoords.coachBX,
+                  y: PdfCoords.coachBY,
+                  fontSize: 10,
+                  isBold: true,
+                ),
+
                 ..._drawTeamFoulsSection(state),
 
                 ..._drawTimeouts(state),
@@ -378,6 +428,7 @@ class PdfGenerator {
                   startXFouls: PdfCoords.teamAColFoulsX,
                   startY: PdfCoords.teamAListStartY,
                   entryX: PdfCoords.teamAColEntryX,
+                  captainId: captainAId,
                 ),
                 ..._buildRosterList(
                   players: _getSortedRoster(
@@ -391,6 +442,7 @@ class PdfGenerator {
                   startXFouls: PdfCoords.teamBColFoulsX,
                   startY: PdfCoords.teamBListStartY,
                   entryX: PdfCoords.teamBColEntryX,
+                  captainId: captainBId,
                 ),
 
                 _drawText(
@@ -496,6 +548,7 @@ class PdfGenerator {
     required double startXFouls,
     required double startY,
     required double entryX,
+    int? captainId,
   }) {
     List<pw.Widget> widgets = [];
     int limit = 12; // Siempre 12 filas en la hoja
@@ -513,7 +566,12 @@ class PdfGenerator {
         final dorsal = stat.playerNumber.isNotEmpty ? stat.playerNumber : "";
 
         widgets.add(_drawText(dorsal, x: startXNum, y: currentY, fontSize: 10));
-        String displayName = playerName.length > 18
+
+        String displayName = playerName;
+        if (captainId != null && stat.dbId == captainId) {
+          displayName += " (C)";
+        }
+       displayName = playerName.length > 18
             ? "${playerName.substring(0, 16)}..."
             : playerName;
         widgets.add(

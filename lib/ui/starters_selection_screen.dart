@@ -52,8 +52,13 @@ class StartersSelectionScreen extends ConsumerStatefulWidget {
   }
 
 class _StartersSelectionScreenState extends ConsumerState<StartersSelectionScreen> {
+  // Los 5 jugadores seleccionados
   final Set<int> _startersA = {};
   final Set<int> _startersB = {};
+
+  // Los capitanes
+  int? _captainAId;
+  int? _captainBId;
   bool _isCreating = false; // Para evitar doble clic
 
   @override
@@ -72,8 +77,8 @@ class _StartersSelectionScreenState extends ConsumerState<StartersSelectionScree
         ),
         body: TabBarView(
           children: [
-            _buildSelectionList(widget.rosterA, _startersA, Colors.orange),
-            _buildSelectionList(widget.rosterB, _startersB, Colors.blue),
+            _buildSelectionList(widget.rosterA, _startersA, Colors.orange, true),
+            _buildSelectionList(widget.rosterB, _startersB, Colors.blue, false),
           ],
         ),
         bottomNavigationBar: Container(
@@ -87,8 +92,16 @@ class _StartersSelectionScreenState extends ConsumerState<StartersSelectionScree
                 children: [
                   Text("Equipo A: ${_startersA.length}/5", 
                     style: TextStyle(color: _startersA.length == 5 ? Colors.green : Colors.red, fontWeight: FontWeight.bold)),
+                    if (_captainAId == null) 
+                        const Text("Falta Capitán", style: TextStyle(color: Colors.red, fontSize: 12))
+                      else
+                        const Text("Capitán OK", style: TextStyle(color: Colors.green, fontSize: 12)),
                   Text("Equipo B: ${_startersB.length}/5",
                     style: TextStyle(color: _startersB.length == 5 ? Colors.green : Colors.red, fontWeight: FontWeight.bold)),
+                    if (_captainBId == null) 
+                        const Text("Falta Capitán", style: TextStyle(color: Colors.red, fontSize: 12))
+                      else
+                        const Text("Capitán OK", style: TextStyle(color: Colors.green, fontSize: 12)),
                 ],
               ),
               const SizedBox(height: 10),
@@ -113,16 +126,31 @@ class _StartersSelectionScreenState extends ConsumerState<StartersSelectionScree
     );
   }
 
-  Widget _buildSelectionList(List<catalog.Player> roster, Set<int> selectedIds, Color color) {
+Widget _buildSelectionList(List<catalog.Player> roster, Set<int> selectedIds, Color color, bool isTeamA) {
     return ListView.builder(
       itemCount: roster.length,
       itemBuilder: (context, index) {
         final player = roster[index];
         final isSelected = selectedIds.contains(player.id);
         final isFull = selectedIds.length >= 5;
+        
+        // Verificar si es el capitán actual
+        final isCaptain = isTeamA ? _captainAId == player.id : _captainBId == player.id;
 
         return CheckboxListTile(
-          title: Text(player.name),
+          title: Row(
+            children: [
+              Expanded(child: Text(player.name)),
+              if (isCaptain)
+                const Chip(
+                  label: Text("C", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  backgroundColor: Colors.amber,
+                  padding: EdgeInsets.zero,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                )
+            ],
+          ),
           subtitle: Text("Camiseta #${player.defaultNumber}"),
           value: isSelected,
           activeColor: color,
@@ -132,13 +160,32 @@ class _StartersSelectionScreenState extends ConsumerState<StartersSelectionScree
                 if (!isFull) selectedIds.add(player.id);
               } else {
                 selectedIds.remove(player.id);
+                // Si quitas al jugador, ya no puede ser capitán
+                if (isCaptain) {
+                  if (isTeamA) {
+                    _captainAId = null;
+                  } else {
+                    _captainBId = null;
+                  }
+                }
               }
             });
           },
-          secondary: CircleAvatar(
-            backgroundColor: isSelected ? color : Colors.grey.shade200,
-            foregroundColor: isSelected ? Colors.white : Colors.black,
-            child: Text("${player.defaultNumber}"),
+          secondary: IconButton(
+            icon: Icon(
+              isCaptain ? Icons.star : Icons.star_border,
+              color: isCaptain ? Colors.amber : Colors.grey,
+            ),
+            tooltip: "Marcar como Capitán",
+            onPressed: isSelected ? () {
+              setState(() {
+                if (isTeamA) {
+                  _captainAId = player.id;
+                } else {
+                  _captainBId = player.id;
+                }
+              });
+            } : null, // Solo habilitado si el jugador está seleccionado
           ),
         );
       },
@@ -146,7 +193,7 @@ class _StartersSelectionScreenState extends ConsumerState<StartersSelectionScree
   }
 
   bool _canProceed() {
-    return _startersA.length == 5 && _startersB.length == 5;
+    return _startersA.length == 5 && _startersB.length == 5 && _captainAId != null && _captainBId != null;
   }
 
   Future <void> _startGame() async {
@@ -215,22 +262,28 @@ class _StartersSelectionScreenState extends ConsumerState<StartersSelectionScree
           fullRosterB: widget.rosterB,
           startersAIds: _startersA,
           startersBIds: _startersB,
+
+          coachA: widget.teamA.coachName,
+          coachB: widget.teamB.coachName,
+          captainAId: _captainAId,
+          captainBId: _captainBId,
         ),
       ),
     );
   }
 
-  Future<void> _saveRostersToDb(dynamic dao) async {
+Future<void> _saveRostersToDb(dynamic dao) async {
     List<db.MatchRostersCompanion> rosterEntries = [];
 
     // Procesar Equipo A
     for (var player in widget.rosterA) {
       rosterEntries.add(db.MatchRostersCompanion.insert(
         matchId: widget.matchId,
-        playerId: player.id.toString(), // Asumiendo que player.id es int
+        playerId: player.id.toString(),
         teamSide: 'A',
         jerseyNumber: player.defaultNumber,
-        isCaptain: const drift.Value(false), // O lógica de capitán si la tienes
+        // Guardar si es capitán
+        isCaptain: drift.Value(player.id == _captainAId), 
         isSynced: const drift.Value(false),
       ));
     }
@@ -242,7 +295,8 @@ class _StartersSelectionScreenState extends ConsumerState<StartersSelectionScree
         playerId: player.id.toString(),
         teamSide: 'B',
         jerseyNumber: player.defaultNumber,
-        isCaptain: const drift.Value(false),
+        // Guardar si es capitán
+        isCaptain: drift.Value(player.id == _captainBId),
         isSynced: const drift.Value(false),
       ));
     }

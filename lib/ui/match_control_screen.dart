@@ -28,7 +28,12 @@ class MatchControlScreen extends ConsumerStatefulWidget {
   final int tournamentId; 
   final int venueId;      
   final int teamAId;      
-  final int teamBId;      
+  final int teamBId;  
+
+  final String coachA;
+  final String coachB;
+  final int? captainAId;
+  final int? captainBId;    
 
   const MatchControlScreen({
     super.key,
@@ -48,6 +53,11 @@ class MatchControlScreen extends ConsumerStatefulWidget {
     required this.venueId,
     required this.teamAId,
     required this.teamBId,
+
+    required this.coachA,
+    required this.coachB,
+    this.captainAId,
+    this.captainBId,
   });
 
   @override
@@ -232,6 +242,10 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                     mainReferee: widget.mainReferee,
                     auxReferee: widget.auxReferee,
                     scorekeeper: widget.scorekeeper,
+                    coachA: widget.coachA,
+                    coachB: widget.coachB,
+                    captainAId: widget.captainAId,
+                    captainBId: widget.captainBId,
                     protestSignature: _capturedSignature,
                   ),
                 ),
@@ -251,6 +265,10 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                 mainReferee: widget.mainReferee,
                 auxReferee: widget.auxReferee,
                 scorekeeper: widget.scorekeeper,
+                coachA: widget.coachA,
+                coachB: widget.coachB,
+                captainAId: widget.captainAId,
+                captainBId: widget.captainBId,
                 protestSignature: _capturedSignature,
               );
             },
@@ -268,6 +286,10 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                 mainReferee: widget.mainReferee,
                 auxReferee: widget.auxReferee,
                 scorekeeper: widget.scorekeeper,
+                coachA: widget.coachA,
+                coachB: widget.coachB,
+                captainAId: widget.captainAId,
+                captainBId: widget.captainBId,
                 protestSignature: _capturedSignature,
               );
             },
@@ -1155,6 +1177,10 @@ void _showFinalOptionsDialog(BuildContext context, MatchState currentState) {
           scorekeeper: widget.scorekeeper,
           // Aquí tienes que actualizar tu PdfPreviewScreen para que acepte la firma también
            protestSignature: signature,
+          coachA: widget.coachA,
+          coachB: widget.coachB,
+          captainAId: widget.captainAId,
+          captainBId: widget.captainBId,
         ),
       ),
     );
