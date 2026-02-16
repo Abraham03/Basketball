@@ -34,6 +34,7 @@ class MatchControlScreen extends ConsumerStatefulWidget {
   final String coachB;
   final int? captainAId;
   final int? captainBId;    
+  final DateTime? matchDate;
 
   const MatchControlScreen({
     super.key,
@@ -58,6 +59,7 @@ class MatchControlScreen extends ConsumerStatefulWidget {
     required this.coachB,
     this.captainAId,
     this.captainBId,
+    this.matchDate,
   });
 
   @override
@@ -246,6 +248,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                     coachB: widget.coachB,
                     captainAId: widget.captainAId,
                     captainBId: widget.captainBId,
+                    matchDate: widget.matchDate,
                     protestSignature: _capturedSignature,
                   ),
                 ),
@@ -269,6 +272,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                 coachB: widget.coachB,
                 captainAId: widget.captainAId,
                 captainBId: widget.captainBId,
+                matchDate: widget.matchDate,
                 protestSignature: _capturedSignature,
               );
             },
@@ -290,6 +294,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                 coachB: widget.coachB,
                 captainAId: widget.captainAId,
                 captainBId: widget.captainBId,
+                matchDate: widget.matchDate,
                 protestSignature: _capturedSignature,
               );
             },
@@ -1181,6 +1186,7 @@ void _showFinalOptionsDialog(BuildContext context, MatchState currentState) {
           coachB: widget.coachB,
           captainAId: widget.captainAId,
           captainBId: widget.captainBId,
+          matchDate: widget.matchDate,
         ),
       ),
     );

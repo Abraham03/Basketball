@@ -19,6 +19,7 @@ class PdfPreviewScreen extends StatelessWidget {
   final String coachB;
   final int? captainAId;
   final int? captainBId;
+  final DateTime? matchDate;
 
   const PdfPreviewScreen({
     super.key,
@@ -35,6 +36,7 @@ class PdfPreviewScreen extends StatelessWidget {
     this.coachB = "",
     this.captainAId,
     this.captainBId,
+    this.matchDate
   });
 
   @override
@@ -61,6 +63,8 @@ class PdfPreviewScreen extends StatelessWidget {
           coachB: coachB,
           captainAId: captainAId,
           captainBId: captainBId,
+          matchDate: matchDate,
+
         ),
         // Opcional: Configura qué acciones permites
         allowPrinting: true,

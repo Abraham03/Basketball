@@ -9,7 +9,7 @@ class PdfCoords {
   // --- 1. HEADER ---
   static const double headerY = 90.0;
   static const double competitionX = 390.0;
-  static const double dateX = 195.0;
+  static const double dateX = 188.0;
   static const double timeX = 270.0;
   static const double placeX = 180.0;
   static const double placeY = 105.0;
@@ -147,6 +147,7 @@ class PdfGenerator {
     int? captainAId,
     int? captainBId,
     Uint8List? protestSignature,
+    DateTime? matchDate,
   }) async {
     final pdf = await _buildDocument(
       state,
@@ -162,6 +163,7 @@ class PdfGenerator {
       captainAId,
       captainBId,
       protestSignature,
+      matchDate,
     );
     return pdf.save();
   }
@@ -180,6 +182,7 @@ class PdfGenerator {
     int? captainAId,
     int? captainBId,
     Uint8List? protestSignature,
+    DateTime? matchDate,
   }) async {
     final pdf = await _buildDocument(
       state,
@@ -195,6 +198,7 @@ class PdfGenerator {
       captainAId,
       captainBId,
       protestSignature,
+      matchDate,
     );
     final fileName = _createFileName(teamAName, teamBName);
     await Printing.layoutPdf(
@@ -217,6 +221,7 @@ class PdfGenerator {
     int? captainAId,
     int? captainBId,
     Uint8List? protestSignature,
+    DateTime? matchDate,
   }) async {
     final pdf = await _buildDocument(
       state,
@@ -232,6 +237,7 @@ class PdfGenerator {
       captainAId,
       captainBId,
       protestSignature,
+      matchDate,
     );
     final fileName = _createFileName(teamAName, teamBName);
     await Printing.sharePdf(bytes: await pdf.save(), filename: fileName);
@@ -251,6 +257,7 @@ class PdfGenerator {
     int? captainAId,
     int? captainBId,
     Uint8List? protestSignature,
+    DateTime? matchDate,
   ) async {
     final pdf = pw.Document();
 
@@ -262,6 +269,14 @@ class PdfGenerator {
     } else {
       winningTeam = "EMPATE";
     }
+
+    // FORMATO DE FECHA Y HORA
+    final dateStr = matchDate != null 
+        ? "${matchDate.day.toString().padLeft(2,'0')}/${matchDate.month.toString().padLeft(2,'0')}/${matchDate.year}"
+        : "";
+    final timeStr = matchDate != null
+        ? "${matchDate.hour.toString().padLeft(2,'0')}:${matchDate.minute.toString().padLeft(2,'0')}"
+        : "";
 
     try {
       final imageBytes = await rootBundle.load(
@@ -291,13 +306,13 @@ class PdfGenerator {
                   fontSize: 9,
                 ),
                 _drawText(
-                  "${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}",
+                  dateStr,
                   x: PdfCoords.dateX,
                   y: PdfCoords.headerY,
                   fontSize: 9,
                 ),
                 _drawText(
-                  "12:00",
+                  timeStr,
                   x: PdfCoords.timeX,
                   y: PdfCoords.headerY,
                   fontSize: 9,

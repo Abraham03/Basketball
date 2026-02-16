@@ -198,9 +198,11 @@ Widget _buildSelectionList(List<catalog.Player> roster, Set<int> selectedIds, Co
 
   Future <void> _startGame() async {
     setState(() => _isCreating = true);
-
+    final matchDate = DateTime.now();
     try {
       final dao = ref.read(matchesDaoProvider);
+
+      
 
       // 1. Crear objeto Match
       final newMatch = db.MatchesCompanion.insert(
@@ -218,6 +220,7 @@ Widget _buildSelectionList(List<catalog.Player> roster, Set<int> selectedIds, Co
         isSynced: const drift.Value(false),
         scoreA: const drift.Value(0),
         scoreB: const drift.Value(0),
+        matchDate: drift.Value(matchDate),
       );
 
       // 2. Insertar en BD Local
@@ -267,6 +270,7 @@ Widget _buildSelectionList(List<catalog.Player> roster, Set<int> selectedIds, Co
           coachB: widget.teamB.coachName,
           captainAId: _captainAId,
           captainBId: _captainBId,
+          matchDate: matchDate,
         ),
       ),
     );

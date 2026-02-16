@@ -19,6 +19,8 @@ class Matches extends Table with BaseTable {
   TextColumn get mainReferee => text().nullable()();
   TextColumn get auxReferee => text().nullable()();
   TextColumn get scorekeeper => text().nullable()();
+  // Match date
+  DateTimeColumn get matchDate => dateTime().nullable()();
   TextColumn get signatureData => text().nullable()();
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 }
