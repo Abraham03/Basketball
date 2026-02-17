@@ -312,6 +312,41 @@ void addTimeout(String teamId) {
   }
 }
 
+
+void addTeamFoul(String teamId, String type) { // type: 'C' (Coach), 'B' (Bench)
+    _saveToHistory();
+
+    // 1. Aumentar contador de faltas del periodo
+    // (Tu lógica actual cuenta faltas sumando eventos con points=0 de ese periodo)
+    // Así que necesitamos insertar un evento.
+
+    // Usaremos un nombre especial para que no salga en la lista de jugadores normales
+    String specialName = type == 'C' ? "Entrenador" : "Banca";
+    
+    // Agregamos el evento al log
+    List<ScoreEvent> newScoreLog = List.from(state.scoreLog);
+    newScoreLog.add(
+      ScoreEvent(
+        period: state.currentPeriod,
+        teamId: teamId,
+        playerId: specialName, // Nombre ficticio
+        dbPlayerId: -1, // ID ficticio
+        playerNumber: "", 
+        points: 0,
+        scoreAfter: (teamId == 'A' ? state.scoreA : state.scoreB),
+        type: type, // 'C' o 'B'
+      ),
+    );
+
+    state = state.copyWith(scoreLog: newScoreLog);
+    _saveToDatabase();
+    
+    // Guardar evento en BD (asumiendo que tu DAO permite playerId null o string arbitrario)
+    // Si tu DAO requiere un ID de jugador real existente, esto fallará.
+    // Si es así, tendrás que adaptar tu DAO o usar un ID reservado (ej. 0 o 9999).
+    _logEventToDb("-1", 0, 1, type); 
+  }
+
 void _processTimeoutWithRules(String teamId, String minStr, int period, bool isClutchTime) {
     List<String> currentList;
     bool isFirstHalf = period <= 2;
