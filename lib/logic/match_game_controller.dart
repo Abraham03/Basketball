@@ -242,9 +242,11 @@ class MatchGameController extends StateNotifier<MatchState> {
       };
     }).toList();
 
-    // 3. Payload Completo
+      final now = DateTime.now();
+      final formattedDate = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
+      // 3. Payload Completo
     final payload = {
-// IDs y Relaciones
+      // IDs y Relaciones
       "match_id": state.matchId,
       "tournament_id": state.tournamentId,
       "venue_id": state.venueId,
@@ -267,7 +269,7 @@ class MatchGameController extends StateNotifier<MatchState> {
       "scorekeeper": state.scorekeeper,
       
       // Datos extra
-      "match_date": DateTime.now().toIso8601String(), // Enviamos fecha actual
+      "match_date": formattedDate, // Enviamos fecha actual
       "signature_base64": signatureBase64,
       
       // Eventos (Tabla score_logs)
