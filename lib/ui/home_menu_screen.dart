@@ -7,16 +7,45 @@ import '../logic/catalog_provider.dart';
 import 'match_setup_screen.dart';
 import 'team_management_screen.dart';
 
-class HomeMenuScreen extends ConsumerWidget {
+// CAMBIO 1: Convertimos a ConsumerStatefulWidget para manejar el estado del "Modo Admin"
+class HomeMenuScreen extends ConsumerStatefulWidget {
   const HomeMenuScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // 1. Obtener colores del tema
+  ConsumerState<HomeMenuScreen> createState() => _HomeMenuScreenState();
+}
+
+class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
+  // Estado para controlar la visibilidad de las opciones sensibles
+  bool _isAdminMode = false;
+  
+  // Contador para el "truco" de activar el modo admin
+  int _tapCount = 0;
+
+  void _toggleAdminMode() {
+    setState(() {
+      _tapCount++;
+      if (_tapCount >= 5) {
+        _isAdminMode = !_isAdminMode; // Alternar visibilidad
+        _tapCount = 0; // Reiniciar contador
+        
+        // Feedback visual
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_isAdminMode ? "🔓 Modo Admin ACTIVADO" : "🔒 Modo Admin DESACTIVADO"),
+            duration: const Duration(seconds: 1),
+            backgroundColor: _isAdminMode ? Colors.green : Colors.grey,
+          ),
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).colorScheme.primary;
     final onPrimaryColor = Theme.of(context).colorScheme.onPrimary;
 
-    // 2. Escuchar el estado de los torneos y la selección actual
     final tournamentsAsync = ref.watch(tournamentsListProvider);
     final selectedTournamentId = ref.watch(selectedTournamentIdProvider);
 
@@ -24,16 +53,13 @@ class HomeMenuScreen extends ConsumerWidget {
       backgroundColor: Colors.grey[100],
       body: LayoutBuilder(
         builder: (context, constraints) {
-          // Detectar si es tablet o pantalla ancha (> 600px)
           final bool isWideScreen = constraints.maxWidth > 600;
-          // Columnas: 2 para móvil, 4 para tablet
           final int crossAxisCount = isWideScreen ? 4 : 2;
-          // Ancho máximo del contenido para que no se estire en tablets
           final double contentWidth = isWideScreen ? 800 : double.infinity;
 
           return Center(
             child: SizedBox(
-              width: contentWidth, // Limita el ancho en pantallas grandes
+              width: contentWidth,
               child: Column(
                 children: [
                   // ============================================
@@ -64,28 +90,35 @@ class HomeMenuScreen extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Fila del Título y Logo
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.sports_basketball,
-                              size: 32,
-                              color: onPrimaryColor,
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              "Basket Arbitraje",
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
+                        // CAMBIO 2: GestureDetector en el título para activar el modo admin
+                        GestureDetector(
+                          onTap: _toggleAdminMode, // <--- Aquí está el truco
+                          behavior: HitTestBehavior.opaque,
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.sports_basketball,
+                                size: 32,
                                 color: onPrimaryColor,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 10),
+                              Text(
+                                "Basket Arbitraje",
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: onPrimaryColor,
+                                ),
+                              ),
+                              if (_isAdminMode) ...[
+                                const SizedBox(width: 10),
+                                const Icon(Icons.lock_open, size: 16, color: Colors.greenAccent),
+                              ]
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 20),
 
-                        // Etiqueta "Torneo Activo"
                         Text(
                           "Torneo Activo:",
                           style: TextStyle(
@@ -95,7 +128,7 @@ class HomeMenuScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 5),
 
-                        // === NUEVO SELECTOR MEJORADO (Bottom Sheet) ===
+                        // SELECTOR DE TORNEO (Mantenemos igual)
                         tournamentsAsync.when(
                           loading: () => const SizedBox(
                             height: 20,
@@ -120,9 +153,7 @@ class HomeMenuScreen extends ConsumerWidget {
                               );
                             }
 
-                            // Auto-selección inicial
-                            if (selectedTournamentId == null &&
-                                tournaments.isNotEmpty) {
+                            if (selectedTournamentId == null && tournaments.isNotEmpty) {
                               Future.microtask(
                                 () => ref
                                     .read(selectedTournamentIdProvider.notifier)
@@ -130,7 +161,6 @@ class HomeMenuScreen extends ConsumerWidget {
                               );
                             }
 
-                            // Encontrar el nombre del torneo seleccionado para mostrarlo
                             final selectedName = tournaments
                                 .firstWhere(
                                   (t) => t.id == selectedTournamentId,
@@ -157,8 +187,7 @@ class HomeMenuScreen extends ConsumerWidget {
                                     color: Colors.white.withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(10),
                                     border: Border.all(
-                                      color:
-                                          Colors.white.withValues(alpha: 0.3),
+                                      color: Colors.white.withValues(alpha: 0.3),
                                     ),
                                   ),
                                   child: Row(
@@ -199,13 +228,12 @@ class HomeMenuScreen extends ConsumerWidget {
                     child: Padding(
                       padding: const EdgeInsets.all(20.0),
                       child: GridView.count(
-                        crossAxisCount: crossAxisCount, // Dinámico
+                        crossAxisCount: crossAxisCount,
                         crossAxisSpacing: 15,
                         mainAxisSpacing: 15,
-                        // Ajustar la proporción de las tarjetas (ancho / alto)
                         childAspectRatio: isWideScreen ? 1.3 : 1.0,
                         children: [
-                          // 1. Jugar Partido
+                          // 1. Jugar Partido (SIEMPRE VISIBLE)
                           _DashboardCard(
                             title: "Jugar Partido",
                             icon: Icons.play_circle_fill,
@@ -222,38 +250,41 @@ class HomeMenuScreen extends ConsumerWidget {
                                     ),
                           ),
 
-                          // 2. Gestionar Equipos
-                          _DashboardCard(
-                            title: "Equipos",
-                            icon: Icons.groups,
-                            color: Colors.blue,
-                            onTap: selectedTournamentId == null
-                                ? () => _showNoTournamentAlert(context)
-                                : () => Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => TeamManagementScreen(
-                                          tournamentId: selectedTournamentId,
+                          // CAMBIO 3: Ocultar opciones sensibles si no está en modo admin
+                          if (_isAdminMode) ...[
+                            // 2. Gestionar Equipos
+                            _DashboardCard(
+                              title: "Equipos",
+                              icon: Icons.groups,
+                              color: Colors.blue,
+                              onTap: selectedTournamentId == null
+                                  ? () => _showNoTournamentAlert(context)
+                                  : () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => TeamManagementScreen(
+                                            tournamentId: selectedTournamentId,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                          ),
+                            ),
 
-                          // 3. Sincronizar (Descargar)
-                          _DashboardCard(
-                            title: "Descargar de Nube",
-                            icon: Icons.cloud_sync,
-                            color: Colors.purple,
-                            onTap: () => _syncData(context, ref),
-                          ),
+                            // 3. Sincronizar (Descargar)
+                            _DashboardCard(
+                              title: "Descargar de Nube",
+                              icon: Icons.cloud_sync,
+                              color: Colors.purple,
+                              onTap: () => _syncData(context, ref),
+                            ),
 
-                          // 4. Subir Datos
-                          _DashboardCard(
-                            title: "Subir a Nube",
-                            icon: Icons.upload_file,
-                            color: Colors.grey,
-                            onTap: () => _uploadPendingData(context, ref),
-                          ),
+                            // 4. Subir Datos
+                            _DashboardCard(
+                              title: "Subir a Nube",
+                              icon: Icons.upload_file,
+                              color: Colors.grey,
+                              onTap: () => _uploadPendingData(context, ref),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -267,11 +298,9 @@ class HomeMenuScreen extends ConsumerWidget {
     );
   }
 
-  // --- NUEVO: BOTTOM SHEET PARA SELECCIONAR TORNEOS ---
-  // Esto maneja muchas opciones mucho mejor que un Dropdown simple
   void _showTournamentPicker(
     BuildContext context,
-    List<dynamic> tournaments, // Usamos dynamic o el tipo Tournament si lo tienes importado
+    List<dynamic> tournaments,
     WidgetRef ref,
     String? currentId,
   ) {
@@ -280,17 +309,16 @@ class HomeMenuScreen extends ConsumerWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      isScrollControlled: true, // Permite que ocupe más pantalla si es necesario
+      isScrollControlled: true,
       builder: (ctx) {
         return DraggableScrollableSheet(
-          initialChildSize: 0.5, // Empieza a mitad de pantalla
-          maxChildSize: 0.9, // Puede subir hasta el 90%
+          initialChildSize: 0.5,
+          maxChildSize: 0.9,
           minChildSize: 0.3,
           expand: false,
           builder: (context, scrollController) {
             return Column(
               children: [
-                // Agarradera visual
                 Container(
                   margin: const EdgeInsets.only(top: 10, bottom: 10),
                   width: 40,
@@ -340,7 +368,7 @@ class HomeMenuScreen extends ConsumerWidget {
                           ref
                               .read(selectedTournamentIdProvider.notifier)
                               .state = t.id;
-                          Navigator.pop(context); // Cerrar el modal
+                          Navigator.pop(context);
                         },
                       );
                     },
@@ -366,8 +394,10 @@ class HomeMenuScreen extends ConsumerWidget {
     );
   }
 
-  // --- LÓGICA DE SINCRONIZACIÓN (INTACTA) ---
+  // --- LÓGICA DE SINCRONIZACIÓN (MANTENIDA IGUAL) ---
   Future<void> _syncData(BuildContext context, WidgetRef ref) async {
+    // ... (Tu lógica existente se mantiene igual, no es necesario cambiarla)
+    // Solo he copiado el inicio para referencia, mantén todo el bloque original aquí
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -494,8 +524,10 @@ class HomeMenuScreen extends ConsumerWidget {
     }
   }
 
-  // --- LÓGICA DE SUBIDA (INTACTA) ---
+  // --- LÓGICA DE SUBIDA (MANTENIDA IGUAL) ---
   Future<void> _uploadPendingData(BuildContext context, WidgetRef ref) async {
+    // ... (Tu lógica existente se mantiene igual)
+    // He copiado el cuerpo principal para mantener el archivo completo funcional
     final db = ref.read(databaseProvider);
     final api = ref.read(apiServiceProvider);
 
@@ -555,7 +587,6 @@ class HomeMenuScreen extends ConsumerWidget {
 
           uploadedTeams++;
         } catch (e) {
-          // Aquí manejas la excepción específica de BD y la lanzas como una de tu dominio
           throw Exception('Error al subir equipo: $e');
         }
       }
@@ -592,7 +623,6 @@ class HomeMenuScreen extends ConsumerWidget {
 
           uploadedPlayers++;
         } catch (e) {
-          // Aquí manejas la excepción específica de BD y la lanzas como una de tu dominio
           throw Exception('Error al subir jugador: $e');
         }
       }
@@ -701,7 +731,7 @@ class HomeMenuScreen extends ConsumerWidget {
   }
 }
 
-// Widget auxiliar para las tarjetas
+// Widget auxiliar para las tarjetas (MANTENIDO IGUAL)
 class _DashboardCard extends StatelessWidget {
   final String title;
   final IconData icon;
