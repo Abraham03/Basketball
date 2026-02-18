@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
+import 'package:uuid/uuid.dart'; // Asegúrate de tener uuid en pubspec.yaml
+
 import '../core/database/app_database.dart';
 import '../logic/tournament_provider.dart';
 import '../logic/catalog_provider.dart';
 import 'match_setup_screen.dart';
 import 'team_management_screen.dart';
 
-// CAMBIO 1: Convertimos a ConsumerStatefulWidget para manejar el estado del "Modo Admin"
 class HomeMenuScreen extends ConsumerStatefulWidget {
   const HomeMenuScreen({super.key});
 
@@ -16,20 +17,15 @@ class HomeMenuScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
-  // Estado para controlar la visibilidad de las opciones sensibles
   bool _isAdminMode = false;
-  
-  // Contador para el "truco" de activar el modo admin
   int _tapCount = 0;
 
   void _toggleAdminMode() {
     setState(() {
       _tapCount++;
       if (_tapCount >= 5) {
-        _isAdminMode = !_isAdminMode; // Alternar visibilidad
-        _tapCount = 0; // Reiniciar contador
-        
-        // Feedback visual
+        _isAdminMode = !_isAdminMode;
+        _tapCount = 0;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(_isAdminMode ? "🔓 Modo Admin ACTIVADO" : "🔒 Modo Admin DESACTIVADO"),
@@ -39,6 +35,93 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         );
       }
     });
+  }
+
+  // --- LÓGICA PARA CREAR TORNEO ---
+  Future<void> _createNewTournament(String name, String category) async {
+    final api = ref.read(apiServiceProvider);
+    final db = ref.read(databaseProvider);
+
+    try {
+      // 1. Intentar subir a la Nube
+      await api.createTournament(name, category);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("☁️ Torneo creado en la nube correctamente"), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      // 2. Si falla (Offline), guardar Localmente
+      // Generamos un ID temporal (UUID) para uso local
+      final tempId = const Uuid().v4(); 
+      
+      await db.into(db.tournaments).insert(
+        TournamentsCompanion.insert(
+          id: drift.Value(tempId),
+          name: name,
+          category: drift.Value(category),
+          status: const drift.Value('ACTIVE'),
+          isSynced: const drift.Value(false), // Marcado para subir luego
+        ),
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("💾 Sin conexión: Torneo guardado localmente."), 
+            backgroundColor: Colors.orange
+          ),
+        );
+      }
+    } finally {
+      // Recargar la lista de torneos
+      ref.invalidate(tournamentsListProvider);
+      Navigator.pop(context); // Cerrar diálogo
+    }
+  }
+
+  void _showCreateDialog() {
+    final nameCtrl = TextEditingController();
+    final catCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Nuevo Torneo"),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(labelText: "Nombre del Torneo", hintText: "Ej: Liga Municipal 2026"),
+                validator: (v) => v == null || v.isEmpty ? "Requerido" : null,
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: catCtrl,
+                decoration: const InputDecoration(labelText: "Categoría", hintText: "Ej: Libre Varonil"),
+                validator: (v) => v == null || v.isEmpty ? "Requerido" : null,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                _createNewTournament(nameCtrl.text, catCtrl.text);
+              }
+            },
+            child: const Text("Crear"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -51,6 +134,15 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
+      // --- BOTÓN FLOTANTE NUEVO ---
+      floatingActionButton: _isAdminMode ? FloatingActionButton.extended(
+        onPressed: _showCreateDialog,
+        icon: const Icon(Icons.add),
+        label: const Text("Nuevo Torneo"),
+        backgroundColor: primaryColor,
+        foregroundColor: onPrimaryColor,
+      ) : null, // Solo visible en modo admin
+      
       body: LayoutBuilder(
         builder: (context, constraints) {
           final bool isWideScreen = constraints.maxWidth > 600;
@@ -80,7 +172,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
+                          color: Colors.black.withOpacity(0.2),
                           blurRadius: 10,
                           offset: const Offset(0, 5),
                         ),
@@ -90,9 +182,8 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // CAMBIO 2: GestureDetector en el título para activar el modo admin
                         GestureDetector(
-                          onTap: _toggleAdminMode, // <--- Aquí está el truco
+                          onTap: _toggleAdminMode,
                           behavior: HitTestBehavior.opaque,
                           child: Row(
                             children: [
@@ -122,13 +213,13 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                         Text(
                           "Torneo Activo:",
                           style: TextStyle(
-                            color: onPrimaryColor.withValues(alpha: 0.8),
+                            color: onPrimaryColor.withOpacity(0.8),
                             fontSize: 14,
                           ),
                         ),
                         const SizedBox(height: 5),
 
-                        // SELECTOR DE TORNEO (Mantenemos igual)
+                        // SELECTOR DE TORNEO
                         tournamentsAsync.when(
                           loading: () => const SizedBox(
                             height: 20,
@@ -145,7 +236,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                           data: (tournaments) {
                             if (tournaments.isEmpty) {
                               return const Text(
-                                "Sin torneos (Sincroniza primero)",
+                                "Sin torneos (Crea uno nuevo +)",
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontStyle: FontStyle.italic,
@@ -184,10 +275,10 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                                     vertical: 12,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.2),
+                                    color: Colors.white.withOpacity(0.2),
                                     borderRadius: BorderRadius.circular(10),
                                     border: Border.all(
-                                      color: Colors.white.withValues(alpha: 0.3),
+                                      color: Colors.white.withOpacity(0.3),
                                     ),
                                   ),
                                   child: Row(
@@ -250,7 +341,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                                     ),
                           ),
 
-                          // CAMBIO 3: Ocultar opciones sensibles si no está en modo admin
                           if (_isAdminMode) ...[
                             // 2. Gestionar Equipos
                             _DashboardCard(
@@ -396,8 +486,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
 
   // --- LÓGICA DE SINCRONIZACIÓN (MANTENIDA IGUAL) ---
   Future<void> _syncData(BuildContext context, WidgetRef ref) async {
-    // ... (Tu lógica existente se mantiene igual, no es necesario cambiarla)
-    // Solo he copiado el inicio para referencia, mantén todo el bloque original aquí
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -526,8 +614,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
 
   // --- LÓGICA DE SUBIDA (MANTENIDA IGUAL) ---
   Future<void> _uploadPendingData(BuildContext context, WidgetRef ref) async {
-    // ... (Tu lógica existente se mantiene igual)
-    // He copiado el cuerpo principal para mantener el archivo completo funcional
     final db = ref.read(databaseProvider);
     final api = ref.read(apiServiceProvider);
 
@@ -753,7 +839,7 @@ class _DashboardCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
-        splashColor: color.withValues(alpha: 0.2),
+        splashColor: color.withOpacity(0.2),
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
@@ -761,7 +847,7 @@ class _DashboardCard extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                color.withValues(alpha: 0.05),
+                color.withOpacity(0.05),
                 Colors.white,
               ],
             ),
@@ -772,7 +858,7 @@ class _DashboardCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
+                  color: color.withOpacity(0.15),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, size: 36, color: color),
