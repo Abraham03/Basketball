@@ -223,8 +223,14 @@ class MatchGameController extends StateNotifier<MatchState> {
       await _dao.saveSignature(state.matchId, signatureBase64);
     }
 
-  // 2. Preparar eventos para JSON
+
+
+    // 2. Preparar eventos para JSON
     final eventsList = state.scoreLog.map((e) {
+
+      // BUSCAMOS EL NÚMERO ACTUALIZADO EN LAS ESTADÍSTICAS ACTUALES
+      final currentStats = state.playerStats[e.playerId]; 
+      final updatedNumber = currentStats?.playerNumber ?? e.playerNumber;
       return {
         "period": e.period,
         "team_side": e.teamId, // Enviamos 'A' o 'B' como team_side
@@ -233,7 +239,7 @@ class MatchGameController extends StateNotifier<MatchState> {
         "player_id": e.dbPlayerId,
         
         // Convertimos a string por seguridad, el backend lo pasará a int
-        "player_number": e.playerNumber, 
+        "player_number": updatedNumber, 
         "points_scored": e.points, // NOMBRE CORREGIDO
         "score_after": e.scoreAfter, // DATO FALTANTE AGREGADO
         // "type" no está en tu tabla SQL, así que no es estrictamente necesario, 
@@ -837,6 +843,30 @@ void _updateTimeoutList(String teamId, int half, List<String> newList) {
     _timer?.cancel();
     super.dispose();
   }
+
+// Permite editar número o nombre de un jugador SOLO para este partido
+  void updateMatchPlayerInfo(String playerId, {String? newNumber}) {
+    // Verificamos si el jugador existe en las estadísticas
+    if (!state.playerStats.containsKey(playerId)) return;
+
+    final currentStats = state.playerStats[playerId]!;
+    
+    // Creamos una copia con el nuevo número
+    final newStats = currentStats.copyWith(
+      playerNumber: newNumber ?? currentStats.playerNumber,
+    );
+
+    // Actualizamos el mapa de estadísticas
+    final newPlayerStatsMap = Map<String, PlayerStats>.from(state.playerStats);
+    newPlayerStatsMap[playerId] = newStats;
+
+    // Guardamos el estado
+    state = state.copyWith(playerStats: newPlayerStatsMap);
+    
+    // Opcional: Si tienes persistencia local SQLite, actualiza aquí también
+    // _dao.updateLocalPlayerNumber(...) 
+  }
+
 }
 
 final matchGameProvider =

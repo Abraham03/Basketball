@@ -84,6 +84,30 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     });
   }
 
+    bool _isNumberTaken(String teamSide, String newNumber, String currentPlayerName) {
+    final state = ref.read(matchGameProvider);
+    List<String> teammates = [];
+    
+    // 1. Obtenemos la lista completa del equipo (Cancha + Banca)
+    if (teamSide == 'A') {
+      teammates = [...state.teamAOnCourt, ...state.teamABench];
+    } else {
+      teammates = [...state.teamBOnCourt, ...state.teamBBench];
+    }
+
+    // 2. Buscamos si alguien más ya tiene ese número
+    for (var player in teammates) {
+      // Ignoramos al jugador que estamos editando (puede conservar su propio número)
+      if (player == currentPlayerName) continue; 
+      
+      final pStats = state.playerStats[player];
+      if (pStats?.playerNumber == newNumber) {
+        return true; // ¡Número ocupado!
+      }
+    }
+    return false; // Número disponible
+  }
+
   @override
   Widget build(BuildContext context) {
     final gameState = ref.watch(matchGameProvider);
@@ -444,6 +468,9 @@ Widget _buildCompactFouls(int fouls, Color color) {
 
               return InkWell(
                 onTap: () => _showActionMenu(context, teamId, playerName, controller, stats.fouls),
+                onLongPress: () {
+                  _showEditPlayerDialog(context, controller, playerName, stats.playerNumber, teamId);
+                },
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
@@ -506,6 +533,75 @@ Widget _buildCompactFouls(int fouls, Color color) {
       ],
     );
   }
+
+void _showEditPlayerDialog(
+    BuildContext context, 
+    MatchGameController controller, 
+    String playerName, 
+    String currentNumber,
+    String teamSide 
+  ) {
+    final numberController = TextEditingController(text: currentNumber);
+    final errorNotifier = ValueNotifier<String?>(null);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text("Editar: $playerName"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              "Este cambio solo aplicará para el partido actual.",
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            ValueListenableBuilder<String?>(
+              valueListenable: errorNotifier,
+              builder: (context, errorText, child) {
+                return TextField(
+                  controller: numberController,
+                  keyboardType: TextInputType.number,
+                  // Se eliminó 'const' aquí porque 'errorText' es variable
+                  decoration: InputDecoration(
+                    labelText: "Número (Dorsal)",
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.format_list_numbered),
+                    errorText: errorText, 
+                  ),
+                  onChanged: (_) => errorNotifier.value = null,
+                );
+              }
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancelar"),
+          ),
+          FilledButton(
+            onPressed: () {
+              final newNum = numberController.text.trim();
+              if (newNum.isEmpty) {
+                errorNotifier.value = "El número no puede estar vacío";
+                return;
+              }
+              if (_isNumberTaken(teamSide, newNum, playerName)) {
+                errorNotifier.value = "El número $newNum ya está en uso";
+                return;
+              }
+              
+              controller.updateMatchPlayerInfo(playerName, newNumber: newNum);
+              Navigator.pop(ctx);
+            },
+            child: const Text("Guardar"),
+          ),
+        ],
+      ),
+    );
+  }
+
 
 
   void _showFoulOptionsDialog(BuildContext context, MatchGameController controller, String teamId, String playerName) {
