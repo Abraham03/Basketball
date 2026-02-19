@@ -4574,6 +4574,916 @@ class TournamentTeamsCompanion extends UpdateCompanion<TournamentTeam> {
   }
 }
 
+class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FixturesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _tournamentIdMeta = const VerificationMeta(
+    'tournamentId',
+  );
+  @override
+  late final GeneratedColumn<String> tournamentId = GeneratedColumn<String>(
+    'tournament_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES tournaments (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _roundNameMeta = const VerificationMeta(
+    'roundName',
+  );
+  @override
+  late final GeneratedColumn<String> roundName = GeneratedColumn<String>(
+    'round_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _teamAIdMeta = const VerificationMeta(
+    'teamAId',
+  );
+  @override
+  late final GeneratedColumn<String> teamAId = GeneratedColumn<String>(
+    'team_a_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _teamBIdMeta = const VerificationMeta(
+    'teamBId',
+  );
+  @override
+  late final GeneratedColumn<String> teamBId = GeneratedColumn<String>(
+    'team_b_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _teamANameMeta = const VerificationMeta(
+    'teamAName',
+  );
+  @override
+  late final GeneratedColumn<String> teamAName = GeneratedColumn<String>(
+    'team_a_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _teamBNameMeta = const VerificationMeta(
+    'teamBName',
+  );
+  @override
+  late final GeneratedColumn<String> teamBName = GeneratedColumn<String>(
+    'team_b_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _logoAMeta = const VerificationMeta('logoA');
+  @override
+  late final GeneratedColumn<String> logoA = GeneratedColumn<String>(
+    'logo_a',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _logoBMeta = const VerificationMeta('logoB');
+  @override
+  late final GeneratedColumn<String> logoB = GeneratedColumn<String>(
+    'logo_b',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _venueIdMeta = const VerificationMeta(
+    'venueId',
+  );
+  @override
+  late final GeneratedColumn<String> venueId = GeneratedColumn<String>(
+    'venue_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _venueNameMeta = const VerificationMeta(
+    'venueName',
+  );
+  @override
+  late final GeneratedColumn<String> venueName = GeneratedColumn<String>(
+    'venue_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _scheduledDatetimeMeta = const VerificationMeta(
+    'scheduledDatetime',
+  );
+  @override
+  late final GeneratedColumn<DateTime> scheduledDatetime =
+      GeneratedColumn<DateTime>(
+        'scheduled_datetime',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('SCHEDULED'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    createdAt,
+    updatedAt,
+    isSynced,
+    tournamentId,
+    roundName,
+    teamAId,
+    teamBId,
+    teamAName,
+    teamBName,
+    logoA,
+    logoB,
+    venueId,
+    venueName,
+    scheduledDatetime,
+    status,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'fixtures';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Fixture> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
+    if (data.containsKey('tournament_id')) {
+      context.handle(
+        _tournamentIdMeta,
+        tournamentId.isAcceptableOrUnknown(
+          data['tournament_id']!,
+          _tournamentIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_tournamentIdMeta);
+    }
+    if (data.containsKey('round_name')) {
+      context.handle(
+        _roundNameMeta,
+        roundName.isAcceptableOrUnknown(data['round_name']!, _roundNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_roundNameMeta);
+    }
+    if (data.containsKey('team_a_id')) {
+      context.handle(
+        _teamAIdMeta,
+        teamAId.isAcceptableOrUnknown(data['team_a_id']!, _teamAIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_teamAIdMeta);
+    }
+    if (data.containsKey('team_b_id')) {
+      context.handle(
+        _teamBIdMeta,
+        teamBId.isAcceptableOrUnknown(data['team_b_id']!, _teamBIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_teamBIdMeta);
+    }
+    if (data.containsKey('team_a_name')) {
+      context.handle(
+        _teamANameMeta,
+        teamAName.isAcceptableOrUnknown(data['team_a_name']!, _teamANameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_teamANameMeta);
+    }
+    if (data.containsKey('team_b_name')) {
+      context.handle(
+        _teamBNameMeta,
+        teamBName.isAcceptableOrUnknown(data['team_b_name']!, _teamBNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_teamBNameMeta);
+    }
+    if (data.containsKey('logo_a')) {
+      context.handle(
+        _logoAMeta,
+        logoA.isAcceptableOrUnknown(data['logo_a']!, _logoAMeta),
+      );
+    }
+    if (data.containsKey('logo_b')) {
+      context.handle(
+        _logoBMeta,
+        logoB.isAcceptableOrUnknown(data['logo_b']!, _logoBMeta),
+      );
+    }
+    if (data.containsKey('venue_id')) {
+      context.handle(
+        _venueIdMeta,
+        venueId.isAcceptableOrUnknown(data['venue_id']!, _venueIdMeta),
+      );
+    }
+    if (data.containsKey('venue_name')) {
+      context.handle(
+        _venueNameMeta,
+        venueName.isAcceptableOrUnknown(data['venue_name']!, _venueNameMeta),
+      );
+    }
+    if (data.containsKey('scheduled_datetime')) {
+      context.handle(
+        _scheduledDatetimeMeta,
+        scheduledDatetime.isAcceptableOrUnknown(
+          data['scheduled_datetime']!,
+          _scheduledDatetimeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Fixture map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Fixture(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      ),
+      isSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_synced'],
+      )!,
+      tournamentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tournament_id'],
+      )!,
+      roundName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}round_name'],
+      )!,
+      teamAId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}team_a_id'],
+      )!,
+      teamBId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}team_b_id'],
+      )!,
+      teamAName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}team_a_name'],
+      )!,
+      teamBName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}team_b_name'],
+      )!,
+      logoA: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}logo_a'],
+      ),
+      logoB: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}logo_b'],
+      ),
+      venueId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}venue_id'],
+      ),
+      venueName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}venue_name'],
+      ),
+      scheduledDatetime: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}scheduled_datetime'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+    );
+  }
+
+  @override
+  $FixturesTable createAlias(String alias) {
+    return $FixturesTable(attachedDatabase, alias);
+  }
+}
+
+class Fixture extends DataClass implements Insertable<Fixture> {
+  final String id;
+  final DateTime createdAt;
+  final DateTime? updatedAt;
+  final bool isSynced;
+  final String tournamentId;
+  final String roundName;
+  final String teamAId;
+  final String teamBId;
+  final String teamAName;
+  final String teamBName;
+  final String? logoA;
+  final String? logoB;
+  final String? venueId;
+  final String? venueName;
+  final DateTime? scheduledDatetime;
+  final String status;
+  const Fixture({
+    required this.id,
+    required this.createdAt,
+    this.updatedAt,
+    required this.isSynced,
+    required this.tournamentId,
+    required this.roundName,
+    required this.teamAId,
+    required this.teamBId,
+    required this.teamAName,
+    required this.teamBName,
+    this.logoA,
+    this.logoB,
+    this.venueId,
+    this.venueName,
+    this.scheduledDatetime,
+    required this.status,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
+    map['is_synced'] = Variable<bool>(isSynced);
+    map['tournament_id'] = Variable<String>(tournamentId);
+    map['round_name'] = Variable<String>(roundName);
+    map['team_a_id'] = Variable<String>(teamAId);
+    map['team_b_id'] = Variable<String>(teamBId);
+    map['team_a_name'] = Variable<String>(teamAName);
+    map['team_b_name'] = Variable<String>(teamBName);
+    if (!nullToAbsent || logoA != null) {
+      map['logo_a'] = Variable<String>(logoA);
+    }
+    if (!nullToAbsent || logoB != null) {
+      map['logo_b'] = Variable<String>(logoB);
+    }
+    if (!nullToAbsent || venueId != null) {
+      map['venue_id'] = Variable<String>(venueId);
+    }
+    if (!nullToAbsent || venueName != null) {
+      map['venue_name'] = Variable<String>(venueName);
+    }
+    if (!nullToAbsent || scheduledDatetime != null) {
+      map['scheduled_datetime'] = Variable<DateTime>(scheduledDatetime);
+    }
+    map['status'] = Variable<String>(status);
+    return map;
+  }
+
+  FixturesCompanion toCompanion(bool nullToAbsent) {
+    return FixturesCompanion(
+      id: Value(id),
+      createdAt: Value(createdAt),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
+      isSynced: Value(isSynced),
+      tournamentId: Value(tournamentId),
+      roundName: Value(roundName),
+      teamAId: Value(teamAId),
+      teamBId: Value(teamBId),
+      teamAName: Value(teamAName),
+      teamBName: Value(teamBName),
+      logoA: logoA == null && nullToAbsent
+          ? const Value.absent()
+          : Value(logoA),
+      logoB: logoB == null && nullToAbsent
+          ? const Value.absent()
+          : Value(logoB),
+      venueId: venueId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(venueId),
+      venueName: venueName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(venueName),
+      scheduledDatetime: scheduledDatetime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(scheduledDatetime),
+      status: Value(status),
+    );
+  }
+
+  factory Fixture.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Fixture(
+      id: serializer.fromJson<String>(json['id']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
+      tournamentId: serializer.fromJson<String>(json['tournamentId']),
+      roundName: serializer.fromJson<String>(json['roundName']),
+      teamAId: serializer.fromJson<String>(json['teamAId']),
+      teamBId: serializer.fromJson<String>(json['teamBId']),
+      teamAName: serializer.fromJson<String>(json['teamAName']),
+      teamBName: serializer.fromJson<String>(json['teamBName']),
+      logoA: serializer.fromJson<String?>(json['logoA']),
+      logoB: serializer.fromJson<String?>(json['logoB']),
+      venueId: serializer.fromJson<String?>(json['venueId']),
+      venueName: serializer.fromJson<String?>(json['venueName']),
+      scheduledDatetime: serializer.fromJson<DateTime?>(
+        json['scheduledDatetime'],
+      ),
+      status: serializer.fromJson<String>(json['status']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+      'isSynced': serializer.toJson<bool>(isSynced),
+      'tournamentId': serializer.toJson<String>(tournamentId),
+      'roundName': serializer.toJson<String>(roundName),
+      'teamAId': serializer.toJson<String>(teamAId),
+      'teamBId': serializer.toJson<String>(teamBId),
+      'teamAName': serializer.toJson<String>(teamAName),
+      'teamBName': serializer.toJson<String>(teamBName),
+      'logoA': serializer.toJson<String?>(logoA),
+      'logoB': serializer.toJson<String?>(logoB),
+      'venueId': serializer.toJson<String?>(venueId),
+      'venueName': serializer.toJson<String?>(venueName),
+      'scheduledDatetime': serializer.toJson<DateTime?>(scheduledDatetime),
+      'status': serializer.toJson<String>(status),
+    };
+  }
+
+  Fixture copyWith({
+    String? id,
+    DateTime? createdAt,
+    Value<DateTime?> updatedAt = const Value.absent(),
+    bool? isSynced,
+    String? tournamentId,
+    String? roundName,
+    String? teamAId,
+    String? teamBId,
+    String? teamAName,
+    String? teamBName,
+    Value<String?> logoA = const Value.absent(),
+    Value<String?> logoB = const Value.absent(),
+    Value<String?> venueId = const Value.absent(),
+    Value<String?> venueName = const Value.absent(),
+    Value<DateTime?> scheduledDatetime = const Value.absent(),
+    String? status,
+  }) => Fixture(
+    id: id ?? this.id,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+    isSynced: isSynced ?? this.isSynced,
+    tournamentId: tournamentId ?? this.tournamentId,
+    roundName: roundName ?? this.roundName,
+    teamAId: teamAId ?? this.teamAId,
+    teamBId: teamBId ?? this.teamBId,
+    teamAName: teamAName ?? this.teamAName,
+    teamBName: teamBName ?? this.teamBName,
+    logoA: logoA.present ? logoA.value : this.logoA,
+    logoB: logoB.present ? logoB.value : this.logoB,
+    venueId: venueId.present ? venueId.value : this.venueId,
+    venueName: venueName.present ? venueName.value : this.venueName,
+    scheduledDatetime: scheduledDatetime.present
+        ? scheduledDatetime.value
+        : this.scheduledDatetime,
+    status: status ?? this.status,
+  );
+  Fixture copyWithCompanion(FixturesCompanion data) {
+    return Fixture(
+      id: data.id.present ? data.id.value : this.id,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+      tournamentId: data.tournamentId.present
+          ? data.tournamentId.value
+          : this.tournamentId,
+      roundName: data.roundName.present ? data.roundName.value : this.roundName,
+      teamAId: data.teamAId.present ? data.teamAId.value : this.teamAId,
+      teamBId: data.teamBId.present ? data.teamBId.value : this.teamBId,
+      teamAName: data.teamAName.present ? data.teamAName.value : this.teamAName,
+      teamBName: data.teamBName.present ? data.teamBName.value : this.teamBName,
+      logoA: data.logoA.present ? data.logoA.value : this.logoA,
+      logoB: data.logoB.present ? data.logoB.value : this.logoB,
+      venueId: data.venueId.present ? data.venueId.value : this.venueId,
+      venueName: data.venueName.present ? data.venueName.value : this.venueName,
+      scheduledDatetime: data.scheduledDatetime.present
+          ? data.scheduledDatetime.value
+          : this.scheduledDatetime,
+      status: data.status.present ? data.status.value : this.status,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Fixture(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('tournamentId: $tournamentId, ')
+          ..write('roundName: $roundName, ')
+          ..write('teamAId: $teamAId, ')
+          ..write('teamBId: $teamBId, ')
+          ..write('teamAName: $teamAName, ')
+          ..write('teamBName: $teamBName, ')
+          ..write('logoA: $logoA, ')
+          ..write('logoB: $logoB, ')
+          ..write('venueId: $venueId, ')
+          ..write('venueName: $venueName, ')
+          ..write('scheduledDatetime: $scheduledDatetime, ')
+          ..write('status: $status')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    createdAt,
+    updatedAt,
+    isSynced,
+    tournamentId,
+    roundName,
+    teamAId,
+    teamBId,
+    teamAName,
+    teamBName,
+    logoA,
+    logoB,
+    venueId,
+    venueName,
+    scheduledDatetime,
+    status,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Fixture &&
+          other.id == this.id &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.isSynced == this.isSynced &&
+          other.tournamentId == this.tournamentId &&
+          other.roundName == this.roundName &&
+          other.teamAId == this.teamAId &&
+          other.teamBId == this.teamBId &&
+          other.teamAName == this.teamAName &&
+          other.teamBName == this.teamBName &&
+          other.logoA == this.logoA &&
+          other.logoB == this.logoB &&
+          other.venueId == this.venueId &&
+          other.venueName == this.venueName &&
+          other.scheduledDatetime == this.scheduledDatetime &&
+          other.status == this.status);
+}
+
+class FixturesCompanion extends UpdateCompanion<Fixture> {
+  final Value<String> id;
+  final Value<DateTime> createdAt;
+  final Value<DateTime?> updatedAt;
+  final Value<bool> isSynced;
+  final Value<String> tournamentId;
+  final Value<String> roundName;
+  final Value<String> teamAId;
+  final Value<String> teamBId;
+  final Value<String> teamAName;
+  final Value<String> teamBName;
+  final Value<String?> logoA;
+  final Value<String?> logoB;
+  final Value<String?> venueId;
+  final Value<String?> venueName;
+  final Value<DateTime?> scheduledDatetime;
+  final Value<String> status;
+  final Value<int> rowid;
+  const FixturesCompanion({
+    this.id = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.tournamentId = const Value.absent(),
+    this.roundName = const Value.absent(),
+    this.teamAId = const Value.absent(),
+    this.teamBId = const Value.absent(),
+    this.teamAName = const Value.absent(),
+    this.teamBName = const Value.absent(),
+    this.logoA = const Value.absent(),
+    this.logoB = const Value.absent(),
+    this.venueId = const Value.absent(),
+    this.venueName = const Value.absent(),
+    this.scheduledDatetime = const Value.absent(),
+    this.status = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FixturesCompanion.insert({
+    required String id,
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    required String tournamentId,
+    required String roundName,
+    required String teamAId,
+    required String teamBId,
+    required String teamAName,
+    required String teamBName,
+    this.logoA = const Value.absent(),
+    this.logoB = const Value.absent(),
+    this.venueId = const Value.absent(),
+    this.venueName = const Value.absent(),
+    this.scheduledDatetime = const Value.absent(),
+    this.status = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       tournamentId = Value(tournamentId),
+       roundName = Value(roundName),
+       teamAId = Value(teamAId),
+       teamBId = Value(teamBId),
+       teamAName = Value(teamAName),
+       teamBName = Value(teamBName);
+  static Insertable<Fixture> custom({
+    Expression<String>? id,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<bool>? isSynced,
+    Expression<String>? tournamentId,
+    Expression<String>? roundName,
+    Expression<String>? teamAId,
+    Expression<String>? teamBId,
+    Expression<String>? teamAName,
+    Expression<String>? teamBName,
+    Expression<String>? logoA,
+    Expression<String>? logoB,
+    Expression<String>? venueId,
+    Expression<String>? venueName,
+    Expression<DateTime>? scheduledDatetime,
+    Expression<String>? status,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (isSynced != null) 'is_synced': isSynced,
+      if (tournamentId != null) 'tournament_id': tournamentId,
+      if (roundName != null) 'round_name': roundName,
+      if (teamAId != null) 'team_a_id': teamAId,
+      if (teamBId != null) 'team_b_id': teamBId,
+      if (teamAName != null) 'team_a_name': teamAName,
+      if (teamBName != null) 'team_b_name': teamBName,
+      if (logoA != null) 'logo_a': logoA,
+      if (logoB != null) 'logo_b': logoB,
+      if (venueId != null) 'venue_id': venueId,
+      if (venueName != null) 'venue_name': venueName,
+      if (scheduledDatetime != null) 'scheduled_datetime': scheduledDatetime,
+      if (status != null) 'status': status,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FixturesCompanion copyWith({
+    Value<String>? id,
+    Value<DateTime>? createdAt,
+    Value<DateTime?>? updatedAt,
+    Value<bool>? isSynced,
+    Value<String>? tournamentId,
+    Value<String>? roundName,
+    Value<String>? teamAId,
+    Value<String>? teamBId,
+    Value<String>? teamAName,
+    Value<String>? teamBName,
+    Value<String?>? logoA,
+    Value<String?>? logoB,
+    Value<String?>? venueId,
+    Value<String?>? venueName,
+    Value<DateTime?>? scheduledDatetime,
+    Value<String>? status,
+    Value<int>? rowid,
+  }) {
+    return FixturesCompanion(
+      id: id ?? this.id,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isSynced: isSynced ?? this.isSynced,
+      tournamentId: tournamentId ?? this.tournamentId,
+      roundName: roundName ?? this.roundName,
+      teamAId: teamAId ?? this.teamAId,
+      teamBId: teamBId ?? this.teamBId,
+      teamAName: teamAName ?? this.teamAName,
+      teamBName: teamBName ?? this.teamBName,
+      logoA: logoA ?? this.logoA,
+      logoB: logoB ?? this.logoB,
+      venueId: venueId ?? this.venueId,
+      venueName: venueName ?? this.venueName,
+      scheduledDatetime: scheduledDatetime ?? this.scheduledDatetime,
+      status: status ?? this.status,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (tournamentId.present) {
+      map['tournament_id'] = Variable<String>(tournamentId.value);
+    }
+    if (roundName.present) {
+      map['round_name'] = Variable<String>(roundName.value);
+    }
+    if (teamAId.present) {
+      map['team_a_id'] = Variable<String>(teamAId.value);
+    }
+    if (teamBId.present) {
+      map['team_b_id'] = Variable<String>(teamBId.value);
+    }
+    if (teamAName.present) {
+      map['team_a_name'] = Variable<String>(teamAName.value);
+    }
+    if (teamBName.present) {
+      map['team_b_name'] = Variable<String>(teamBName.value);
+    }
+    if (logoA.present) {
+      map['logo_a'] = Variable<String>(logoA.value);
+    }
+    if (logoB.present) {
+      map['logo_b'] = Variable<String>(logoB.value);
+    }
+    if (venueId.present) {
+      map['venue_id'] = Variable<String>(venueId.value);
+    }
+    if (venueName.present) {
+      map['venue_name'] = Variable<String>(venueName.value);
+    }
+    if (scheduledDatetime.present) {
+      map['scheduled_datetime'] = Variable<DateTime>(scheduledDatetime.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FixturesCompanion(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('tournamentId: $tournamentId, ')
+          ..write('roundName: $roundName, ')
+          ..write('teamAId: $teamAId, ')
+          ..write('teamBId: $teamBId, ')
+          ..write('teamAName: $teamAName, ')
+          ..write('teamBName: $teamBName, ')
+          ..write('logoA: $logoA, ')
+          ..write('logoB: $logoB, ')
+          ..write('venueId: $venueId, ')
+          ..write('venueName: $venueName, ')
+          ..write('scheduledDatetime: $scheduledDatetime, ')
+          ..write('status: $status, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4587,6 +5497,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $TournamentTeamsTable tournamentTeams = $TournamentTeamsTable(
     this,
   );
+  late final $FixturesTable fixtures = $FixturesTable(this);
   late final MatchesDao matchesDao = MatchesDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -4601,6 +5512,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     tournaments,
     venues,
     tournamentTeams,
+    fixtures,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -4645,6 +5557,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('tournament_teams', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'tournaments',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('fixtures', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -7121,6 +8040,28 @@ final class $$TournamentsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$FixturesTable, List<Fixture>> _fixturesRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.fixtures,
+    aliasName: $_aliasNameGenerator(
+      db.tournaments.id,
+      db.fixtures.tournamentId,
+    ),
+  );
+
+  $$FixturesTableProcessedTableManager get fixturesRefs {
+    final manager = $$FixturesTableTableManager(
+      $_db,
+      $_db.fixtures,
+    ).filter((f) => f.tournamentId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_fixturesRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$TournamentsTableFilterComposer
@@ -7193,6 +8134,31 @@ class $$TournamentsTableFilterComposer
           }) => $$TournamentTeamsTableFilterComposer(
             $db: $db,
             $table: $db.tournamentTeams,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> fixturesRefs(
+    Expression<bool> Function($$FixturesTableFilterComposer f) f,
+  ) {
+    final $$FixturesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.fixtures,
+      getReferencedColumn: (t) => t.tournamentId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FixturesTableFilterComposer(
+            $db: $db,
+            $table: $db.fixtures,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -7318,6 +8284,31 @@ class $$TournamentsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> fixturesRefs<T extends Object>(
+    Expression<T> Function($$FixturesTableAnnotationComposer a) f,
+  ) {
+    final $$FixturesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.fixtures,
+      getReferencedColumn: (t) => t.tournamentId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FixturesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.fixtures,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$TournamentsTableTableManager
@@ -7333,7 +8324,7 @@ class $$TournamentsTableTableManager
           $$TournamentsTableUpdateCompanionBuilder,
           (Tournament, $$TournamentsTableReferences),
           Tournament,
-          PrefetchHooks Function({bool tournamentTeamsRefs})
+          PrefetchHooks Function({bool tournamentTeamsRefs, bool fixturesRefs})
         > {
   $$TournamentsTableTableManager(_$AppDatabase db, $TournamentsTable table)
     : super(
@@ -7402,40 +8393,63 @@ class $$TournamentsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({tournamentTeamsRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [
-                if (tournamentTeamsRefs) db.tournamentTeams,
-              ],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (tournamentTeamsRefs)
-                    await $_getPrefetchedData<
-                      Tournament,
-                      $TournamentsTable,
-                      TournamentTeam
-                    >(
-                      currentTable: table,
-                      referencedTable: $$TournamentsTableReferences
-                          ._tournamentTeamsRefsTable(db),
-                      managerFromTypedResult: (p0) =>
-                          $$TournamentsTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).tournamentTeamsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where(
-                            (e) => e.tournamentId == item.id,
-                          ),
-                      typedResults: items,
-                    ),
-                ];
+          prefetchHooksCallback:
+              ({tournamentTeamsRefs = false, fixturesRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (tournamentTeamsRefs) db.tournamentTeams,
+                    if (fixturesRefs) db.fixtures,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (tournamentTeamsRefs)
+                        await $_getPrefetchedData<
+                          Tournament,
+                          $TournamentsTable,
+                          TournamentTeam
+                        >(
+                          currentTable: table,
+                          referencedTable: $$TournamentsTableReferences
+                              ._tournamentTeamsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$TournamentsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).tournamentTeamsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.tournamentId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (fixturesRefs)
+                        await $_getPrefetchedData<
+                          Tournament,
+                          $TournamentsTable,
+                          Fixture
+                        >(
+                          currentTable: table,
+                          referencedTable: $$TournamentsTableReferences
+                              ._fixturesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$TournamentsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).fixturesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.tournamentId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -7452,7 +8466,7 @@ typedef $$TournamentsTableProcessedTableManager =
       $$TournamentsTableUpdateCompanionBuilder,
       (Tournament, $$TournamentsTableReferences),
       Tournament,
-      PrefetchHooks Function({bool tournamentTeamsRefs})
+      PrefetchHooks Function({bool tournamentTeamsRefs, bool fixturesRefs})
     >;
 typedef $$VenuesTableCreateCompanionBuilder =
     VenuesCompanion Function({
@@ -8106,6 +9120,536 @@ typedef $$TournamentTeamsTableProcessedTableManager =
       TournamentTeam,
       PrefetchHooks Function({bool tournamentId, bool teamId})
     >;
+typedef $$FixturesTableCreateCompanionBuilder =
+    FixturesCompanion Function({
+      required String id,
+      Value<DateTime> createdAt,
+      Value<DateTime?> updatedAt,
+      Value<bool> isSynced,
+      required String tournamentId,
+      required String roundName,
+      required String teamAId,
+      required String teamBId,
+      required String teamAName,
+      required String teamBName,
+      Value<String?> logoA,
+      Value<String?> logoB,
+      Value<String?> venueId,
+      Value<String?> venueName,
+      Value<DateTime?> scheduledDatetime,
+      Value<String> status,
+      Value<int> rowid,
+    });
+typedef $$FixturesTableUpdateCompanionBuilder =
+    FixturesCompanion Function({
+      Value<String> id,
+      Value<DateTime> createdAt,
+      Value<DateTime?> updatedAt,
+      Value<bool> isSynced,
+      Value<String> tournamentId,
+      Value<String> roundName,
+      Value<String> teamAId,
+      Value<String> teamBId,
+      Value<String> teamAName,
+      Value<String> teamBName,
+      Value<String?> logoA,
+      Value<String?> logoB,
+      Value<String?> venueId,
+      Value<String?> venueName,
+      Value<DateTime?> scheduledDatetime,
+      Value<String> status,
+      Value<int> rowid,
+    });
+
+final class $$FixturesTableReferences
+    extends BaseReferences<_$AppDatabase, $FixturesTable, Fixture> {
+  $$FixturesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $TournamentsTable _tournamentIdTable(_$AppDatabase db) =>
+      db.tournaments.createAlias(
+        $_aliasNameGenerator(db.fixtures.tournamentId, db.tournaments.id),
+      );
+
+  $$TournamentsTableProcessedTableManager get tournamentId {
+    final $_column = $_itemColumn<String>('tournament_id')!;
+
+    final manager = $$TournamentsTableTableManager(
+      $_db,
+      $_db.tournaments,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_tournamentIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$FixturesTableFilterComposer
+    extends Composer<_$AppDatabase, $FixturesTable> {
+  $$FixturesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get roundName => $composableBuilder(
+    column: $table.roundName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get teamAId => $composableBuilder(
+    column: $table.teamAId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get teamBId => $composableBuilder(
+    column: $table.teamBId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get teamAName => $composableBuilder(
+    column: $table.teamAName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get teamBName => $composableBuilder(
+    column: $table.teamBName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get logoA => $composableBuilder(
+    column: $table.logoA,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get logoB => $composableBuilder(
+    column: $table.logoB,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get venueId => $composableBuilder(
+    column: $table.venueId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get venueName => $composableBuilder(
+    column: $table.venueName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get scheduledDatetime => $composableBuilder(
+    column: $table.scheduledDatetime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$TournamentsTableFilterComposer get tournamentId {
+    final $$TournamentsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tournamentId,
+      referencedTable: $db.tournaments,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TournamentsTableFilterComposer(
+            $db: $db,
+            $table: $db.tournaments,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$FixturesTableOrderingComposer
+    extends Composer<_$AppDatabase, $FixturesTable> {
+  $$FixturesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get roundName => $composableBuilder(
+    column: $table.roundName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get teamAId => $composableBuilder(
+    column: $table.teamAId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get teamBId => $composableBuilder(
+    column: $table.teamBId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get teamAName => $composableBuilder(
+    column: $table.teamAName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get teamBName => $composableBuilder(
+    column: $table.teamBName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get logoA => $composableBuilder(
+    column: $table.logoA,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get logoB => $composableBuilder(
+    column: $table.logoB,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get venueId => $composableBuilder(
+    column: $table.venueId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get venueName => $composableBuilder(
+    column: $table.venueName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get scheduledDatetime => $composableBuilder(
+    column: $table.scheduledDatetime,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$TournamentsTableOrderingComposer get tournamentId {
+    final $$TournamentsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tournamentId,
+      referencedTable: $db.tournaments,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TournamentsTableOrderingComposer(
+            $db: $db,
+            $table: $db.tournaments,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$FixturesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FixturesTable> {
+  $$FixturesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
+
+  GeneratedColumn<String> get roundName =>
+      $composableBuilder(column: $table.roundName, builder: (column) => column);
+
+  GeneratedColumn<String> get teamAId =>
+      $composableBuilder(column: $table.teamAId, builder: (column) => column);
+
+  GeneratedColumn<String> get teamBId =>
+      $composableBuilder(column: $table.teamBId, builder: (column) => column);
+
+  GeneratedColumn<String> get teamAName =>
+      $composableBuilder(column: $table.teamAName, builder: (column) => column);
+
+  GeneratedColumn<String> get teamBName =>
+      $composableBuilder(column: $table.teamBName, builder: (column) => column);
+
+  GeneratedColumn<String> get logoA =>
+      $composableBuilder(column: $table.logoA, builder: (column) => column);
+
+  GeneratedColumn<String> get logoB =>
+      $composableBuilder(column: $table.logoB, builder: (column) => column);
+
+  GeneratedColumn<String> get venueId =>
+      $composableBuilder(column: $table.venueId, builder: (column) => column);
+
+  GeneratedColumn<String> get venueName =>
+      $composableBuilder(column: $table.venueName, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get scheduledDatetime => $composableBuilder(
+    column: $table.scheduledDatetime,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  $$TournamentsTableAnnotationComposer get tournamentId {
+    final $$TournamentsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tournamentId,
+      referencedTable: $db.tournaments,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TournamentsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tournaments,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$FixturesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FixturesTable,
+          Fixture,
+          $$FixturesTableFilterComposer,
+          $$FixturesTableOrderingComposer,
+          $$FixturesTableAnnotationComposer,
+          $$FixturesTableCreateCompanionBuilder,
+          $$FixturesTableUpdateCompanionBuilder,
+          (Fixture, $$FixturesTableReferences),
+          Fixture,
+          PrefetchHooks Function({bool tournamentId})
+        > {
+  $$FixturesTableTableManager(_$AppDatabase db, $FixturesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FixturesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FixturesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FixturesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<String> tournamentId = const Value.absent(),
+                Value<String> roundName = const Value.absent(),
+                Value<String> teamAId = const Value.absent(),
+                Value<String> teamBId = const Value.absent(),
+                Value<String> teamAName = const Value.absent(),
+                Value<String> teamBName = const Value.absent(),
+                Value<String?> logoA = const Value.absent(),
+                Value<String?> logoB = const Value.absent(),
+                Value<String?> venueId = const Value.absent(),
+                Value<String?> venueName = const Value.absent(),
+                Value<DateTime?> scheduledDatetime = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FixturesCompanion(
+                id: id,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                isSynced: isSynced,
+                tournamentId: tournamentId,
+                roundName: roundName,
+                teamAId: teamAId,
+                teamBId: teamBId,
+                teamAName: teamAName,
+                teamBName: teamBName,
+                logoA: logoA,
+                logoB: logoB,
+                venueId: venueId,
+                venueName: venueName,
+                scheduledDatetime: scheduledDatetime,
+                status: status,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                required String tournamentId,
+                required String roundName,
+                required String teamAId,
+                required String teamBId,
+                required String teamAName,
+                required String teamBName,
+                Value<String?> logoA = const Value.absent(),
+                Value<String?> logoB = const Value.absent(),
+                Value<String?> venueId = const Value.absent(),
+                Value<String?> venueName = const Value.absent(),
+                Value<DateTime?> scheduledDatetime = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FixturesCompanion.insert(
+                id: id,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                isSynced: isSynced,
+                tournamentId: tournamentId,
+                roundName: roundName,
+                teamAId: teamAId,
+                teamBId: teamBId,
+                teamAName: teamAName,
+                teamBName: teamBName,
+                logoA: logoA,
+                logoB: logoB,
+                venueId: venueId,
+                venueName: venueName,
+                scheduledDatetime: scheduledDatetime,
+                status: status,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$FixturesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({tournamentId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (tournamentId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.tournamentId,
+                                referencedTable: $$FixturesTableReferences
+                                    ._tournamentIdTable(db),
+                                referencedColumn: $$FixturesTableReferences
+                                    ._tournamentIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$FixturesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FixturesTable,
+      Fixture,
+      $$FixturesTableFilterComposer,
+      $$FixturesTableOrderingComposer,
+      $$FixturesTableAnnotationComposer,
+      $$FixturesTableCreateCompanionBuilder,
+      $$FixturesTableUpdateCompanionBuilder,
+      (Fixture, $$FixturesTableReferences),
+      Fixture,
+      PrefetchHooks Function({bool tournamentId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -8126,4 +9670,6 @@ class $AppDatabaseManager {
       $$VenuesTableTableManager(_db, _db.venues);
   $$TournamentTeamsTableTableManager get tournamentTeams =>
       $$TournamentTeamsTableTableManager(_db, _db.tournamentTeams);
+  $$FixturesTableTableManager get fixtures =>
+      $$FixturesTableTableManager(_db, _db.fixtures);
 }

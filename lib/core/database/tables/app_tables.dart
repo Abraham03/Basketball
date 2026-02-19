@@ -26,6 +26,37 @@ class Matches extends Table with BaseTable {
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 }
 
+
+// lib/core/database/tables/app_tables.dart
+// (Mantén tus otras tablas igual y agrega esto al final)
+
+@DataClassName('Fixture')
+class Fixtures extends Table with BaseTable {
+  // ID que viene de MySQL (ej. "15")
+  @override
+  TextColumn get id => text()(); 
+  
+  TextColumn get tournamentId => text().references(Tournaments, #id, onDelete: KeyAction.cascade)();
+  TextColumn get roundName => text()(); // "Jornada 1", "Jornada 2"
+  TextColumn get teamAId => text()(); // Lo guardamos como texto por simplicidad de cruce
+  TextColumn get teamBId => text()();
+  TextColumn get teamAName => text()();
+  TextColumn get teamBName => text()();
+  TextColumn get logoA => text().nullable()();
+  TextColumn get logoB => text().nullable()();
+  TextColumn get venueId => text().nullable()();
+  TextColumn get venueName => text().nullable()();
+  DateTimeColumn get scheduledDatetime => dateTime().nullable()();
+  
+  // SCHEDULED, PLAYING, FINISHED, CANCELLED
+  TextColumn get status => text().withDefault(const Constant('SCHEDULED'))(); 
+  
+  BoolColumn get isSynced => boolean().withDefault(const Constant(true))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DataClassName('Team')
 class Teams extends Table with BaseTable {
   TextColumn get name => text().withLength(min: 1, max: 100)();

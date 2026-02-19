@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart'; // Asegúrate de tener uuid en pubspec.yaml
 import '../core/database/app_database.dart';
 import '../logic/tournament_provider.dart';
 import '../logic/catalog_provider.dart';
+import 'fixture_list_screen.dart';
 import 'match_setup_screen.dart';
 import 'team_management_screen.dart';
 
@@ -359,6 +360,22 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                                       ),
                             ),
 
+                            _DashboardCard(
+                                title: "Calendario",
+                                icon: Icons.calendar_month,
+                                color: Colors.teal,
+                                onTap: selectedTournamentId == null
+                                    ? () => _showNoTournamentAlert(context)
+                                    : () => Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => FixtureListScreen(
+                                              tournamentId: selectedTournamentId,
+                                            ),
+                                          ),
+                                        ),
+                              ),
+
                             // 3. Sincronizar (Descargar)
                             _DashboardCard(
                               title: "Descargar de Nube",
@@ -525,6 +542,55 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                 mode: drift.InsertMode.insertOrReplace,
               );
         }
+
+        // NUEVO: Descargar Fixtures para los torneos activos
+      for (var t in catalogData.tournaments) {
+        try {
+          final fixtureData = await api.fetchFixture(t.id.toString());
+          if (fixtureData.isNotEmpty && fixtureData['rounds'] != null) {
+            
+            // Borramos los fixtures anteriores de este torneo
+            await (db.delete(db.fixtures)..where((f) => f.tournamentId.equals(t.id.toString()))).go();
+
+            final roundsMap = fixtureData['rounds'] as Map<String, dynamic>;
+            
+            await db.transaction(() async {
+              for (var entry in roundsMap.entries) {
+                final roundName = entry.key;
+                final matches = entry.value as List;
+                
+                for (var m in matches) {
+                  DateTime? scheduledDate;
+                  if (m['scheduled_datetime'] != null && m['scheduled_datetime'].toString().isNotEmpty) {
+                    scheduledDate = DateTime.tryParse(m['scheduled_datetime']);
+                  }
+
+                  await db.into(db.fixtures).insert(
+                    FixturesCompanion.insert(
+                      id: m['id'].toString(), // ID real de MYSQL
+                      tournamentId: t.id.toString(),
+                      roundName: roundName,
+                      teamAId: m['team_a_id'].toString(),
+                      teamBId: m['team_b_id'].toString(),
+                      teamAName: m['team_a'] ?? 'Equipo A',
+                      teamBName: m['team_b'] ?? 'Equipo B',
+                      logoA: drift.Value(m['logo_a']),
+                      logoB: drift.Value(m['logo_b']),
+                      venueId: drift.Value(m['venue_id']?.toString()),
+                      venueName: drift.Value(m['venue_name']),
+                      scheduledDatetime: drift.Value(scheduledDate),
+                      status: drift.Value(m['status'] ?? 'SCHEDULED'),
+                    ),
+                    mode: drift.InsertMode.insertOrReplace
+                  );
+                }
+              }
+            });
+          }
+        } catch (e) {
+          debugPrint("Error al descargar fixture del torneo ${t.id}: $e");
+        }
+      }
 
         for (var team in catalogData.teams) {
           await db.into(db.teams).insert(

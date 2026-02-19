@@ -2,14 +2,55 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'package:http/http.dart';
 import '../models/catalog_models.dart';
-import 'package:http_parser/http_parser.dart';
 
 class ApiService {
-  // ⚠️ CAMBIA ESTO POR TU URL REAL DE HOSTINGER
+  
   static const String _baseUrl = 'https://basket.techsolutions.management/api.php';
 
-  // Nuevo método para traer datos filtrados por torneo
+// Llamar al backend para que genere el fixture automáticamente
+  Future<bool> generateFixture({
+    required String tournamentId,
+    required int vueltas,
+    required int ptsVictoria,
+    required int ptsDerrota,
+    required int ptsEmpate,
+    required int ptsForfeitWin,
+    required int ptsForfeitLoss,
+  }) async {
+    try {
+      final payload = {
+        "action": "generate_fixture",
+        "tournament_id": tournamentId,
+        "config": {
+          "vueltas": vueltas,
+          "pts_victoria": ptsVictoria,
+          "pts_derrota": ptsDerrota,
+          "pts_empate": ptsEmpate,
+          "pts_forfeit_win": ptsForfeitWin,
+          "pts_forfeit_loss": ptsForfeitLoss
+        }
+      };
+
+      final response = await http.post(
+        Uri.parse(_baseUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(payload),
+      );
+
+      if (response.statusCode == 200) {
+        final respData = jsonDecode(response.body);
+        return respData['status'] == 'success';
+      }
+      return false;
+    } catch (e) {
+      print("Error generando fixture: $e");
+      return false;
+    }
+  }
+
+  // Método para traer datos filtrados por torneo
   Future<CatalogData> fetchTournamentData(String tournamentId) async {
     try {
       final response = await http.get(
@@ -87,6 +128,25 @@ class ApiService {
       }
     } catch (e) {
       throw Exception('Error conectando al servidor: $e');
+    }
+  }
+
+  // Obtener el Fixture (Calendario)
+  Future<Map<String, dynamic>> fetchFixture(String tournamentId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl?action=get_fixture&tournament_id=$tournamentId'),
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        if (jsonResponse['status'] == 'success') {
+          return jsonResponse['data']; // Retorna { "tournament_name": "...", "rounds": {...} }
+        }
+      }
+      return {};
+    } catch (e) {
+      throw Exception('Error de conexión: $e');
     }
   }
 
