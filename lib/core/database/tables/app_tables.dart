@@ -22,6 +22,7 @@ class Matches extends Table with BaseTable {
   // Match date
   DateTimeColumn get matchDate => dateTime().nullable()();
   TextColumn get signatureData => text().nullable()();
+  TextColumn get matchReportPath => text().nullable()();
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 }
 

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/di/dependency_injection.dart';
 import '../core/models/catalog_models.dart';
+import '../core/utils/pdf_generator.dart';
 import '../logic/match_game_controller.dart';
 import '../ui/protest_signature_screen.dart';
 import '../ui/pdf_preview_screen.dart';
@@ -1033,11 +1034,38 @@ void _showSubstitutionDialog(
     try {
       final api = ref.read(apiServiceProvider);
       final controller = ref.read(matchGameProvider.notifier);
-      bool synced = await controller.finalizeAndSync(api, signature, widget.teamAName, widget.teamBName);
+
+      // Usamos los datos del widget y del state para generar los bytes
+      final pdfBytes = await PdfGenerator.generateBytes(
+        state,
+        widget.teamAName,
+        widget.teamBName,
+        tournamentName: widget.tournamentName,
+        venueName: widget.venueName,
+        mainReferee: widget.mainReferee,
+        auxReferee: widget.auxReferee,
+        scorekeeper: widget.scorekeeper,
+        coachA: widget.coachA,
+        coachB: widget.coachB,
+        captainAId: widget.captainAId,
+        captainBId: widget.captainBId,
+        protestSignature: signature,
+        matchDate: widget.matchDate ?? DateTime.now(),
+      );
+
+      // 2. ENVIAR AL CONTROLADOR
+      bool synced = await controller.finalizeAndSync(
+        api, 
+        signature, 
+        pdfBytes, // <--- Pasamos el PDF generado
+        widget.teamAName, 
+        widget.teamBName
+      );
+
       if (context.mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(synced ? "✅ Sincronizado correctamente" : "⚠️ Guardado localmente (Sin conexión)"), 
+            content: Text(synced ? "Sincronizado correctamente" : "Guardado localmente (Sin conexión)"), 
             behavior: SnackBarBehavior.floating,
             backgroundColor: synced ? Colors.green.shade700 : Colors.orange.shade700
         ));

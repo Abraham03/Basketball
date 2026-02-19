@@ -212,6 +212,7 @@ class MatchGameController extends StateNotifier<MatchState> {
   Future<bool> finalizeAndSync(
     ApiService api, 
     Uint8List? signatureBytes, 
+    Uint8List? pdfBytes,
     String teamAName, 
     String teamBName
   ) async {
@@ -284,7 +285,10 @@ class MatchGameController extends StateNotifier<MatchState> {
 
 // 4. Intentar enviar
     try {
-        final success = await api.syncMatchData(payload);
+        final success = await api.syncMatchDataMultipart(
+          matchData: payload, 
+          pdfBytes: pdfBytes
+          ); // Enviar();
         if (success) {
             // Si subió, marcamos como synced en local
             await _dao.markAsSynced(state.matchId);

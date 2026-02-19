@@ -1,8 +1,9 @@
 // lib/core/services/api_service.dart
-
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import '../models/catalog_models.dart';
+import 'package:http_parser/http_parser.dart';
 
 class ApiService {
   // ⚠️ CAMBIA ESTO POR TU URL REAL DE HOSTINGER
@@ -172,4 +173,48 @@ Future<int> addPlayer(int teamId, String name, int number) async {
       return false;
     }
   }
+
+ Future<bool> syncMatchDataMultipart({
+    required Map<String, dynamic> matchData,
+    required Uint8List? pdfBytes,
+  }) async {
+    try {
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$_baseUrl?action=sync_match'),
+      );
+
+      // 1. Enviamos el JSON como un campo de texto stringificado
+      // En PHP lo recibirás como: $data = json_decode($_POST['data'], true);
+      request.fields['data'] = jsonEncode(matchData);
+
+      // 2. Adjuntamos el PDF si existe
+      if (pdfBytes != null) {
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'pdf_report', // Nombre del campo en PHP ($_FILES['pdf_report'])
+            pdfBytes,
+            filename: 'match_report.pdf',
+            contentType: MediaType('application', 'pdf'), // Opcional, requiere package:http_parser
+          ),
+        );
+      }
+
+      // 3. Enviar y leer respuesta
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final respData = jsonDecode(response.body);
+        return respData['status'] == 'success';
+      } else {
+        // Puedes loguear response.body aquí para ver errores de PHP
+        print("Error upload: $response.body");
+        return false;
+      }
+    } catch (e) {
+      print("Error upload: $e");
+      return false;
+    }
+  } 
 }
