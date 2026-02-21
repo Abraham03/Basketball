@@ -206,13 +206,14 @@ Future<int> addPlayer(int teamId, String name, int number) async {
     }
   }
 
-  Future<bool> updatePlayer(String id, String name, int number) async {
+  Future<bool> updatePlayer(String id, int teamId ,String name, int number) async {
   try {
     final response = await http.post(
       Uri.parse('$_baseUrl?action=update_player'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         "id": id,
+        "teamId": teamId,
         "name": name,
         "number": number,
       }),

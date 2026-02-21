@@ -1,3 +1,5 @@
+// lib/ui/screens/team_detail_screen.dart
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
@@ -10,6 +12,10 @@ import '../core/database/app_database.dart' as db_app;
 
 // Inyección de dependencias (con alias para evitar conflicto de nombres)
 import '../core/di/dependency_injection.dart' as di;
+
+// Importaciones de diseño
+import '../ui/widgets/app_background.dart';
+
 
 class TeamDetailScreen extends ConsumerWidget {
   final Team team;
@@ -25,17 +31,21 @@ class TeamDetailScreen extends ConsumerWidget {
     final isTeamLocal = teamIdInt < 0;
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      extendBodyBehindAppBar: true, // IMPORTANTE PARA EL FONDO
+      backgroundColor: Colors.transparent, // DEJAR VER EL FONDO
+      
       appBar: AppBar(
+        backgroundColor: Colors.black.withOpacity(0.4), // Cristalino
+        iconTheme: const IconThemeData(color: Colors.white),
         title: Column(
           children: [
             Text(
               team.name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
             ),
             Text(
               "Plantilla de Jugadores",
-              style: TextStyle(fontSize: 12, color: Colors.grey[200]),
+              style: TextStyle(fontSize: 12, color: Colors.white70),
             ),
           ],
         ),
@@ -53,159 +63,210 @@ class TeamDetailScreen extends ConsumerWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddPlayerDialog(context, ref, teamIdInt),
+        onPressed: () => _showPlayerDialog(context, ref, teamIdInt),
         label: const Text("Nuevo Jugador"),
         icon: const Icon(Icons.person_add),
-        backgroundColor: Theme.of(context).primaryColor,
+        backgroundColor: Colors.orange.shade600,
+        foregroundColor: Colors.white,
       ),
-      body: playersAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
-              Text("Error: $err"),
-            ],
-          ),
-        ),
-        data: (players) {
-          if (players.isEmpty) {
-            return Center(
+      // APLICAMOS EL APP BACKGROUND AQUÍ
+      body: AppBackground(
+        opacity: 0.5, // Un poco más oscuro para que resalten las tarjetas
+        child: SafeArea(
+          child: playersAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator(color: Colors.orangeAccent)),
+            error: (err, _) => Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.sports_handball,
-                    size: 64,
-                    color: Colors.grey[300],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    "No hay jugadores registrados.",
-                    style: TextStyle(color: Colors.grey[600], fontSize: 18),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text("Agrega jugadores usando el botón inferior."),
+                  const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
+                  Text("Error: $err", style: const TextStyle(color: Colors.white)),
                 ],
               ),
-            );
-          }
-
-          // --- DISEÑO RESPONSIVO ---
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              if (constraints.maxWidth > 600) {
-                // Modo Tablet/Web (Grid)
-                return GridView.builder(
-                  padding: const EdgeInsets.all(16),
-                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 400,
-                    mainAxisExtent: 90, // Altura fija de la tarjeta
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
+            ),
+            data: (players) {
+              if (players.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.sports_handball,
+                          size: 60,
+                          color: Colors.white70,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        "No hay jugadores registrados.",
+                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Agrega jugadores usando el botón inferior.",
+                        style: TextStyle(color: Colors.white.withOpacity(0.7)),
+                      ),
+                    ],
                   ),
-                  itemCount: players.length,
-                  itemBuilder: (context, index) =>
-                      _PlayerCard(player: players[index]),
                 );
               }
 
-              // Modo Móvil (Lista)
-              return ListView.builder(
-                padding: const EdgeInsets.all(12),
-                itemCount: players.length,
-                itemBuilder: (context, index) {
-                  final player = players[index];
-                  return Dismissible(
-                    key: Key(player.id),
-                    direction: DismissDirection.endToStart,
-                    background: Container(
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.only(right: 20),
-                      color: Colors.red,
-                      child: const Icon(Icons.delete, color: Colors.white),
-                    ),
-                    confirmDismiss: (direction) async {
-                      // Opcional: Mostrar un diálogo de confirmación
-                      return await showDialog(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text("¿Eliminar jugador?"),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, false),
-                              child: const Text("No"),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, true),
-                              child: const Text("Sí"),
-                            ),
-                          ],
+              // --- DISEÑO RESPONSIVO ---
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  if (constraints.maxWidth > 600) {
+                    // Modo Tablet/Web (Grid)
+                    return GridView.builder(
+                      padding: const EdgeInsets.all(16),
+                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                        maxCrossAxisExtent: 400,
+                        mainAxisExtent: 90, // Altura fija de la tarjeta
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                      ),
+                      itemCount: players.length,
+                      itemBuilder: (context, index) {
+                        final player = players[index];
+                        return _buildDismissiblePlayer(
+                          context,
+                          ref,
+                          player,
+                          teamIdInt,
+                        );
+                      },
+                    );
+                  }
+
+                  // Modo Móvil (Lista)
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: players.length,
+                    itemBuilder: (context, index) {
+                      final player = players[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: _buildDismissiblePlayer(
+                          context,
+                          ref,
+                          player,
+                          teamIdInt,
                         ),
                       );
                     },
-                    onDismissed: (direction) async {
-                      final db = ref.read(di.databaseProvider);
-                      // 1. Borrar local
-                      await (db.delete(
-                        db.players,
-                      )..where((t) => t.id.equals(player.id))).go();
-
-                      // 2. Intentar borrar en nube (si es un ID real)
-                      if ((int.tryParse(player.id) ?? 0) > 0) {
-                        // llamar a api.deletePlayer(player.id)
-                      }
-                    },
-                    child: GestureDetector(
-                      onTap: () => _showPlayerDialog(
-                        context,
-                        ref,
-                        teamIdInt,
-                        playerToEdit: player,
-                      ),
-                      child: _PlayerCard(player: player),
-                    ),
                   );
                 },
               );
             },
-          );
-        },
+          ),
+        ),
       ),
     );
   }
 
-  void _showAddPlayerDialog(
+  Widget _buildDismissiblePlayer(
     BuildContext context,
     WidgetRef ref,
+    db_app.Player player,
     int teamIdInt,
   ) {
-    final nameCtrl = TextEditingController();
-    final numberCtrl = TextEditingController();
+    return Dismissible(
+      key: Key(player.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: Colors.redAccent.withOpacity(0.8),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      confirmDismiss: (direction) async {
+        return await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            title: const Text("¿Eliminar jugador?"),
+            content: Text("¿Estás seguro de eliminar a ${player.name}?"),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text("No", style: TextStyle(color: Colors.grey)),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text("Sí, eliminar", style: TextStyle(color: Colors.red)),
+              ),
+            ],
+          ),
+        );
+      },
+      onDismissed: (direction) async {
+        final db = ref.read(di.databaseProvider);
+
+        // 1. Borrar local
+        await (db.delete(
+          db.players,
+        )..where((t) => t.id.equals(player.id))).go();
+
+        // 2. Intentar borrar en nube (si es un ID real, es decir, mayor a 0)
+        final playerIdInt = int.tryParse(player.id) ?? 0;
+        if (playerIdInt > 0) {
+          // Opcional: Implementa api.deletePlayer(player.id) en ApiService si tienes ese endpoint en PHP
+        }
+      },
+      child: GestureDetector(
+        onTap: () =>
+            _showPlayerDialog(context, ref, teamIdInt, playerToEdit: player),
+        child: _PlayerCard(player: player),
+      ),
+    );
+  }
+
+  void _showPlayerDialog(
+    BuildContext context,
+    WidgetRef ref,
+    int teamIdInt, {
+    db_app.Player? playerToEdit,
+  }) {
+    final isEditing = playerToEdit != null;
+    final nameCtrl = TextEditingController(text: playerToEdit?.name ?? "");
+    final numberCtrl = TextEditingController(
+      text: playerToEdit?.defaultNumber.toString() ?? "",
+    );
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Registrar Jugador"),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          isEditing ? "✏️ Editar Jugador" : "👤 Registrar Jugador",
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameCtrl,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: "Nombre Completo",
-                prefixIcon: Icon(Icons.person),
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                prefixIcon: const Icon(Icons.person),
               ),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: numberCtrl,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: "Número (#)",
-                prefixIcon: Icon(Icons.format_list_numbered),
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                prefixIcon: const Icon(Icons.format_list_numbered),
               ),
               keyboardType: TextInputType.number,
             ),
@@ -218,100 +279,157 @@ class TeamDetailScreen extends ConsumerWidget {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).primaryColor,
+              backgroundColor: Colors.orange.shade600,
               foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () async {
-              if (nameCtrl.text.isEmpty) return;
+              // 1. VALIDACIÓN BÁSICA
+              if (nameCtrl.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("⚠️ El nombre es obligatorio")),
+                );
+                return;
+              }
 
-              // Usar alias 'di' para evitar conflictos
               final db = ref.read(di.databaseProvider);
               final api = ref.read(di.apiServiceProvider);
               final playerNum = int.tryParse(numberCtrl.text) ?? 0;
 
-              // Obtenemos los jugadores actuales del provider (que ya están en memoria)
+              // 2. VALIDACIÓN DE DUPLICADOS EN EL MISMO EQUIPO
               final currentPlayers =
                   ref.read(teamPlayersStreamProvider(teamIdInt)).value ?? [];
-              // Verificamos si algún jugador ya tiene ese número
+
               final isDuplicate = currentPlayers.any(
-                (p) => p.defaultNumber == playerNum,
+                (p) => p.defaultNumber == playerNum && p.id != playerToEdit?.id,
               );
 
               if (isDuplicate) {
-                // Si el contexto sigue montado, mostramos un error y no cerramos el diálogo
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      "⚠️ El número #$playerNum ya está asignado a otro jugador.",
+                      "⚠️ El número #$playerNum ya está ocupado en este equipo.",
                     ),
                     backgroundColor: Colors.redAccent,
                   ),
                 );
-                return; // Detenemos la ejecución aquí
+                return; // IMPORTANTE: No cerramos el diálogo
               }
 
               try {
-                // 1. INTENTO ONLINE
-                final newId = await api.addPlayer(
-                  teamIdInt, // Usar el ID entero ya parseado
-                  nameCtrl.text,
-                  playerNum,
-                );
+                if (isEditing) {
+                  // --- LÓGICA DE EDICIÓN ---
+                  final isRealId = (int.tryParse(playerToEdit.id) ?? 0) > 0;
+                  bool syncSuccess = false;
 
-                // 2. ÉXITO (ONLINE)
-                await db
-                    .into(db.players)
-                    .insert(
-                      db_app.PlayersCompanion.insert(
-                        id: drift.Value(newId.toString()),
-                        teamId: teamIdInt,
-                        name: nameCtrl.text,
-                        defaultNumber: drift.Value(playerNum),
-                        active: const drift.Value(true),
-                        isSynced: const drift.Value(true),
+                  if (isRealId) {
+                    // MODIFICADO: AHORA ENVIAMOS EL teamIdInt TAMBIÉN
+                    syncSuccess = await api.updatePlayer(
+                      playerToEdit.id,
+                      teamIdInt, 
+                      nameCtrl.text,
+                      playerNum,
+                    );
+                  }
+
+                  await (db.update(
+                    db.players,
+                  )..where((t) => t.id.equals(playerToEdit.id))).write(
+                    db_app.PlayersCompanion(
+                      name: drift.Value(nameCtrl.text),
+                      defaultNumber: drift.Value(playerNum),
+                      isSynced: drift.Value(syncSuccess),
+                    ),
+                  );
+
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          syncSuccess
+                              ? "✅ Jugador actualizado en la nube"
+                              : "💾 Editado localmente (Pendiente de subir)",
+                        ),
+                        backgroundColor: syncSuccess ? Colors.green : Colors.orange,
                       ),
-                      mode: drift.InsertMode.insertOrReplace,
+                    );
+                  }
+                } else {
+                  // --- LÓGICA DE CREACIÓN ---
+                  try {
+                    // INTENTO ONLINE
+                    final newId = await api.addPlayer(
+                      teamIdInt,
+                      nameCtrl.text,
+                      playerNum,
                     );
 
-                if (!context.mounted) return;
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("Jugador agregado"),
-                    backgroundColor: Colors.green,
-                  ),
-                );
+                    await db
+                        .into(db.players)
+                        .insert(
+                          db_app.PlayersCompanion.insert(
+                            id: drift.Value(newId.toString()),
+                            teamId: teamIdInt,
+                            name: nameCtrl.text,
+                            defaultNumber: drift.Value(playerNum),
+                            active: const drift.Value(true),
+                            isSynced: const drift.Value(true),
+                          ),
+                          mode: drift.InsertMode.insertOrReplace,
+                        );
+
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("✅ Jugador agregado"),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    // FALLO ONLINE (GUARDAR OFFLINE)
+                    final tempId = (-DateTime.now().millisecondsSinceEpoch)
+                        .toString();
+
+                    await db
+                        .into(db.players)
+                        .insert(
+                          db_app.PlayersCompanion.insert(
+                            id: drift.Value(tempId),
+                            teamId: teamIdInt,
+                            name: nameCtrl.text,
+                            defaultNumber: drift.Value(playerNum),
+                            active: const drift.Value(true),
+                            isSynced: const drift.Value(false), // Pendiente
+                          ),
+                        );
+
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("💾 Sin conexión. Guardado localmente."),
+                          backgroundColor: Colors.orange,
+                        ),
+                      );
+                    }
+                  }
+                }
+
+                // 3. ÉXITO TOTAL: Cerramos el diálogo
+                if (context.mounted) {
+                  Navigator.pop(ctx);
+                }
               } catch (e) {
-                // 3. FALLO (OFFLINE)
-
-                final tempId = (-DateTime.now().millisecondsSinceEpoch)
-                    .toString();
-
-                await db
-                    .into(db.players)
-                    .insert(
-                      db_app.PlayersCompanion.insert(
-                        id: drift.Value(tempId),
-                        teamId: teamIdInt,
-                        name: nameCtrl.text,
-                        defaultNumber: drift.Value(playerNum),
-                        active: const drift.Value(true),
-                        isSynced: const drift.Value(false), // Pendiente
-                      ),
-                    );
-
-                if (!context.mounted) return;
-                Navigator.pop(ctx);
+                // Si hay un error crítico
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("Sin conexión. Guardado localmente."),
-                    backgroundColor: Colors.orange,
+                  SnackBar(
+                    content: Text("❌ Error: $e"),
+                    backgroundColor: Colors.red,
                   ),
                 );
               }
-              // El StreamProvider actualizará la lista automáticamente
             },
-            child: const Text("Guardar"),
+            child: Text(isEditing ? "Actualizar" : "Guardar"),
           ),
         ],
       ),
@@ -319,136 +437,7 @@ class TeamDetailScreen extends ConsumerWidget {
   }
 }
 
-// Dentro de la clase TeamDetailScreen añadir este método:
-
-void _showPlayerDialog(
-  BuildContext context,
-  WidgetRef ref,
-  int teamIdInt, {
-  db_app.Player? playerToEdit,
-}) {
-  final isEditing = playerToEdit != null;
-  final nameCtrl = TextEditingController(text: playerToEdit?.name ?? "");
-  final numberCtrl = TextEditingController(
-    text: playerToEdit?.defaultNumber.toString() ?? "",
-  );
-
-  showDialog(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(isEditing ? "Editar Jugador" : "Registrar Jugador"),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: nameCtrl,
-            decoration: const InputDecoration(
-              labelText: "Nombre Completo",
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: numberCtrl,
-            decoration: const InputDecoration(
-              labelText: "Número (#)",
-              border: OutlineInputBorder(),
-            ),
-            keyboardType: TextInputType.number,
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx),
-          child: const Text("Cancelar"),
-        ),
-        ElevatedButton(
-  onPressed: () async {
-    // 1. VALIDACIÓN BÁSICA: Si está vacío, no cerramos ni hacemos nada
-    if (nameCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("⚠️ El nombre es obligatorio"))
-      );
-      return; 
-    }
-
-    final db = ref.read(di.databaseProvider);
-    final api = ref.read(di.apiServiceProvider);
-    final playerNum = int.tryParse(numberCtrl.text) ?? 0;
-
-    // 2. VALIDACIÓN DE DUPLICADOS
-    final currentPlayers = ref.read(teamPlayersStreamProvider(teamIdInt)).value ?? [];
-    final isDuplicate = currentPlayers.any(
-      (p) => p.defaultNumber == playerNum && p.id != playerToEdit?.id,
-    );
-
-    if (isDuplicate) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("⚠️ El número #$playerNum ya está ocupado."),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return; // IMPORTANTE: No llamamos a pop(), el diálogo sigue abierto
-    }
-
-    try {
-      if (isEditing) {
-        // --- LÓGICA DE EDICIÓN ---
-        final isRealId = (int.tryParse(playerToEdit.id) ?? 0) > 0;
-        bool syncSuccess = false;
-
-        if (isRealId) {
-          syncSuccess = await api.updatePlayer(
-            playerToEdit.id,
-            nameCtrl.text,
-            playerNum,
-          );
-        }
-
-        await (db.update(db.players)..where((t) => t.id.equals(playerToEdit.id))).write(
-          db_app.PlayersCompanion(
-            name: drift.Value(nameCtrl.text),
-            defaultNumber: drift.Value(playerNum),
-            isSynced: drift.Value(syncSuccess),
-          ),
-        );
-
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(syncSuccess ? "✅ Sincronizado" : "💾 Guardado localmente"),
-              backgroundColor: syncSuccess ? Colors.green : Colors.orange,
-            ),
-          );
-        }
-      } else {
-        // --- LÓGICA DE CREACIÓN (Asegúrate de implementar algo similar aquí) ---
-        Navigator.pop(ctx);
-      }
-
-      // 3. ÉXITO TOTAL: Si llegamos aquí sin errores, cerramos el diálogo
-      if (context.mounted) {
-        Navigator.pop(ctx); 
-      }
-
-    } catch (e) {
-      // Si hay un error crítico de código o base de datos
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("❌ Error: $e"), backgroundColor: Colors.red),
-      );
-      Navigator.pop(ctx); 
-    }
-  },
-  child: Text(isEditing ? "Actualizar" : "Guardar"),
-),
-      ],
-    ),
-  );
-}
-
-// --- WIDGET TARJETA DE JUGADOR ---
+// --- WIDGET TARJETA DE JUGADOR (Con Glassmorphism) ---
 class _PlayerCard extends StatelessWidget {
   final db_app.Player player;
   const _PlayerCard({required this.player});
@@ -456,73 +445,84 @@ class _PlayerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Determinar si es local
-    final isLocal = (int.tryParse(player.id) ?? 0) < 0;
+    final isLocal = (int.tryParse(player.id) ?? 0) < 0 || !player.isSynced;
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-        child: Row(
-          children: [
-            // Número de camiseta
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: Colors.orange.shade50,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.orange.shade200),
-              ),
-              child: Center(
-                child: Text(
-                  "#${player.defaultNumber}",
-                  style: TextStyle(
-                    color: Colors.orange.shade800,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), // Efecto cristal
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.15), // Fondo semitransparente
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withOpacity(0.2)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          child: Row(
+            children: [
+              // Número de camiseta
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.orangeAccent.withOpacity(0.5)),
+                ),
+                child: Center(
+                  child: Text(
+                    "#${player.defaultNumber}",
+                    style: const TextStyle(
+                      color: Colors.orangeAccent,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 16),
+              const SizedBox(width: 16),
 
-            // Nombre y Estado
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    player.name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+              // Nombre y Estado
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      player.name,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white, // Letra blanca para el fondo oscuro
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (isLocal)
-                    const Text(
-                      "Pendiente de subir",
-                      style: TextStyle(fontSize: 12, color: Colors.orange),
-                    ),
-                ],
+                    if (isLocal)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4.0),
+                        child: Text(
+                          "Pendiente de subir",
+                          style: TextStyle(fontSize: 12, color: Colors.orangeAccent),
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ),
 
-            // Icono de estado
-            if (isLocal)
-              const Tooltip(
-                message: "Guardado en dispositivo",
-                child: Icon(Icons.cloud_off, color: Colors.orange),
-              )
-            else
-              const Tooltip(
-                message: "Sincronizado",
-                child: Icon(Icons.check_circle, color: Colors.green),
-              ),
-          ],
+              // Icono de estado
+              if (isLocal)
+                const Tooltip(
+                  message: "Guardado en dispositivo",
+                  child: Icon(Icons.cloud_off, color: Colors.orangeAccent),
+                )
+              else
+                const Tooltip(
+                  message: "Sincronizado",
+                  child: Icon(Icons.cloud_done, color: Colors.greenAccent),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -530,10 +530,9 @@ class _PlayerCard extends StatelessWidget {
 }
 
 // --- PROVIDER DEL STREAM ---
-// Debe estar al final del archivo o en un archivo común
 final teamPlayersStreamProvider =
     StreamProvider.family<List<db_app.Player>, int>((ref, teamId) {
-      final db = ref.watch(di.databaseProvider); // Usamos el alias 'di'
+      final db = ref.watch(di.databaseProvider);
       return (db.select(
         db.players,
       )..where((p) => p.teamId.equals(teamId))).watch();

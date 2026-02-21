@@ -1,7 +1,9 @@
+// lib/ui/screens/home_menu_screen.dart
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
-import 'package:uuid/uuid.dart'; // Asegúrate de tener uuid en pubspec.yaml
+import 'package:uuid/uuid.dart';
 
 import '../core/database/app_database.dart';
 import '../logic/tournament_provider.dart';
@@ -9,6 +11,10 @@ import '../logic/catalog_provider.dart';
 import 'fixture_list_screen.dart';
 import 'match_setup_screen.dart';
 import 'team_management_screen.dart';
+
+// Importaciones de los componentes de diseño
+import '../ui/widgets/glass_dashboard_card.dart';
+import '../ui/widgets/app_background.dart';
 
 class HomeMenuScreen extends ConsumerStatefulWidget {
   const HomeMenuScreen({super.key});
@@ -29,74 +35,92 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         _tapCount = 0;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_isAdminMode ? "🔓 Modo Admin ACTIVADO" : "🔒 Modo Admin DESACTIVADO"),
-            duration: const Duration(seconds: 1),
-            backgroundColor: _isAdminMode ? Colors.green : Colors.grey,
+            content: Row(
+              children: [
+                Icon(
+                  _isAdminMode ? Icons.lock_open : Icons.lock,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  _isAdminMode
+                      ? "Modo Administrador: ACTIVADO"
+                      : "Modo Administrador: DESACTIVADO",
+                ),
+              ],
+            ),
+            duration: const Duration(seconds: 2),
+            backgroundColor: _isAdminMode
+                ? Colors.green.shade800
+                : Colors.grey.shade800,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
     });
   }
 
-// --- LÓGICA PARA CREAR TORNEO ---
   Future<void> _createNewTournament(String name, String category) async {
     final api = ref.read(apiServiceProvider);
     final db = ref.read(databaseProvider);
     String finalId = "";
 
     try {
-      // 1. Intentar subir a la Nube (Online)
-      // Como ApiService ahora devuelve Future<String>, esto ya no dará error "void"
       finalId = await api.createTournament(name, category);
-      
-      // Guardar también en Drift para que exista localmente de inmediato
-      await db.into(db.tournaments).insert(
-        TournamentsCompanion.insert(
-          id: drift.Value(finalId),
-          name: name,
-          category: drift.Value(category),
-          status: const drift.Value('ACTIVE'),
-          isSynced: const drift.Value(true),
-        ),
-      );
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("☁️ Torneo creado en la nube correctamente"), backgroundColor: Colors.green),
-        );
-      }
-    } catch (e) {
-      // 2. Si falla (Offline), guardar Localmente con un UUID
-      finalId = const Uuid().v4(); 
-      
-      await db.into(db.tournaments).insert(
-        TournamentsCompanion.insert(
-          id: drift.Value(finalId),
-          name: name,
-          category: drift.Value(category),
-          status: const drift.Value('ACTIVE'),
-          isSynced: const drift.Value(false), // Marcado para subir luego
-        ),
-      );
+      await db
+          .into(db.tournaments)
+          .insert(
+            TournamentsCompanion.insert(
+              id: drift.Value(finalId),
+              name: name,
+              category: drift.Value(category),
+              status: const drift.Value('ACTIVE'),
+              isSynced: const drift.Value(true),
+            ),
+          );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("💾 Sin conexión: Torneo guardado localmente."), 
-            backgroundColor: Colors.orange
+            content: Text(
+              "☁️ ¡Genial! El torneo se creó en la nube exitosamente.",
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      finalId = const Uuid().v4();
+
+      await db
+          .into(db.tournaments)
+          .insert(
+            TournamentsCompanion.insert(
+              id: drift.Value(finalId),
+              name: name,
+              category: drift.Value(category),
+              status: const drift.Value('ACTIVE'),
+              isSynced: const drift.Value(false),
+            ),
+          );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "💾 Sin conexión a internet. El torneo se guardó localmente.",
+            ),
+            backgroundColor: Colors.orange,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
     } finally {
-      // 1. Actualizamos el Provider del Torneo Activo para que apunte al nuevo
       ref.read(selectedTournamentIdProvider.notifier).state = finalId;
-      
-      // 2. Invalidamos la lista para que el Dropdown se redibuje con el nuevo torneo
       ref.invalidate(tournamentsListProvider);
-      
-      if (mounted) {
-        Navigator.pop(context); // Cerrar diálogo
-      }
+      if (mounted) Navigator.pop(context);
     }
   }
 
@@ -108,7 +132,11 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Nuevo Torneo"),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          "🏆 Nuevo Torneo",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: Form(
           key: formKey,
           child: Column(
@@ -116,27 +144,55 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
             children: [
               TextFormField(
                 controller: nameCtrl,
-                decoration: const InputDecoration(labelText: "Nombre del Torneo", hintText: "Ej: Liga Municipal 2026"),
-                validator: (v) => v == null || v.isEmpty ? "Requerido" : null,
+                decoration: InputDecoration(
+                  labelText: "Nombre del Torneo",
+                  hintText: "Ej: Liga Municipal 2026",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  prefixIcon: const Icon(Icons.emoji_events),
+                ),
+                validator: (v) =>
+                    v == null || v.isEmpty ? "Este campo es requerido" : null,
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 15),
               TextFormField(
                 controller: catCtrl,
-                decoration: const InputDecoration(labelText: "Categoría", hintText: "Ej: Libre Varonil"),
-                validator: (v) => v == null || v.isEmpty ? "Requerido" : null,
+                decoration: InputDecoration(
+                  labelText: "Categoría",
+                  hintText: "Ej: Libre Varonil",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  prefixIcon: const Icon(Icons.category),
+                ),
+                validator: (v) =>
+                    v == null || v.isEmpty ? "Este campo es requerido" : null,
               ),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+          ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            ),
             onPressed: () {
               if (formKey.currentState!.validate()) {
                 _createNewTournament(nameCtrl.text, catCtrl.text);
               }
             },
-            child: const Text("Crear"),
+            child: const Text(
+              "Crear Torneo",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -144,199 +200,344 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
   }
 
   @override
-Widget build(BuildContext context) {
-    final primaryColor = Theme.of(context).colorScheme.primary;
-    final onPrimaryColor = Theme.of(context).colorScheme.onPrimary;
+  Widget build(BuildContext context) {
     final tournamentsAsync = ref.watch(tournamentsListProvider);
     final selectedTournamentId = ref.watch(selectedTournamentIdProvider);
 
     return Scaffold(
-      // Botón Flotante
-      floatingActionButton: _isAdminMode ? FloatingActionButton.extended(
-        onPressed: _showCreateDialog,
-        icon: const Icon(Icons.add),
-        label: const Text("Nuevo Torneo"),
-        backgroundColor: primaryColor,
-        foregroundColor: onPrimaryColor,
-      ) : null,
-      
-      body: Stack(
-        children: [
-          // 1. IMAGEN DE FONDO
-          Positioned.fill(
-            child: Image.asset(
-              'assets/images/fondo1.jpg', // <--- Asegúrate que exista en tu carpeta y pubspec.yaml
-              fit: BoxFit.cover,
-            ),
-          ),
-          
-          // 2. CAPA DE OSCURECIMIENTO (Para legibilidad)
-          Positioned.fill(
-            child: Container(
-              color: Colors.black.withOpacity(0.4),
-            ),
-          ),
+      extendBodyBehindAppBar: true,
+      backgroundColor:
+          Colors.transparent, // Asegura que el Scaffold no tape el fondo
 
-          // 3. CONTENIDO PRINCIPAL
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final bool isWideScreen = constraints.maxWidth > 600;
-              final int crossAxisCount = isWideScreen ? 4 : 2;
-              final double contentWidth = isWideScreen ? 800 : double.infinity;
+      floatingActionButton: _isAdminMode
+          ? FloatingActionButton.extended(
+              onPressed: _showCreateDialog,
+              icon: const Icon(Icons.add),
+              label: const Text("Nuevo Torneo"),
+              backgroundColor: Colors.orange.shade600,
+              foregroundColor: Colors.white,
+            )
+          : null,
 
-              return Center(
-                child: SizedBox(
-                  width: contentWidth,
-                  child: Column(
-                    children: [
-                      // HEADER: TÍTULO Y SELECTOR
-                      Container(
-                        padding: const EdgeInsets.only(top: 60, left: 20, right: 20, bottom: 25),
-                        decoration: BoxDecoration(
-                          color: primaryColor.withOpacity(0.85), // Un poco de transparencia
-                          borderRadius: const BorderRadius.only(
-                            bottomLeft: Radius.circular(30),
-                            bottomRight: Radius.circular(30),
+      // AQUÍ USAMOS EL FONDO REUTILIZABLE
+      body: AppBackground(
+        child: Stack(
+          children: [
+            // CONTENIDO PRINCIPAL
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final bool isWideScreen = constraints.maxWidth > 600;
+                final int crossAxisCount = isWideScreen ? 4 : 2;
+                final double contentWidth = isWideScreen
+                    ? 800
+                    : double.infinity;
+
+                return Center(
+                  child: SizedBox(
+                    width: contentWidth,
+                    child: Column(
+                      children: [
+                        // HEADER: TÍTULO Y SELECTOR
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 20,
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.3),
-                              blurRadius: 10,
-                              offset: const Offset(0, 5),
-                            ),
-                          ],
-                        ),
-                        width: double.infinity,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            GestureDetector(
-                              onTap: _toggleAdminMode,
-                              behavior: HitTestBehavior.opaque,
-                              child: Row(
-                                children: [
-                                  Icon(Icons.sports_basketball, size: 32, color: onPrimaryColor),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    "Basket Arbitraje",
-                                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: onPrimaryColor),
-                                  ),
-                                  if (_isAdminMode) ...[
-                                    const SizedBox(width: 10),
-                                    const Icon(Icons.lock_open, size: 16, color: Colors.greenAccent),
-                                  ]
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            Text(
-                              "Torneo Activo:",
-                              style: TextStyle(color: onPrimaryColor.withOpacity(0.8), fontSize: 14),
-                            ),
-                            const SizedBox(height: 5),
-                            tournamentsAsync.when(
-                              loading: () => const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
-                              error: (err, stack) => const Text("Error cargando torneos", style: TextStyle(color: Colors.white)),
-                              data: (tournaments) {
-                                if (tournaments.isEmpty) {
-                                  return const Text("Sin torneos (Crea uno nuevo +)", style: TextStyle(color: Colors.white, fontStyle: FontStyle.italic));
-                                }
-                                if (selectedTournamentId == null && tournaments.isNotEmpty) {
-                                  Future.microtask(() => ref.read(selectedTournamentIdProvider.notifier).state = tournaments.first.id);
-                                }
-                                final selectedName = tournaments.firstWhere((t) => t.id == selectedTournamentId, orElse: () => tournaments.first).name;
-
-                                return Material(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // ZONA TÁCTIL 1 (ARRIBA): Restaurada la alineación a la izquierda
+                              GestureDetector(
+                                onTap: _toggleAdminMode,
+                                behavior: HitTestBehavior.opaque,
+                                child: Container(
+                                  // Color transparente para que TODO el Row sea clickeable
                                   color: Colors.transparent,
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(10),
-                                    onTap: () => _showTournamentPicker(context, tournaments, ref, selectedTournamentId),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(color: Colors.white.withOpacity(0.3)),
+                                  padding: const EdgeInsets.only(
+                                    top: 8.0,
+                                    bottom: 8.0,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.2),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.sports_basketball,
+                                          size: 28,
+                                          color: Colors.white,
+                                        ),
                                       ),
-                                      child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Expanded(child: Text(selectedName, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                                          const Icon(Icons.arrow_drop_down, color: Colors.white),
-                                        ],
+                                      const SizedBox(width: 15),
+                                      const Text(
+                                        "Basket Arbitraje",
+                                        style: TextStyle(
+                                          fontSize: 26,
+                                          fontWeight: FontWeight.w900,
+                                          color: Colors.white,
+                                          letterSpacing: 1.2,
+                                        ),
+                                      ),
+                                      if (_isAdminMode) ...[
+                                        const SizedBox(width: 10),
+                                        const Icon(
+                                          Icons.admin_panel_settings,
+                                          size: 20,
+                                          color: Colors.orangeAccent,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              Text(
+                                "Torneo Activo:",
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.7),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 1.5,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+
+                              tournamentsAsync.when(
+                                loading: () => const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                                error: (err, stack) => const Text(
+                                  "Error cargando torneos",
+                                  style: TextStyle(color: Colors.redAccent),
+                                ),
+                                data: (tournaments) {
+                                  if (tournaments.isEmpty) {
+                                    return const Text(
+                                      "Sin torneos (Crea uno nuevo +)",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    );
+                                  }
+
+                                  if (selectedTournamentId == null &&
+                                      tournaments.isNotEmpty) {
+                                    Future.microtask(
+                                      () =>
+                                          ref
+                                                  .read(
+                                                    selectedTournamentIdProvider
+                                                        .notifier,
+                                                  )
+                                                  .state =
+                                              tournaments.first.id,
+                                    );
+                                  }
+
+                                  final selectedName = tournaments
+                                      .firstWhere(
+                                        (t) => t.id == selectedTournamentId,
+                                        orElse: () => tournaments.first,
+                                      )
+                                      .name;
+
+                                  // Selector modificado con Glassmorphism
+                                  return ClipRRect(
+                                    borderRadius: BorderRadius.circular(15),
+                                    child: BackdropFilter(
+                                      filter: ImageFilter.blur(
+                                        sigmaX: 10,
+                                        sigmaY: 10,
+                                      ),
+                                      child: Material(
+                                        color: Colors.white.withOpacity(0.15),
+                                        child: InkWell(
+                                          onTap: () => _showTournamentPicker(
+                                            context,
+                                            tournaments,
+                                            ref,
+                                            selectedTournamentId,
+                                          ),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 20,
+                                              vertical: 16,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(15),
+                                              border: Border.all(
+                                                color: Colors.white.withOpacity(
+                                                  0.3,
+                                                ),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    selectedName,
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 18,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                Container(
+                                                  padding: const EdgeInsets.all(
+                                                    4,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white
+                                                        .withOpacity(0.2),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons.keyboard_arrow_down,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // GRID DE TARJETAS
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20.0),
-                          child: GridView.count(
-                            crossAxisCount: crossAxisCount,
-                            crossAxisSpacing: 15,
-                            mainAxisSpacing: 15,
-                            childAspectRatio: isWideScreen ? 1.3 : 1.0,
-                            children: [
-                              _DashboardCard(
-                                title: "Jugar Partido",
-                                icon: Icons.play_circle_fill,
-                                color: Colors.orange,
-                                onTap: selectedTournamentId == null
-                                    ? () => _showNoTournamentAlert(context)
-                                    : () => Navigator.push(context, MaterialPageRoute(builder: (_) => MatchSetupScreen(tournamentId: selectedTournamentId))),
+                                  );
+                                },
                               ),
-                              if (_isAdminMode) ...[
-                                _DashboardCard(
-                                  title: "Equipos",
-                                  icon: Icons.groups,
-                                  color: Colors.blue,
-                                  onTap: selectedTournamentId == null
-                                      ? () => _showNoTournamentAlert(context)
-                                      : () => Navigator.push(context, MaterialPageRoute(builder: (_) => TeamManagementScreen(tournamentId: selectedTournamentId))),
-                                ),
-                                _DashboardCard(
-                                    title: "Calendario",
-                                    icon: Icons.calendar_month,
-                                    color: Colors.teal,
-                                    onTap: selectedTournamentId == null
-                                        ? () => _showNoTournamentAlert(context)
-                                        : () => Navigator.push(context, MaterialPageRoute(builder: (_) => FixtureListScreen(tournamentId: selectedTournamentId))),
-                                ),
-                                _DashboardCard(
-                                  title: "Descargar",
-                                  icon: Icons.cloud_sync,
-                                  color: Colors.purple,
-                                  onTap: () => _syncData(context, ref),
-                                ),
-                                _DashboardCard(
-                                  title: "Subir a Nube",
-                                  icon: Icons.upload_file,
-                                  color: Colors.blueGrey,
-                                  onTap: () => _uploadPendingData(context, ref),
-                                ),
-                              ],
                             ],
                           ),
                         ),
-                      ),
-                    ],
+
+                        // GRID DE TARJETAS
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20.0,
+                            ),
+                            child: GridView.count(
+                              crossAxisCount: crossAxisCount,
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                              childAspectRatio: isWideScreen ? 1.3 : 1.05,
+                              physics: const BouncingScrollPhysics(),
+                              children: [
+                                GlassDashboardCard(
+                                  title: "Jugar Partido",
+                                  icon: Icons.sports_basketball,
+                                  color: Colors.orange,
+                                  onTap: selectedTournamentId == null
+                                      ? () => _showNoTournamentAlert(context)
+                                      : () => Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => MatchSetupScreen(
+                                              tournamentId:
+                                                  selectedTournamentId,
+                                            ),
+                                          ),
+                                        ),
+                                ),
+                                if (_isAdminMode) ...[
+                                  GlassDashboardCard(
+                                    title: "Equipos",
+                                    icon: Icons.groups,
+                                    color: Colors.blueAccent,
+                                    onTap: selectedTournamentId == null
+                                        ? () => _showNoTournamentAlert(context)
+                                        : () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  TeamManagementScreen(
+                                                    tournamentId:
+                                                        selectedTournamentId,
+                                                  ),
+                                            ),
+                                          ),
+                                  ),
+                                  GlassDashboardCard(
+                                    title: "Calendario",
+                                    icon: Icons.calendar_month,
+                                    color: Colors.tealAccent,
+                                    onTap: selectedTournamentId == null
+                                        ? () => _showNoTournamentAlert(context)
+                                        : () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => FixtureListScreen(
+                                                tournamentId:
+                                                    selectedTournamentId,
+                                              ),
+                                            ),
+                                          ),
+                                  ),
+                                  GlassDashboardCard(
+                                    title: "Descargar Datos",
+                                    icon: Icons.cloud_download,
+                                    color: Colors.purpleAccent,
+                                    onTap: () => _syncData(context, ref),
+                                  ),
+                                  GlassDashboardCard(
+                                    title: "Subir a Nube",
+                                    icon: Icons.cloud_upload,
+                                    color: Colors.greenAccent,
+                                    onTap: () =>
+                                        _uploadPendingData(context, ref),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                );
+              },
+            ),
+
+            // ZONA TÁCTIL 2 (BOTÓN SECRETO ESQUINA INFERIOR IZQUIERDA)
+            Positioned(
+              bottom: 20,
+              left: 20,
+              child: GestureDetector(
+                onTap: _toggleAdminMode,
+                child: Container(
+                  width: 50,
+                  height: 50,
+                  decoration: const BoxDecoration(color: Colors.transparent),
                 ),
-              );
-            },
-          ),
-        ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
+  // --- MODAL DE SELECCIÓN ---
   void _showTournamentPicker(
     BuildContext context,
     List<dynamic> tournaments,
@@ -405,8 +606,9 @@ Widget build(BuildContext context) {
                             : null,
                         onTap: () {
                           ref
-                              .read(selectedTournamentIdProvider.notifier)
-                              .state = t.id;
+                                  .read(selectedTournamentIdProvider.notifier)
+                                  .state =
+                              t.id;
                           Navigator.pop(context);
                         },
                       );
@@ -423,22 +625,29 @@ Widget build(BuildContext context) {
 
   void _showNoTournamentAlert(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          "⚠️ Debes seleccionar un torneo primero (o sincronizar).",
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.info_outline, color: Colors.white),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                "Selecciona un torneo en la parte superior para continuar.",
+              ),
+            ),
+          ],
         ),
-        backgroundColor: Colors.red,
+        backgroundColor: Colors.blueGrey.shade800,
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
 
-  // --- LÓGICA DE SINCRONIZACIÓN (MANTENIDA IGUAL) ---
+ // --- LÓGICA DE SINCRONIZACIÓN CORREGIDA ---
   Future<void> _syncData(BuildContext context, WidgetRef ref) async {
-
-    // Obtenemos el ID del torneo que el usuario tiene seleccionado actualmente
     final selectedTournamentId = ref.read(selectedTournamentIdProvider);
-    final String syncId = selectedTournamentId ?? "0"; // Si es nulo, mandamos 0
+    final String syncId = selectedTournamentId ?? "0";
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -453,7 +662,7 @@ Widget build(BuildContext context) {
               ),
             ),
             SizedBox(width: 15),
-            Text("Descargando datos del servidor..."),
+            Text("Sincronizando datos..."),
           ],
         ),
         duration: Duration(seconds: 25),
@@ -463,47 +672,62 @@ Widget build(BuildContext context) {
     try {
       final api = ref.read(apiServiceProvider);
       final db = ref.read(databaseProvider);
+      
+      // 1. ANTES DE DESCARGAR, RESPALDAMOS LO QUE NO SE HA SUBIDO
+      final unsyncedTournaments = await (db.select(db.tournaments)..where((t) => t.isSynced.equals(false))).get();
+      final unsyncedTeams = await (db.select(db.teams)..where((t) => t.isSynced.equals(false))).get();
+      final unsyncedPlayers = await (db.select(db.players)..where((t) => t.isSynced.equals(false))).get();
+      //final unsyncedMatches = await (db.select(db.matches)..where((t) => t.isSynced.equals(false))).get();
+
+      // 2. DESCARGAMOS LA NUBE
       final catalogData = await api.fetchCatalogs(syncId);
 
       await db.transaction(() async {
+        // === TORNEOS ===
+        // Borramos todos los torneos SIN TOCAR LOS PENDIENTES
+        await (db.delete(db.tournaments)..where((t) => t.isSynced.equals(true))).go();
         for (var t in catalogData.tournaments) {
-          await db.into(db.tournaments).insert(
-                TournamentsCompanion.insert(
-                  id: drift.Value(t.id.toString()),
-                  name: t.name,
-                  category: drift.Value(t.category),
-                  status: drift.Value(t.status ?? 'ACTIVE'),
-                  isSynced: const drift.Value(true),
-                ),
-                mode: drift.InsertMode.insertOrReplace,
-              );
+          // Si el torneo que viene de la nube ya está en nuestra lista de "no sincronizados", 
+          // preferimos quedarnos con la versión local (la que editamos)
+          if (!unsyncedTournaments.any((local) => local.id == t.id.toString())) {
+             await db.into(db.tournaments).insert(
+              TournamentsCompanion.insert(
+                id: drift.Value(t.id.toString()),
+                name: t.name,
+                category: drift.Value(t.category),
+                status: drift.Value(t.status ?? 'ACTIVE'),
+                isSynced: const drift.Value(true),
+              ),
+              mode: drift.InsertMode.insertOrReplace,
+            );
+          }
         }
 
-        // NUEVO: Descargar Fixtures para los torneos activos
-      for (var t in catalogData.tournaments) {
-        try {
-          final fixtureData = await api.fetchFixture(t.id.toString());
-          if (fixtureData.isNotEmpty && fixtureData['rounds'] != null) {
-            
-            // Borramos los fixtures anteriores de este torneo
-            await (db.delete(db.fixtures)..where((f) => f.tournamentId.equals(t.id.toString()))).go();
+        // === FIXTURES ===
+        for (var t in catalogData.tournaments) {
+          try {
+            final fixtureData = await api.fetchFixture(t.id.toString());
+            if (fixtureData.isNotEmpty && fixtureData['rounds'] != null) {
+              await (db.delete(
+                db.fixtures,
+              )..where((f) => f.tournamentId.equals(t.id.toString()))).go();
 
-            final roundsMap = fixtureData['rounds'] as Map<String, dynamic>;
-            
-            await db.transaction(() async {
+              final roundsMap = fixtureData['rounds'] as Map<String, dynamic>;
+
               for (var entry in roundsMap.entries) {
                 final roundName = entry.key;
                 final matches = entry.value as List;
-                
+
                 for (var m in matches) {
                   DateTime? scheduledDate;
-                  if (m['scheduled_datetime'] != null && m['scheduled_datetime'].toString().isNotEmpty) {
+                  if (m['scheduled_datetime'] != null &&
+                      m['scheduled_datetime'].toString().isNotEmpty) {
                     scheduledDate = DateTime.tryParse(m['scheduled_datetime']);
                   }
 
                   await db.into(db.fixtures).insert(
                     FixturesCompanion.insert(
-                      id: m['id'].toString(), // ID real de MYSQL
+                      id: m['id'].toString(),
                       tournamentId: t.id.toString(),
                       roundName: roundName,
                       teamAId: m['team_a_id'].toString(),
@@ -517,76 +741,86 @@ Widget build(BuildContext context) {
                       scheduledDatetime: drift.Value(scheduledDate),
                       status: drift.Value(m['status'] ?? 'SCHEDULED'),
                     ),
-                    mode: drift.InsertMode.insertOrReplace
+                    mode: drift.InsertMode.insertOrReplace,
                   );
                 }
               }
-            });
+            }
+          } catch (e) {
+            debugPrint("Error al descargar fixture del torneo ${t.id}: $e");
           }
-        } catch (e) {
-          debugPrint("Error al descargar fixture del torneo ${t.id}: $e");
         }
-      }
 
+        // === EQUIPOS ===
+        await (db.delete(db.teams)..where((t) => t.isSynced.equals(true))).go();
         for (var team in catalogData.teams) {
-          await db.into(db.teams).insert(
-                TeamsCompanion.insert(
-                  id: drift.Value(team.id.toString()),
-                  name: team.name,
-                  shortName: drift.Value(team.shortName),
-                  coachName: drift.Value(team.coachName),
-                  isSynced: const drift.Value(true),
-                ),
-                mode: drift.InsertMode.insertOrReplace,
-              );
+          if (!unsyncedTeams.any((local) => local.id == team.id.toString())) {
+            await db.into(db.teams).insert(
+              TeamsCompanion.insert(
+                id: drift.Value(team.id.toString()),
+                name: team.name,
+                shortName: drift.Value(team.shortName),
+                coachName: drift.Value(team.coachName),
+                isSynced: const drift.Value(true),
+              ),
+              mode: drift.InsertMode.insertOrReplace,
+            );
+          }
         }
 
+        // === CANCHAS ===
+        await (db.delete(db.venues)..where((t) => t.isSynced.equals(true))).go();
         for (var venue in catalogData.venues) {
           await db.into(db.venues).insert(
-                VenuesCompanion.insert(
-                  id: drift.Value(venue.id.toString()),
-                  name: venue.name,
-                  address: drift.Value(venue.address),
+            VenuesCompanion.insert(
+              id: drift.Value(venue.id.toString()),
+              name: venue.name,
+              address: drift.Value(venue.address),
+              isSynced: const drift.Value(true),
+            ),
+            mode: drift.InsertMode.insertOrReplace,
+          );
+        }
+        
+        // === RELACIONES TORNEO-EQUIPO ===
+        await (db.delete(db.tournamentTeams)..where((t) => t.isSynced.equals(true))).go();
+        for (var rel in catalogData.relationships) {
+          await db.into(db.tournamentTeams).insert(
+            TournamentTeamsCompanion.insert(
+              tournamentId: rel.tournamentId.toString(),
+              teamId: rel.teamId.toString(),
+              isSynced: const drift.Value(true),
+            ),
+            mode: drift.InsertMode.insertOrReplace,
+          );
+        }
+
+        // === JUGADORES ===
+        await (db.delete(db.players)..where((t) => t.isSynced.equals(true))).go();
+        for (var p in catalogData.players) {
+           if (!unsyncedPlayers.any((local) => local.id == p.id.toString())) {
+              await db.into(db.players).insert(
+                PlayersCompanion.insert(
+                  id: drift.Value(p.id.toString()),
+                  name: p.name,
+                  teamId: p.teamId,
+                  defaultNumber: drift.Value(p.defaultNumber),
+                  active: const drift.Value(true),
                   isSynced: const drift.Value(true),
                 ),
                 mode: drift.InsertMode.insertOrReplace,
               );
+           }
         }
       });
 
-      await db.delete(db.tournamentTeams).go();
-      for (var rel in catalogData.relationships) {
-        await db.into(db.tournamentTeams).insert(
-              TournamentTeamsCompanion.insert(
-                tournamentId: rel.tournamentId.toString(),
-                teamId: rel.teamId.toString(),
-                isSynced: const drift.Value(true),
-              ),
-              mode: drift.InsertMode.insertOrReplace,
-            );
-      }
-
-      for (var p in catalogData.players) {
-        await db.into(db.players).insert(
-              PlayersCompanion.insert(
-                id: drift.Value(p.id.toString()),
-                name: p.name,
-                teamId: p.teamId,
-                defaultNumber: drift.Value(p.defaultNumber),
-                active: const drift.Value(true),
-                isSynced: const drift.Value(true),
-              ),
-              mode: drift.InsertMode.insertOrReplace,
-            );
-      }
-      
       ref.invalidate(tournamentsListProvider);
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("✅ Datos sincronizados correctamente."),
+            content: Text("✅ Datos actualizados sin perder cambios locales."),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
           ),
@@ -614,7 +848,6 @@ Widget build(BuildContext context) {
     }
   }
 
-// --- LÓGICA DE SUBIDA (CORREGIDA) ---
   Future<void> _uploadPendingData(BuildContext context, WidgetRef ref) async {
     final db = ref.read(databaseProvider);
     final api = ref.read(apiServiceProvider);
@@ -629,92 +862,100 @@ Widget build(BuildContext context) {
     int uploadedMatches = 0;
 
     try {
-      // ============================================
-      // 1. SUBIR TORNEOS PENDIENTES
-      // ============================================
-      final pendingTournaments = await (db.select(db.tournaments)..where((tbl) => tbl.isSynced.equals(false))).get();
+      final pendingTournaments = await (db.select(
+        db.tournaments,
+      )..where((tbl) => tbl.isSynced.equals(false))).get();
 
       for (var tourn in pendingTournaments) {
         try {
-          // Subimos el torneo a PHP y recibimos el ID real de MySQL (ej. "15")
-          final realIdString = await api.createTournament(tourn.name, tourn.category ?? 'Libre');
+          final realIdString = await api.createTournament(
+            tourn.name,
+            tourn.category ?? 'Libre',
+          );
           final String oldUuid = tourn.id;
 
           await db.transaction(() async {
-            // A. Borramos el torneo con el UUID viejo
-            await (db.delete(db.tournaments)..where((t) => t.id.equals(oldUuid))).go();
-            
-            // B. Insertamos el torneo con el ID real
-            await db.into(db.tournaments).insert(
-              TournamentsCompanion.insert(
-                id: drift.Value(realIdString),
-                name: tourn.name,
-                category: drift.Value(tourn.category),
-                status: const drift.Value('ACTIVE'),
-                isSynced: const drift.Value(true),
-              ),
+            await (db.delete(
+              db.tournaments,
+            )..where((t) => t.id.equals(oldUuid))).go();
+            await db
+                .into(db.tournaments)
+                .insert(
+                  TournamentsCompanion.insert(
+                    id: drift.Value(realIdString),
+                    name: tourn.name,
+                    category: drift.Value(tourn.category),
+                    status: const drift.Value('ACTIVE'),
+                    isSynced: const drift.Value(true),
+                  ),
+                );
+
+            await (db.update(
+              db.tournamentTeams,
+            )..where((t) => t.tournamentId.equals(oldUuid))).write(
+              TournamentTeamsCompanion(tournamentId: drift.Value(realIdString)),
             );
-
-            // C. CRÍTICO: Actualizar la referencia en los Equipos (Tabla pivote)
-            await (db.update(db.tournamentTeams)..where((t) => t.tournamentId.equals(oldUuid)))
-                .write(TournamentTeamsCompanion(tournamentId: drift.Value(realIdString)));
-
-            // D. CRÍTICO: Actualizar la referencia en los Partidos/Fixtures
-            await (db.update(db.fixtures)..where((f) => f.tournamentId.equals(oldUuid)))
-                .write(FixturesCompanion(tournamentId: drift.Value(realIdString)));
-                
-            await (db.update(db.matches)..where((m) => m.tournamentId.equals(oldUuid)))
-                .write(MatchesCompanion(tournamentId: drift.Value(realIdString)));
+            await (db.update(
+              db.fixtures,
+            )..where((f) => f.tournamentId.equals(oldUuid))).write(
+              FixturesCompanion(tournamentId: drift.Value(realIdString)),
+            );
+            await (db.update(
+              db.matches,
+            )..where((m) => m.tournamentId.equals(oldUuid))).write(
+              MatchesCompanion(tournamentId: drift.Value(realIdString)),
+            );
           });
-          
+
           uploadedTournaments++;
         } catch (e) {
           debugPrint("Error subiendo torneo: $e");
         }
       }
 
-      // ============================================
-      // 2. SUBIR EQUIPOS PENDIENTES
-      // ============================================
-      final pendingTeams = await (db.select(db.teams)..where((tbl) => tbl.isSynced.equals(false))).get();
+      final pendingTeams = await (db.select(
+        db.teams,
+      )..where((tbl) => tbl.isSynced.equals(false))).get();
 
       for (var team in pendingTeams) {
         try {
-          // Buscamos a qué torneo (ya con ID real) pertenece este equipo
-          final relation = await (db.select(db.tournamentTeams)..where((t) => t.teamId.equals(team.id))).getSingleOrNull();
-
-          // Subimos el equipo a PHP y recibimos el ID real de MySQL (ej. 50)
+          final relation = await (db.select(
+            db.tournamentTeams,
+          )..where((t) => t.teamId.equals(team.id))).getSingleOrNull();
           final realIdInt = await api.createTeam(
             team.name,
             team.shortName ?? '',
             team.coachName ?? '',
-            tournamentId: relation?.tournamentId, // Ahora esto es un número válido, no un UUID
+            tournamentId: relation?.tournamentId,
           );
-          
+
           final String oldTeamId = team.id;
           final String newTeamIdString = realIdInt.toString();
 
           await db.transaction(() async {
-            // A. Actualizar la tabla pivote
-            await (db.update(db.tournamentTeams)..where((t) => t.teamId.equals(oldTeamId)))
-                .write(TournamentTeamsCompanion(teamId: drift.Value(newTeamIdString)));
-
-            // B. Actualizar Jugadores que pertenecían a este equipo
-            final tempTeamIdInt = int.tryParse(oldTeamId) ?? 0;
-            await (db.update(db.players)..where((p) => p.teamId.equals(tempTeamIdInt)))
-                .write(PlayersCompanion(teamId: drift.Value(realIdInt)));
-
-            // C. Reemplazar el equipo en la tabla local
-            await (db.delete(db.teams)..where((t) => t.id.equals(oldTeamId))).go();
-            await db.into(db.teams).insert(
-              TeamsCompanion.insert(
-                id: drift.Value(newTeamIdString),
-                name: team.name,
-                shortName: drift.Value(team.shortName),
-                coachName: drift.Value(team.coachName),
-                isSynced: const drift.Value(true),
-              ),
+            await (db.update(
+              db.tournamentTeams,
+            )..where((t) => t.teamId.equals(oldTeamId))).write(
+              TournamentTeamsCompanion(teamId: drift.Value(newTeamIdString)),
             );
+            final tempTeamIdInt = int.tryParse(oldTeamId) ?? 0;
+            await (db.update(db.players)
+                  ..where((p) => p.teamId.equals(tempTeamIdInt)))
+                .write(PlayersCompanion(teamId: drift.Value(realIdInt)));
+            await (db.delete(
+              db.teams,
+            )..where((t) => t.id.equals(oldTeamId))).go();
+            await db
+                .into(db.teams)
+                .insert(
+                  TeamsCompanion.insert(
+                    id: drift.Value(newTeamIdString),
+                    name: team.name,
+                    shortName: drift.Value(team.shortName),
+                    coachName: drift.Value(team.coachName),
+                    isSynced: const drift.Value(true),
+                  ),
+                );
           });
 
           uploadedTeams++;
@@ -723,50 +964,77 @@ Widget build(BuildContext context) {
         }
       }
 
-      // ============================================
-      // 3. SUBIR JUGADORES PENDIENTES
-      // ============================================
-      final pendingPlayers = await (db.select(db.players)..where((tbl) => tbl.isSynced.equals(false))).get();
+      // ---------------------------------------------------------
+      //  AQUI ESTA LA LOGICA CORREGIDA PARA LOS JUGADORES
+      // ---------------------------------------------------------
+      final pendingPlayers = await (db.select(
+        db.players,
+      )..where((tbl) => tbl.isSynced.equals(false))).get();
 
       for (var player in pendingPlayers) {
         try {
-          // El player.teamId ahora ya es un ID real porque lo actualizamos en el paso 2
-          final realPlayerId = await api.addPlayer(
-            player.teamId,
-            player.name,
-            player.defaultNumber,
-          );
+          // VERIFICAMOS SI EL JUGADOR ES NUEVO (ID NEGATIVO/ALFANUMÉRICO) O EXISTENTE (ID POSITIVO)
+          final isExistingPlayer = (int.tryParse(player.id) ?? 0) > 0;
 
-          await db.transaction(() async {
-            await (db.delete(db.players)..where((p) => p.id.equals(player.id))).go();
-            await db.into(db.players).insert(
-              PlayersCompanion.insert(
-                id: drift.Value(realPlayerId.toString()),
-                teamId: player.teamId,
-                name: player.name,
-                defaultNumber: drift.Value(player.defaultNumber),
-                isSynced: const drift.Value(true),
-                active: const drift.Value(true),
-              ),
+          if (isExistingPlayer) {
+            // Es un jugador que editamos offline pero que ya existía en la nube
+            final success = await api.updatePlayer(
+              player.id,
+              player.teamId,
+              player.name,
+              player.defaultNumber,
             );
-          });
 
-          uploadedPlayers++;
+            if (success) {
+              await (db.update(db.players)
+                    ..where((p) => p.id.equals(player.id)))
+                  .write(const PlayersCompanion(isSynced: drift.Value(true)));
+              uploadedPlayers++;
+            }
+          } else {
+            // Es un jugador completamente nuevo creado offline
+            final realPlayerId = await api.addPlayer(
+              player.teamId,
+              player.name,
+              player.defaultNumber,
+            );
+
+            await db.transaction(() async {
+              // Borramos el registro temporal
+              await (db.delete(
+                db.players,
+              )..where((p) => p.id.equals(player.id))).go();
+              // Insertamos el real
+              await db
+                  .into(db.players)
+                  .insert(
+                    PlayersCompanion.insert(
+                      id: drift.Value(realPlayerId.toString()),
+                      teamId: player.teamId,
+                      name: player.name,
+                      defaultNumber: drift.Value(player.defaultNumber),
+                      isSynced: const drift.Value(true),
+                      active: const drift.Value(true),
+                    ),
+                  );
+            });
+            uploadedPlayers++;
+          }
         } catch (e) {
           throw Exception('Error al subir jugador: $e');
         }
       }
 
-      // ============================================
-      // 4. SUBIR PARTIDOS (MATCHES) PENDIENTES
-      // ============================================
-      final pendingMatches = await (db.select(db.matches)..where((tbl) => tbl.isSynced.equals(false))).get();
+      final pendingMatches = await (db.select(
+        db.matches,
+      )..where((tbl) => tbl.isSynced.equals(false))).get();
 
       for (var match in pendingMatches) {
         final query = db.select(db.gameEvents).join([
           drift.leftOuterJoin(
             db.matchRosters,
-            db.matchRosters.matchId.equalsExp(db.gameEvents.matchId) & db.matchRosters.playerId.equalsExp(db.gameEvents.playerId),
+            db.matchRosters.matchId.equalsExp(db.gameEvents.matchId) &
+                db.matchRosters.playerId.equalsExp(db.gameEvents.playerId),
           ),
           drift.leftOuterJoin(
             db.players,
@@ -794,7 +1062,9 @@ Widget build(BuildContext context) {
             if (roster.teamSide == 'A') runningScoreA += points;
             if (roster.teamSide == 'B') runningScoreB += points;
           }
-          final currentScore = (roster?.teamSide == 'A') ? runningScoreA : runningScoreB;
+          final currentScore = (roster?.teamSide == 'A')
+              ? runningScoreA
+              : runningScoreB;
 
           return {
             "period": event.period,
@@ -809,9 +1079,9 @@ Widget build(BuildContext context) {
 
         final matchPayload = {
           "match_id": match.id,
-          "tournament_id": match.tournamentId, // Ya es un ID real gracias al paso 1
+          "tournament_id": match.tournamentId,
           "venue_id": match.venueId,
-          "team_a_id": match.teamAId, // Asumimos que los seleccionaste de la nube o fueron convertidos
+          "team_a_id": match.teamAId,
           "team_b_id": match.teamBId,
           "team_a_name": match.teamAName,
           "team_b_name": match.teamBName,
@@ -828,8 +1098,8 @@ Widget build(BuildContext context) {
         };
 
         final successId = await api.syncMatchDataMultipart(
-          matchData: matchPayload, 
-          pdfBytes: null 
+          matchData: matchPayload,
+          pdfBytes: null,
         );
 
         if (successId != -1) {
@@ -840,7 +1110,7 @@ Widget build(BuildContext context) {
       }
 
       if (context.mounted) {
-        ref.invalidate(tournamentsListProvider); // Refrescar UI global
+        ref.invalidate(tournamentsListProvider);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -862,69 +1132,5 @@ Widget build(BuildContext context) {
         );
       }
     }
-  }
-}
-
-// Widget auxiliar para las tarjetas (MANTENIDO IGUAL)
-class _DashboardCard extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _DashboardCard({
-    required this.title,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        splashColor: color.withOpacity(0.2),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                color.withOpacity(0.05),
-                Colors.white,
-              ],
-            ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, size: 36, color: color),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
