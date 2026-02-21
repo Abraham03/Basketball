@@ -45,7 +45,6 @@ class ApiService {
       }
       return false;
     } catch (e) {
-      print("Error generando fixture: $e");
       return false;
     }
   }
@@ -227,7 +226,6 @@ Future<int> addPlayer(int teamId, String name, int number) async {
     return false;
   } catch (e) {
     
-    print("Error editando jugador en nube: $e");
     return false;
   }
 }

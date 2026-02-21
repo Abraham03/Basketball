@@ -1,4 +1,6 @@
 // lib/ui/screens/home_menu_screen.dart
+// ignore_for_file: deprecated_member_use, unrelated_type_equality_checks
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,7 +11,7 @@ import '../core/database/app_database.dart';
 import '../logic/tournament_provider.dart';
 import '../logic/catalog_provider.dart';
 import 'fixture_list_screen.dart';
-import 'match_setup_screen.dart';
+import '../ui/match_setup_screen.dart';
 import 'team_management_screen.dart';
 
 // Importaciones de los componentes de diseño
@@ -207,7 +209,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor:
-          Colors.transparent, // Asegura que el Scaffold no tape el fondo
+          Colors.transparent, 
 
       floatingActionButton: _isAdminMode
           ? FloatingActionButton.extended(
@@ -446,8 +448,8 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                                           context,
                                           MaterialPageRoute(
                                             builder: (_) => MatchSetupScreen(
-                                              tournamentId:
-                                                  selectedTournamentId,
+                                              tournamentId: selectedTournamentId,
+                                              // SE ELIMINARON LOS PARÁMETROS EXTRAS QUE CAUSABAN ERROR
                                             ),
                                           ),
                                         ),
@@ -635,7 +637,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
     );
   }
 
-  // --- LÓGICA DE SINCRONIZACIÓN CORREGIDA ---
   Future<void> _syncData(BuildContext context, WidgetRef ref) async {
     final selectedTournamentId = ref.read(selectedTournamentIdProvider);
     final String syncId = selectedTournamentId ?? "0";
@@ -664,16 +665,13 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
       final api = ref.read(apiServiceProvider);
       final db = ref.read(databaseProvider);
       
-      // 1. ANTES DE DESCARGAR, RESPALDAMOS LO QUE NO SE HA SUBIDO
       final unsyncedTournaments = await (db.select(db.tournaments)..where((t) => t.isSynced.equals(false))).get();
       final unsyncedTeams = await (db.select(db.teams)..where((t) => t.isSynced.equals(false))).get();
       final unsyncedPlayers = await (db.select(db.players)..where((t) => t.isSynced.equals(false))).get();
 
-      // 2. DESCARGAMOS LA NUBE
       final catalogData = await api.fetchCatalogs(syncId);
 
       await db.transaction(() async {
-        // === TORNEOS ===
         await (db.delete(db.tournaments)..where((t) => t.isSynced.equals(true))).go();
         for (var t in catalogData.tournaments) {
           if (!unsyncedTournaments.any((local) => local.id == t.id.toString())) {
@@ -690,11 +688,8 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
           }
         }
 
-        // === FIXTURES (AQUÍ ESTÁ LA MODIFICACIÓN IMPORTANTE) ===
-        // 1. Borramos los fixtures locales porque vamos a reescribirlos todos de golpe
         await db.delete(db.fixtures).go();
         
-        // 2. Insertamos todos los fixtures que vinieron en catalogData.fixturesRaw
         for (var m in catalogData.fixturesRaw) {
             DateTime? scheduledDate;
             if (m['scheduled_datetime'] != null && m['scheduled_datetime'].toString().isNotEmpty) {
@@ -729,7 +724,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
             );
         }
 
-        // === EQUIPOS ===
         await (db.delete(db.teams)..where((t) => t.isSynced.equals(true))).go();
         for (var team in catalogData.teams) {
           if (!unsyncedTeams.any((local) => local.id == team.id.toString())) {
@@ -746,7 +740,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
           }
         }
 
-        // === CANCHAS ===
         await (db.delete(db.venues)..where((t) => t.isSynced.equals(true))).go();
         for (var venue in catalogData.venues) {
           await db.into(db.venues).insert(
@@ -760,7 +753,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
           );
         }
         
-        // === RELACIONES TORNEO-EQUIPO ===
         await (db.delete(db.tournamentTeams)..where((t) => t.isSynced.equals(true))).go();
         for (var rel in catalogData.relationships) {
           await db.into(db.tournamentTeams).insert(
@@ -773,7 +765,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
           );
         }
 
-        // === JUGADORES ===
         await (db.delete(db.players)..where((t) => t.isSynced.equals(true))).go();
         for (var p in catalogData.players) {
            if (!unsyncedPlayers.any((local) => local.id == p.id.toString())) {

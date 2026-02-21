@@ -1,4 +1,6 @@
 // lib/ui/screens/team_detail_screen.dart
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -43,7 +45,7 @@ class TeamDetailScreen extends ConsumerWidget {
               team.name,
               style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
             ),
-            Text(
+            const Text(
               "Plantilla de Jugadores",
               style: TextStyle(fontSize: 12, color: Colors.white70),
             ),

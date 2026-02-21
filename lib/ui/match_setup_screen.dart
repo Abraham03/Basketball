@@ -1,4 +1,6 @@
 // lib/ui/screens/match_setup_screen.dart
+// ignore_for_file: deprecated_member_use
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -370,9 +372,16 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
       return;
     }
     
-    final matchId = widget.preSelectedFixture != null 
-        ? widget.preSelectedFixture!.id 
-        : DateTime.now().millisecondsSinceEpoch.toString();
+    // CORRECCIÓN CRÍTICA DE ID
+    // Si preSelectedFixture tiene un matchId (es decir, ya se había creado el match en la BD), lo usamos.
+    // Si no, generamos un UUID o usamos un timestamp negativo para indicar que es un ID local temporal.
+    String matchIdToUse;
+    if (widget.preSelectedFixture != null && widget.preSelectedFixture!.matchId != null && widget.preSelectedFixture!.matchId!.isNotEmpty) {
+       matchIdToUse = widget.preSelectedFixture!.matchId!;
+    } else {
+       // Usamos negativo para indicar a PHP que es nuevo si se llega a sincronizar
+       matchIdToUse = (-DateTime.now().millisecondsSinceEpoch).toString();
+    }
 
     final rosterA = data.players.where((p) => p.teamId == selectedTeamA!.id).toList();
     final rosterB = data.players.where((p) => p.teamId == selectedTeamB!.id).toList();
@@ -381,7 +390,8 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => StartersSelectionScreen(
-          matchId: matchId,
+          matchId: matchIdToUse, // PASAMOS EL ID CORREGIDO
+          fixtureId: widget.preSelectedFixture?.id, // PASAMOS EL ID DEL FIXTURE PARA ACTUALIZAR SU ESTADO LUEGO
           teamA: selectedTeamA!,
           teamB: selectedTeamB!,
           rosterA: rosterA,

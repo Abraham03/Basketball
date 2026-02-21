@@ -1,4 +1,6 @@
 // lib/ui/screens/team_management_screen.dart
+// ignore_for_file: deprecated_member_use
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

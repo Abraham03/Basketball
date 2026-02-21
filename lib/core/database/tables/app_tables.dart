@@ -23,6 +23,7 @@ class Matches extends Table with BaseTable {
   DateTimeColumn get matchDate => dateTime().nullable()();
   TextColumn get signatureData => text().nullable()();
   TextColumn get matchReportPath => text().nullable()();
+  // ignore: annotate_overrides
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 }
 
@@ -51,6 +52,7 @@ class Fixtures extends Table with BaseTable {
   IntColumn get scoreA => integer().nullable()();
   IntColumn get scoreB => integer().nullable()();
   TextColumn get status => text().withDefault(const Constant('SCHEDULED'))(); 
+  @override
   BoolColumn get isSynced => boolean().withDefault(const Constant(true))();
 
   @override
@@ -62,6 +64,7 @@ class Teams extends Table with BaseTable {
   TextColumn get name => text().withLength(min: 1, max: 100)();
   TextColumn get shortName => text().nullable()();
   TextColumn get coachName => text().nullable()();
+  @override
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 }
 
@@ -75,6 +78,7 @@ class Tournaments extends Table with BaseTable {
   // Fechas opcionales
   DateTimeColumn get startDate => dateTime().nullable()();
   DateTimeColumn get endDate => dateTime().nullable()();
+  @override
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 }
 
@@ -88,6 +92,7 @@ class Players extends Table with BaseTable {
   IntColumn get teamId => integer().references(Teams, #id, onDelete: KeyAction.cascade)();
   IntColumn get defaultNumber => integer().withDefault(const Constant(0))();
   BoolColumn get active => boolean().withDefault(const Constant(true))();
+  @override
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
   
   // Opcional: Foto si la usas en la app, aunque no esté en el SQL que me pasaste
@@ -98,6 +103,7 @@ class Players extends Table with BaseTable {
 class Venues extends Table with BaseTable {
   TextColumn get name => text().withLength(min: 1, max: 100)();
   TextColumn get address => text().nullable()();
+  @override
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 }
 
@@ -113,6 +119,7 @@ class MatchRosters extends Table with BaseTable {
   TextColumn get teamSide => text()(); // 'A' o 'B'
   IntColumn get jerseyNumber => integer()(); // El número de HOY
   BoolColumn get isCaptain => boolean().withDefault(const Constant(false))();
+  @override
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 
   // Índice para búsquedas rápidas: "Dame el roster del partido X"
@@ -139,6 +146,7 @@ class GameEvents extends Table with BaseTable {
 
   IntColumn get period => integer()(); // 1, 2, 3, 4
   TextColumn get clockTime => text()(); // "04:59"
+  @override
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 
   
@@ -150,6 +158,7 @@ class TournamentTeams extends Table with BaseTable {
   TextColumn get tournamentId => text().references(Tournaments, #id, onDelete: KeyAction.cascade)();
   TextColumn get teamId => text().references(Teams, #id, onDelete: KeyAction.cascade)();
 
+  @override
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 
   // Clave compuesta para evitar duplicados (Un equipo no puede estar 2 veces en el mismo torneo)

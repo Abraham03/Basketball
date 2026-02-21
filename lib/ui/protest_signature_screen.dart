@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // 1. IMPORTANTE: Necesario para controlar la orientación
 import 'package:signature/signature.dart';
