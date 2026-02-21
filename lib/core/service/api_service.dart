@@ -119,6 +119,7 @@ class ApiService {
             relationships: (data['tournament_teams'] as List)
                 .map((e) => TournamentTeamRelation.fromJson(e))
                 .toList(),
+            fixturesRaw: data['fixtures'] ?? [],    
           );
         } else {
           throw Exception('API Error: ${jsonResponse['message']}');

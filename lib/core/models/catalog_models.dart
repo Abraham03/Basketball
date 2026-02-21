@@ -100,6 +100,7 @@ class CatalogData {
   final List<Team> teams;
   final List<Player> players;
   final List<TournamentTeamRelation> relationships; 
+  final List<dynamic> fixturesRaw;
 
   CatalogData({
     required this.tournaments,
@@ -107,5 +108,6 @@ class CatalogData {
     required this.teams,
     required this.players,
     required this.relationships,
+    this.fixturesRaw = const [],
   });
 }

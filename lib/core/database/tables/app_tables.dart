@@ -47,10 +47,10 @@ class Fixtures extends Table with BaseTable {
   TextColumn get venueId => text().nullable()();
   TextColumn get venueName => text().nullable()();
   DateTimeColumn get scheduledDatetime => dateTime().nullable()();
-  
-  // SCHEDULED, PLAYING, FINISHED, CANCELLED
+  TextColumn get matchId => text().nullable()();
+  IntColumn get scoreA => integer().nullable()();
+  IntColumn get scoreB => integer().nullable()();
   TextColumn get status => text().withDefault(const Constant('SCHEDULED'))(); 
-  
   BoolColumn get isSynced => boolean().withDefault(const Constant(true))();
 
   @override

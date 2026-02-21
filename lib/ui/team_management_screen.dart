@@ -1,3 +1,5 @@
+// lib/ui/screens/team_management_screen.dart
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
@@ -10,6 +12,9 @@ import 'team_detail_screen.dart';
 // ALIAS IMPORTANTE PARA EVITAR CONFLICTOS
 import '../core/di/dependency_injection.dart' as di;
 
+// Importamos el fondo reutilizable
+import '../ui/widgets/app_background.dart';
+
 class TeamManagementScreen extends ConsumerWidget {
   final String tournamentId;
   const TeamManagementScreen({super.key, required this.tournamentId});
@@ -20,83 +25,139 @@ class TeamManagementScreen extends ConsumerWidget {
     final catalogAsync = ref.watch(tournamentDataByIdProvider(tournamentId));
 
     return Scaffold(
-      backgroundColor: Colors.grey[100], // Fondo suave
+      extendBodyBehindAppBar: true, // IMPORTANTE PARA EL EFECTO CRISTAL
+      backgroundColor: Colors.transparent, // DEJAR VER EL FONDO
+
       appBar: AppBar(
-        title: const Text("Gestión de Equipos"),
+        title: const Text(
+          "Gestión de Equipos",
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
         centerTitle: true,
+        backgroundColor: Colors.black.withOpacity(0.4), // Appbar Cristalino
         elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddTeamDialog(context, ref),
-        label: const Text("Nuevo Equipo"),
-        icon: const Icon(Icons.add),
-        backgroundColor: Theme.of(context).primaryColor,
-      ),
-      body: catalogAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
-              const SizedBox(height: 10),
-              Text("Error: $err"),
-            ],
-          ),
+        label: const Text(
+          "Nuevo Equipo",
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        data: (data) {
-          if (data.teams.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.groups_3, size: 64, color: Colors.grey[400]),
-                  const SizedBox(height: 10),
-                  Text(
-                    "No hay equipos en este torneo.",
-                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                  ),
-                ],
-              ),
-            );
-          }
+        icon: const Icon(Icons.add),
+        backgroundColor: Colors.orange.shade600,
+        foregroundColor: Colors.white,
+      ),
 
-          // --- DISEÑO RESPONSIVO (LayoutBuilder) ---
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              // Si el ancho es mayor a 600px (Tablets/Web), usa Grid
-              if (constraints.maxWidth > 600) {
-                return GridView.builder(
-                  padding: const EdgeInsets.all(16),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: constraints.maxWidth > 900 ? 3 : 2,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 2.5, // Tarjetas más anchas que altas
-                  ),
+      // APLICAMOS EL FONDO REUTILIZABLE
+      body: AppBackground(
+        opacity: 0.5, // Sombra para resaltar las tarjetas
+        child: catalogAsync.when(
+          loading: () => const Center(
+            child: CircularProgressIndicator(color: Colors.orangeAccent),
+          ),
+          error: (err, _) => Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  size: 48,
+                  color: Colors.redAccent,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  "Error: $err",
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+          data: (data) {
+            if (data.teams.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.groups_3,
+                        size: 64,
+                        color: Colors.white70,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      "No hay equipos en este torneo.",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "Agrega un equipo con el botón inferior.",
+                      style: TextStyle(color: Colors.white.withOpacity(0.7)),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            // --- DISEÑO RESPONSIVO (LayoutBuilder) ---
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                // Si el ancho es mayor a 600px (Tablets/Web), usa Grid
+                if (constraints.maxWidth > 600) {
+                  return GridView.builder(
+                    padding: const EdgeInsets.only(
+                      top: 100,
+                      bottom: 100,
+                      left: 16,
+                      right: 16,
+                    ),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: constraints.maxWidth > 900 ? 3 : 2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: 2.5, // Tarjetas más anchas que altas
+                    ),
+                    itemCount: data.teams.length,
+                    itemBuilder: (context, index) {
+                      final team = data.teams[index];
+                      return _TeamCard(team: team);
+                    },
+                  );
+                }
+
+                // Si es Móvil, usa ListView
+                return ListView.builder(
+                  padding: const EdgeInsets.only(
+                    top: 100,
+                    bottom: 100,
+                    left: 16,
+                    right: 16,
+                  ), // Padding por el AppBar y FAB
+                  physics: const BouncingScrollPhysics(),
                   itemCount: data.teams.length,
                   itemBuilder: (context, index) {
                     final team = data.teams[index];
-                    return _TeamCard(team: team);
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: _TeamCard(team: team),
+                    );
                   },
                 );
-              }
-
-              // Si es Móvil, usa ListView
-              return ListView.builder(
-                padding: const EdgeInsets.all(12),
-                itemCount: data.teams.length,
-                itemBuilder: (context, index) {
-                  final team = data.teams[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8.0),
-                    child: _TeamCard(team: team),
-                  );
-                },
-              );
-            },
-          );
-        },
+              },
+            );
+          },
+        ),
       ),
     );
   }
@@ -110,34 +171,44 @@ class TeamManagementScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Registrar Equipo"),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          "🛡️ Registrar Equipo",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameCtrl,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: "Nombre del Equipo",
-                prefixIcon: Icon(Icons.shield),
-                border: OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.shield),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: shortCtrl,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: "Abreviatura (Ej: CHI)",
-                prefixIcon: Icon(Icons.short_text),
-                border: OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.short_text),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: coachCtrl,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: "Nombre del Entrenador",
-                prefixIcon: Icon(Icons.person),
-                border: OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.person),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
           ],
@@ -149,8 +220,11 @@ class TeamManagementScreen extends ConsumerWidget {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).primaryColor,
+              backgroundColor: Colors.orange.shade600,
               foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             onPressed: () async {
               if (nameCtrl.text.isEmpty) return;
@@ -171,61 +245,70 @@ class TeamManagementScreen extends ConsumerWidget {
 
                 // 2. ÉXITO (ONLINE)
                 await db.transaction(() async {
-                  await db.into(db.teams).insert(
-                    TeamsCompanion.insert(
-                      id: drift.Value(newTeamId.toString()),
-                      name: nameCtrl.text,
-                      shortName: drift.Value(shortCtrl.text),
-                      coachName: drift.Value(coachCtrl.text),
-                      isSynced: const drift.Value(true),
-                    ),
-                    mode: drift.InsertMode.insertOrReplace,
-                  );
+                  await db
+                      .into(db.teams)
+                      .insert(
+                        TeamsCompanion.insert(
+                          id: drift.Value(newTeamId.toString()),
+                          name: nameCtrl.text,
+                          shortName: drift.Value(shortCtrl.text),
+                          coachName: drift.Value(coachCtrl.text),
+                          isSynced: const drift.Value(true),
+                        ),
+                        mode: drift.InsertMode.insertOrReplace,
+                      );
 
-                  await db.into(db.tournamentTeams).insert(
-                    TournamentTeamsCompanion.insert(
-                      tournamentId: tournamentId,
-                      teamId: newTeamId.toString(),
-                      isSynced: const drift.Value(true),
-                    ),
-                    mode: drift.InsertMode.insertOrReplace,
-                  );
+                  await db
+                      .into(db.tournamentTeams)
+                      .insert(
+                        TournamentTeamsCompanion.insert(
+                          tournamentId: tournamentId,
+                          teamId: newTeamId.toString(),
+                          isSynced: const drift.Value(true),
+                        ),
+                        mode: drift.InsertMode.insertOrReplace,
+                      );
                 });
 
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text("Equipo creado y sincronizado"),
+                    content: Text("✅ Equipo creado y sincronizado"),
                     backgroundColor: Colors.green,
                   ),
                 );
               } catch (e) {
                 // Generar ID temporal local negativo
-                final tempId = (-DateTime.now().millisecondsSinceEpoch).toString();
+                final tempId = (-DateTime.now().millisecondsSinceEpoch)
+                    .toString();
 
                 await db.transaction(() async {
-                  await db.into(db.teams).insert(
-                    TeamsCompanion.insert(
-                      id: drift.Value(tempId),
-                      name: nameCtrl.text,
-                      shortName: drift.Value(shortCtrl.text),
-                      coachName: drift.Value(coachCtrl.text),
-                      isSynced: const drift.Value(false), // Pendiente
-                    ),
-                  );
-                  await db.into(db.tournamentTeams).insert(
-                    TournamentTeamsCompanion.insert(
-                      tournamentId: tournamentId,
-                      teamId: tempId,
-                      isSynced: const drift.Value(false),
-                    ),
-                  );
+                  await db
+                      .into(db.teams)
+                      .insert(
+                        TeamsCompanion.insert(
+                          id: drift.Value(tempId),
+                          name: nameCtrl.text,
+                          shortName: drift.Value(shortCtrl.text),
+                          coachName: drift.Value(coachCtrl.text),
+                          isSynced: const drift.Value(false), // Pendiente
+                        ),
+                      );
+                  await db
+                      .into(db.tournamentTeams)
+                      .insert(
+                        TournamentTeamsCompanion.insert(
+                          tournamentId: tournamentId,
+                          teamId: tempId,
+                          isSynced: const drift.Value(false),
+                        ),
+                      );
                 });
 
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text("Sin conexión. Guardado localmente."),
+                    content: Text("💾 Sin conexión. Guardado localmente."),
                     backgroundColor: Colors.orange,
                   ),
                 );
@@ -234,7 +317,10 @@ class TeamManagementScreen extends ConsumerWidget {
               // Recargar UI
               ref.invalidate(tournamentDataByIdProvider(tournamentId));
             },
-            child: const Text("Guardar"),
+            child: const Text(
+              "Guardar",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -242,9 +328,9 @@ class TeamManagementScreen extends ConsumerWidget {
   }
 }
 
-// --- WIDGET TARJETA DE EQUIPO PROFESIONAL ---
+// --- WIDGET TARJETA DE EQUIPO (CON GLASSMORPHISM) ---
 class _TeamCard extends StatelessWidget {
-  final dynamic team; // Usa el tipo 'Team' correcto de tu modelo si puedes importarlo
+  final dynamic team;
   const _TeamCard({required this.team});
 
   @override
@@ -255,101 +341,131 @@ class _TeamCard extends StatelessWidget {
       final idInt = int.parse(team.id.toString());
       if (idInt < 0) isLocal = true;
     } catch (_) {
-      isLocal = true; // Si es UUID o string raro, asumimos local
+      isLocal = true;
     }
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => TeamDetailScreen(team: team),
-            ),
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Row(
-            children: [
-              // Avatar con iniciales
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: isLocal ? Colors.orange.shade100 : Colors.blue.shade50,
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    team.shortName.isNotEmpty ? team.shortName : team.name.substring(0, 1).toUpperCase(),
-                    style: TextStyle(
-                      color: isLocal ? Colors.orange.shade800 : Colors.blue.shade800,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), // Efecto cristal
+        child: Material(
+          color: Colors.white.withOpacity(0.1), // Fondo semitransparente oscuro
+          child: InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => TeamDetailScreen(team: team)),
+              );
+            },
+            splashColor: Colors.orange.withOpacity(0.3),
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.white.withOpacity(0.2)),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  // Avatar con iniciales
+                  Container(
+                    width: 55,
+                    height: 55,
+                    decoration: BoxDecoration(
+                      color: isLocal
+                          ? Colors.orange.withOpacity(0.2)
+                          : Colors.white.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isLocal ? Colors.orangeAccent : Colors.white54,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        team.shortName.isNotEmpty
+                            ? team.shortName
+                            : team.name.substring(0, 1).toUpperCase(),
+                        style: TextStyle(
+                          color: isLocal ? Colors.orangeAccent : Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              
-              // Información
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      team.name,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
+                  const SizedBox(width: 16),
+
+                  // Información
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.sports, size: 14, color: Colors.grey),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            "Coach: ${team.coachName.isNotEmpty ? team.coachName : 'Sin asignar'}",
-                            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                        Text(
+                          team.name,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white, // Letra clara
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.sports,
+                              size: 14,
+                              color: Colors.white54,
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                "Coach: ${team.coachName.isNotEmpty ? team.coachName : 'Sin asignar'}",
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.white70,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
 
-              // Indicador de Estado (Nube)
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (isLocal)
-                    const Tooltip(
-                      message: "Pendiente de subir",
-                      child: Icon(Icons.cloud_off, color: Colors.orange),
-                    )
-                  else
-                    const Tooltip(
-                      message: "Sincronizado",
-                      child: Icon(Icons.check_circle, color: Colors.green),
-                    ),
-                  const SizedBox(height: 4),
-                  const Icon(Icons.chevron_right, color: Colors.grey),
+                  // Indicador de Estado (Nube o Flecha)
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (isLocal)
+                        const Tooltip(
+                          message: "Pendiente de subir",
+                          child: Icon(
+                            Icons.cloud_off,
+                            color: Colors.orangeAccent,
+                            size: 20,
+                          ),
+                        )
+                      else
+                        const Tooltip(
+                          message: "Sincronizado",
+                          child: Icon(
+                            Icons.cloud_done,
+                            color: Colors.greenAccent,
+                            size: 20,
+                          ),
+                        ),
+                      const SizedBox(height: 8),
+                      const Icon(Icons.chevron_right, color: Colors.white54),
+                    ],
+                  ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
       ),

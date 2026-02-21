@@ -4747,6 +4747,35 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
         type: DriftSqlType.dateTime,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _matchIdMeta = const VerificationMeta(
+    'matchId',
+  );
+  @override
+  late final GeneratedColumn<String> matchId = GeneratedColumn<String>(
+    'match_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _scoreAMeta = const VerificationMeta('scoreA');
+  @override
+  late final GeneratedColumn<int> scoreA = GeneratedColumn<int>(
+    'score_a',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _scoreBMeta = const VerificationMeta('scoreB');
+  @override
+  late final GeneratedColumn<int> scoreB = GeneratedColumn<int>(
+    'score_b',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
   late final GeneratedColumn<String> status = GeneratedColumn<String>(
@@ -4774,6 +4803,9 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
     venueId,
     venueName,
     scheduledDatetime,
+    matchId,
+    scoreA,
+    scoreB,
     status,
   ];
   @override
@@ -4895,6 +4927,24 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
         ),
       );
     }
+    if (data.containsKey('match_id')) {
+      context.handle(
+        _matchIdMeta,
+        matchId.isAcceptableOrUnknown(data['match_id']!, _matchIdMeta),
+      );
+    }
+    if (data.containsKey('score_a')) {
+      context.handle(
+        _scoreAMeta,
+        scoreA.isAcceptableOrUnknown(data['score_a']!, _scoreAMeta),
+      );
+    }
+    if (data.containsKey('score_b')) {
+      context.handle(
+        _scoreBMeta,
+        scoreB.isAcceptableOrUnknown(data['score_b']!, _scoreBMeta),
+      );
+    }
     if (data.containsKey('status')) {
       context.handle(
         _statusMeta,
@@ -4970,6 +5020,18 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}scheduled_datetime'],
       ),
+      matchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}match_id'],
+      ),
+      scoreA: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}score_a'],
+      ),
+      scoreB: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}score_b'],
+      ),
       status: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}status'],
@@ -4999,6 +5061,9 @@ class Fixture extends DataClass implements Insertable<Fixture> {
   final String? venueId;
   final String? venueName;
   final DateTime? scheduledDatetime;
+  final String? matchId;
+  final int? scoreA;
+  final int? scoreB;
   final String status;
   const Fixture({
     required this.id,
@@ -5016,6 +5081,9 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     this.venueId,
     this.venueName,
     this.scheduledDatetime,
+    this.matchId,
+    this.scoreA,
+    this.scoreB,
     required this.status,
   });
   @override
@@ -5047,6 +5115,15 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     }
     if (!nullToAbsent || scheduledDatetime != null) {
       map['scheduled_datetime'] = Variable<DateTime>(scheduledDatetime);
+    }
+    if (!nullToAbsent || matchId != null) {
+      map['match_id'] = Variable<String>(matchId);
+    }
+    if (!nullToAbsent || scoreA != null) {
+      map['score_a'] = Variable<int>(scoreA);
+    }
+    if (!nullToAbsent || scoreB != null) {
+      map['score_b'] = Variable<int>(scoreB);
     }
     map['status'] = Variable<String>(status);
     return map;
@@ -5081,6 +5158,15 @@ class Fixture extends DataClass implements Insertable<Fixture> {
       scheduledDatetime: scheduledDatetime == null && nullToAbsent
           ? const Value.absent()
           : Value(scheduledDatetime),
+      matchId: matchId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(matchId),
+      scoreA: scoreA == null && nullToAbsent
+          ? const Value.absent()
+          : Value(scoreA),
+      scoreB: scoreB == null && nullToAbsent
+          ? const Value.absent()
+          : Value(scoreB),
       status: Value(status),
     );
   }
@@ -5108,6 +5194,9 @@ class Fixture extends DataClass implements Insertable<Fixture> {
       scheduledDatetime: serializer.fromJson<DateTime?>(
         json['scheduledDatetime'],
       ),
+      matchId: serializer.fromJson<String?>(json['matchId']),
+      scoreA: serializer.fromJson<int?>(json['scoreA']),
+      scoreB: serializer.fromJson<int?>(json['scoreB']),
       status: serializer.fromJson<String>(json['status']),
     );
   }
@@ -5130,6 +5219,9 @@ class Fixture extends DataClass implements Insertable<Fixture> {
       'venueId': serializer.toJson<String?>(venueId),
       'venueName': serializer.toJson<String?>(venueName),
       'scheduledDatetime': serializer.toJson<DateTime?>(scheduledDatetime),
+      'matchId': serializer.toJson<String?>(matchId),
+      'scoreA': serializer.toJson<int?>(scoreA),
+      'scoreB': serializer.toJson<int?>(scoreB),
       'status': serializer.toJson<String>(status),
     };
   }
@@ -5150,6 +5242,9 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     Value<String?> venueId = const Value.absent(),
     Value<String?> venueName = const Value.absent(),
     Value<DateTime?> scheduledDatetime = const Value.absent(),
+    Value<String?> matchId = const Value.absent(),
+    Value<int?> scoreA = const Value.absent(),
+    Value<int?> scoreB = const Value.absent(),
     String? status,
   }) => Fixture(
     id: id ?? this.id,
@@ -5169,6 +5264,9 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     scheduledDatetime: scheduledDatetime.present
         ? scheduledDatetime.value
         : this.scheduledDatetime,
+    matchId: matchId.present ? matchId.value : this.matchId,
+    scoreA: scoreA.present ? scoreA.value : this.scoreA,
+    scoreB: scoreB.present ? scoreB.value : this.scoreB,
     status: status ?? this.status,
   );
   Fixture copyWithCompanion(FixturesCompanion data) {
@@ -5192,6 +5290,9 @@ class Fixture extends DataClass implements Insertable<Fixture> {
       scheduledDatetime: data.scheduledDatetime.present
           ? data.scheduledDatetime.value
           : this.scheduledDatetime,
+      matchId: data.matchId.present ? data.matchId.value : this.matchId,
+      scoreA: data.scoreA.present ? data.scoreA.value : this.scoreA,
+      scoreB: data.scoreB.present ? data.scoreB.value : this.scoreB,
       status: data.status.present ? data.status.value : this.status,
     );
   }
@@ -5214,6 +5315,9 @@ class Fixture extends DataClass implements Insertable<Fixture> {
           ..write('venueId: $venueId, ')
           ..write('venueName: $venueName, ')
           ..write('scheduledDatetime: $scheduledDatetime, ')
+          ..write('matchId: $matchId, ')
+          ..write('scoreA: $scoreA, ')
+          ..write('scoreB: $scoreB, ')
           ..write('status: $status')
           ..write(')'))
         .toString();
@@ -5236,6 +5340,9 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     venueId,
     venueName,
     scheduledDatetime,
+    matchId,
+    scoreA,
+    scoreB,
     status,
   );
   @override
@@ -5257,6 +5364,9 @@ class Fixture extends DataClass implements Insertable<Fixture> {
           other.venueId == this.venueId &&
           other.venueName == this.venueName &&
           other.scheduledDatetime == this.scheduledDatetime &&
+          other.matchId == this.matchId &&
+          other.scoreA == this.scoreA &&
+          other.scoreB == this.scoreB &&
           other.status == this.status);
 }
 
@@ -5276,6 +5386,9 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
   final Value<String?> venueId;
   final Value<String?> venueName;
   final Value<DateTime?> scheduledDatetime;
+  final Value<String?> matchId;
+  final Value<int?> scoreA;
+  final Value<int?> scoreB;
   final Value<String> status;
   final Value<int> rowid;
   const FixturesCompanion({
@@ -5294,6 +5407,9 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     this.venueId = const Value.absent(),
     this.venueName = const Value.absent(),
     this.scheduledDatetime = const Value.absent(),
+    this.matchId = const Value.absent(),
+    this.scoreA = const Value.absent(),
+    this.scoreB = const Value.absent(),
     this.status = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -5313,6 +5429,9 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     this.venueId = const Value.absent(),
     this.venueName = const Value.absent(),
     this.scheduledDatetime = const Value.absent(),
+    this.matchId = const Value.absent(),
+    this.scoreA = const Value.absent(),
+    this.scoreB = const Value.absent(),
     this.status = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -5338,6 +5457,9 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     Expression<String>? venueId,
     Expression<String>? venueName,
     Expression<DateTime>? scheduledDatetime,
+    Expression<String>? matchId,
+    Expression<int>? scoreA,
+    Expression<int>? scoreB,
     Expression<String>? status,
     Expression<int>? rowid,
   }) {
@@ -5357,6 +5479,9 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
       if (venueId != null) 'venue_id': venueId,
       if (venueName != null) 'venue_name': venueName,
       if (scheduledDatetime != null) 'scheduled_datetime': scheduledDatetime,
+      if (matchId != null) 'match_id': matchId,
+      if (scoreA != null) 'score_a': scoreA,
+      if (scoreB != null) 'score_b': scoreB,
       if (status != null) 'status': status,
       if (rowid != null) 'rowid': rowid,
     });
@@ -5378,6 +5503,9 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     Value<String?>? venueId,
     Value<String?>? venueName,
     Value<DateTime?>? scheduledDatetime,
+    Value<String?>? matchId,
+    Value<int?>? scoreA,
+    Value<int?>? scoreB,
     Value<String>? status,
     Value<int>? rowid,
   }) {
@@ -5397,6 +5525,9 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
       venueId: venueId ?? this.venueId,
       venueName: venueName ?? this.venueName,
       scheduledDatetime: scheduledDatetime ?? this.scheduledDatetime,
+      matchId: matchId ?? this.matchId,
+      scoreA: scoreA ?? this.scoreA,
+      scoreB: scoreB ?? this.scoreB,
       status: status ?? this.status,
       rowid: rowid ?? this.rowid,
     );
@@ -5450,6 +5581,15 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     if (scheduledDatetime.present) {
       map['scheduled_datetime'] = Variable<DateTime>(scheduledDatetime.value);
     }
+    if (matchId.present) {
+      map['match_id'] = Variable<String>(matchId.value);
+    }
+    if (scoreA.present) {
+      map['score_a'] = Variable<int>(scoreA.value);
+    }
+    if (scoreB.present) {
+      map['score_b'] = Variable<int>(scoreB.value);
+    }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
@@ -5477,6 +5617,9 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
           ..write('venueId: $venueId, ')
           ..write('venueName: $venueName, ')
           ..write('scheduledDatetime: $scheduledDatetime, ')
+          ..write('matchId: $matchId, ')
+          ..write('scoreA: $scoreA, ')
+          ..write('scoreB: $scoreB, ')
           ..write('status: $status, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -9137,6 +9280,9 @@ typedef $$FixturesTableCreateCompanionBuilder =
       Value<String?> venueId,
       Value<String?> venueName,
       Value<DateTime?> scheduledDatetime,
+      Value<String?> matchId,
+      Value<int?> scoreA,
+      Value<int?> scoreB,
       Value<String> status,
       Value<int> rowid,
     });
@@ -9157,6 +9303,9 @@ typedef $$FixturesTableUpdateCompanionBuilder =
       Value<String?> venueId,
       Value<String?> venueName,
       Value<DateTime?> scheduledDatetime,
+      Value<String?> matchId,
+      Value<int?> scoreA,
+      Value<int?> scoreB,
       Value<String> status,
       Value<int> rowid,
     });
@@ -9261,6 +9410,21 @@ class $$FixturesTableFilterComposer
 
   ColumnFilters<DateTime> get scheduledDatetime => $composableBuilder(
     column: $table.scheduledDatetime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get matchId => $composableBuilder(
+    column: $table.matchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get scoreA => $composableBuilder(
+    column: $table.scoreA,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get scoreB => $composableBuilder(
+    column: $table.scoreB,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9372,6 +9536,21 @@ class $$FixturesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get matchId => $composableBuilder(
+    column: $table.matchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get scoreA => $composableBuilder(
+    column: $table.scoreA,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get scoreB => $composableBuilder(
+    column: $table.scoreB,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get status => $composableBuilder(
     column: $table.status,
     builder: (column) => ColumnOrderings(column),
@@ -9454,6 +9633,15 @@ class $$FixturesTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get matchId =>
+      $composableBuilder(column: $table.matchId, builder: (column) => column);
+
+  GeneratedColumn<int> get scoreA =>
+      $composableBuilder(column: $table.scoreA, builder: (column) => column);
+
+  GeneratedColumn<int> get scoreB =>
+      $composableBuilder(column: $table.scoreB, builder: (column) => column);
+
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
 
@@ -9524,6 +9712,9 @@ class $$FixturesTableTableManager
                 Value<String?> venueId = const Value.absent(),
                 Value<String?> venueName = const Value.absent(),
                 Value<DateTime?> scheduledDatetime = const Value.absent(),
+                Value<String?> matchId = const Value.absent(),
+                Value<int?> scoreA = const Value.absent(),
+                Value<int?> scoreB = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => FixturesCompanion(
@@ -9542,6 +9733,9 @@ class $$FixturesTableTableManager
                 venueId: venueId,
                 venueName: venueName,
                 scheduledDatetime: scheduledDatetime,
+                matchId: matchId,
+                scoreA: scoreA,
+                scoreB: scoreB,
                 status: status,
                 rowid: rowid,
               ),
@@ -9562,6 +9756,9 @@ class $$FixturesTableTableManager
                 Value<String?> venueId = const Value.absent(),
                 Value<String?> venueName = const Value.absent(),
                 Value<DateTime?> scheduledDatetime = const Value.absent(),
+                Value<String?> matchId = const Value.absent(),
+                Value<int?> scoreA = const Value.absent(),
+                Value<int?> scoreB = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => FixturesCompanion.insert(
@@ -9580,6 +9777,9 @@ class $$FixturesTableTableManager
                 venueId: venueId,
                 venueName: venueName,
                 scheduledDatetime: scheduledDatetime,
+                matchId: matchId,
+                scoreA: scoreA,
+                scoreB: scoreB,
                 status: status,
                 rowid: rowid,
               ),

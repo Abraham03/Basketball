@@ -219,11 +219,9 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
             )
           : null,
 
-      // AQUÍ USAMOS EL FONDO REUTILIZABLE
       body: AppBackground(
         child: Stack(
           children: [
-            // CONTENIDO PRINCIPAL
             LayoutBuilder(
               builder: (context, constraints) {
                 final bool isWideScreen = constraints.maxWidth > 600;
@@ -237,7 +235,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                     width: contentWidth,
                     child: Column(
                       children: [
-                        // HEADER: TÍTULO Y SELECTOR
                         Padding(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 20,
@@ -246,12 +243,10 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // ZONA TÁCTIL 1 (ARRIBA): Restaurada la alineación a la izquierda
                               GestureDetector(
                                 onTap: _toggleAdminMode,
                                 behavior: HitTestBehavior.opaque,
                                 child: Container(
-                                  // Color transparente para que TODO el Row sea clickeable
                                   color: Colors.transparent,
                                   padding: const EdgeInsets.only(
                                     top: 8.0,
@@ -350,7 +345,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                                       )
                                       .name;
 
-                                  // Selector modificado con Glassmorphism
                                   return ClipRRect(
                                     borderRadius: BorderRadius.circular(15),
                                     child: BackdropFilter(
@@ -430,7 +424,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                           ),
                         ),
 
-                        // GRID DE TARJETAS
                         Expanded(
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
@@ -518,7 +511,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
               },
             ),
 
-            // ZONA TÁCTIL 2 (BOTÓN SECRETO ESQUINA INFERIOR IZQUIERDA)
             Positioned(
               bottom: 20,
               left: 20,
@@ -537,7 +529,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
     );
   }
 
-  // --- MODAL DE SELECCIÓN ---
   void _showTournamentPicker(
     BuildContext context,
     List<dynamic> tournaments,
@@ -644,7 +635,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
     );
   }
 
- // --- LÓGICA DE SINCRONIZACIÓN CORREGIDA ---
+  // --- LÓGICA DE SINCRONIZACIÓN CORREGIDA ---
   Future<void> _syncData(BuildContext context, WidgetRef ref) async {
     final selectedTournamentId = ref.read(selectedTournamentIdProvider);
     final String syncId = selectedTournamentId ?? "0";
@@ -677,18 +668,14 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
       final unsyncedTournaments = await (db.select(db.tournaments)..where((t) => t.isSynced.equals(false))).get();
       final unsyncedTeams = await (db.select(db.teams)..where((t) => t.isSynced.equals(false))).get();
       final unsyncedPlayers = await (db.select(db.players)..where((t) => t.isSynced.equals(false))).get();
-      //final unsyncedMatches = await (db.select(db.matches)..where((t) => t.isSynced.equals(false))).get();
 
       // 2. DESCARGAMOS LA NUBE
       final catalogData = await api.fetchCatalogs(syncId);
 
       await db.transaction(() async {
         // === TORNEOS ===
-        // Borramos todos los torneos SIN TOCAR LOS PENDIENTES
         await (db.delete(db.tournaments)..where((t) => t.isSynced.equals(true))).go();
         for (var t in catalogData.tournaments) {
-          // Si el torneo que viene de la nube ya está en nuestra lista de "no sincronizados", 
-          // preferimos quedarnos con la versión local (la que editamos)
           if (!unsyncedTournaments.any((local) => local.id == t.id.toString())) {
              await db.into(db.tournaments).insert(
               TournamentsCompanion.insert(
@@ -703,52 +690,43 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
           }
         }
 
-        // === FIXTURES ===
-        for (var t in catalogData.tournaments) {
-          try {
-            final fixtureData = await api.fetchFixture(t.id.toString());
-            if (fixtureData.isNotEmpty && fixtureData['rounds'] != null) {
-              await (db.delete(
-                db.fixtures,
-              )..where((f) => f.tournamentId.equals(t.id.toString()))).go();
-
-              final roundsMap = fixtureData['rounds'] as Map<String, dynamic>;
-
-              for (var entry in roundsMap.entries) {
-                final roundName = entry.key;
-                final matches = entry.value as List;
-
-                for (var m in matches) {
-                  DateTime? scheduledDate;
-                  if (m['scheduled_datetime'] != null &&
-                      m['scheduled_datetime'].toString().isNotEmpty) {
-                    scheduledDate = DateTime.tryParse(m['scheduled_datetime']);
-                  }
-
-                  await db.into(db.fixtures).insert(
-                    FixturesCompanion.insert(
-                      id: m['id'].toString(),
-                      tournamentId: t.id.toString(),
-                      roundName: roundName,
-                      teamAId: m['team_a_id'].toString(),
-                      teamBId: m['team_b_id'].toString(),
-                      teamAName: m['team_a'] ?? 'Equipo A',
-                      teamBName: m['team_b'] ?? 'Equipo B',
-                      logoA: drift.Value(m['logo_a']),
-                      logoB: drift.Value(m['logo_b']),
-                      venueId: drift.Value(m['venue_id']?.toString()),
-                      venueName: drift.Value(m['venue_name']),
-                      scheduledDatetime: drift.Value(scheduledDate),
-                      status: drift.Value(m['status'] ?? 'SCHEDULED'),
-                    ),
-                    mode: drift.InsertMode.insertOrReplace,
-                  );
-                }
-              }
+        // === FIXTURES (AQUÍ ESTÁ LA MODIFICACIÓN IMPORTANTE) ===
+        // 1. Borramos los fixtures locales porque vamos a reescribirlos todos de golpe
+        await db.delete(db.fixtures).go();
+        
+        // 2. Insertamos todos los fixtures que vinieron en catalogData.fixturesRaw
+        for (var m in catalogData.fixturesRaw) {
+            DateTime? scheduledDate;
+            if (m['scheduled_datetime'] != null && m['scheduled_datetime'].toString().isNotEmpty) {
+              scheduledDate = DateTime.tryParse(m['scheduled_datetime'].toString());
             }
-          } catch (e) {
-            debugPrint("Error al descargar fixture del torneo ${t.id}: $e");
-          }
+
+            int? sA;
+            int? sB;
+            if (m['score_a'] != null) sA = int.tryParse(m['score_a'].toString());
+            if (m['score_b'] != null) sB = int.tryParse(m['score_b'].toString());
+
+            await db.into(db.fixtures).insert(
+              FixturesCompanion.insert(
+                id: m['id'].toString(),
+                tournamentId: m['tournament_id'].toString(),
+                roundName: m['round_name'] ?? 'Jornada',
+                teamAId: m['team_a_id'].toString(),
+                teamBId: m['team_b_id'].toString(),
+                teamAName: m['team_a'] ?? 'Equipo A',
+                teamBName: m['team_b'] ?? 'Equipo B',
+                logoA: drift.Value(m['logo_a']),
+                logoB: drift.Value(m['logo_b']),
+                venueId: drift.Value(m['venue_id']?.toString()),
+                venueName: drift.Value(m['venue_name']),
+                scheduledDatetime: drift.Value(scheduledDate),
+                matchId: drift.Value(m['match_id']?.toString()),
+                scoreA: drift.Value(sA),
+                scoreB: drift.Value(sB),
+                status: drift.Value(m['status'] ?? 'SCHEDULED'),
+              ),
+              mode: drift.InsertMode.insertOrReplace,
+            );
         }
 
         // === EQUIPOS ===
@@ -964,20 +942,15 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         }
       }
 
-      // ---------------------------------------------------------
-      //  AQUI ESTA LA LOGICA CORREGIDA PARA LOS JUGADORES
-      // ---------------------------------------------------------
       final pendingPlayers = await (db.select(
         db.players,
       )..where((tbl) => tbl.isSynced.equals(false))).get();
 
       for (var player in pendingPlayers) {
         try {
-          // VERIFICAMOS SI EL JUGADOR ES NUEVO (ID NEGATIVO/ALFANUMÉRICO) O EXISTENTE (ID POSITIVO)
           final isExistingPlayer = (int.tryParse(player.id) ?? 0) > 0;
 
           if (isExistingPlayer) {
-            // Es un jugador que editamos offline pero que ya existía en la nube
             final success = await api.updatePlayer(
               player.id,
               player.teamId,
@@ -992,7 +965,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
               uploadedPlayers++;
             }
           } else {
-            // Es un jugador completamente nuevo creado offline
             final realPlayerId = await api.addPlayer(
               player.teamId,
               player.name,
@@ -1000,11 +972,9 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
             );
 
             await db.transaction(() async {
-              // Borramos el registro temporal
               await (db.delete(
                 db.players,
               )..where((p) => p.id.equals(player.id))).go();
-              // Insertamos el real
               await db
                   .into(db.players)
                   .insert(
