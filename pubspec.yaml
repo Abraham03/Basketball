@@ -56,3 +56,5 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/hoja_anotacion.png
+    - assets/images/fondo1.jpg
+    - assets/images/fondo2.jpg

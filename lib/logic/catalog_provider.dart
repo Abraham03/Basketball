@@ -12,9 +12,9 @@ import '../logic/tournament_provider.dart';
 final apiServiceProvider = Provider((ref) => ApiService());
 
 // FutureProvider que descarga los datos al iniciar la pantalla
-final catalogProvider = FutureProvider<CatalogData>((ref) async {
+final catalogProvider = FutureProvider.family<CatalogData, String>((ref,tournamentId) async {
   final api = ref.read(apiServiceProvider);
-  return api.fetchCatalogs();
+  return api.fetchCatalogs(tournamentId);
 });
 
 final tournamentDataByIdProvider = StreamProvider.family<model.CatalogData, String>((ref, tournamentId) async* {

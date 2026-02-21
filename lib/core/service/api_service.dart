@@ -93,9 +93,9 @@ class ApiService {
     }
   }
 
-  Future<CatalogData> fetchCatalogs() async {
+  Future<CatalogData> fetchCatalogs(String tournamentId) async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl?action=get_data'));
+      final response = await http.get(Uri.parse('$_baseUrl?action=get_sync_data&tournament_id=$tournamentId'));
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
@@ -156,8 +156,15 @@ Future<int> createTeam(String name, String shortName, String coach, {String? tou
         "name": name,
         "shortName": shortName,
         "coachName": coach,
-        if (tournamentId != null) "tournament_id": tournamentId,
       };
+
+      // Asegurarse de no mandar null ni true
+      if (tournamentId != null && 
+          tournamentId.isNotEmpty && 
+          tournamentId != "true" && 
+          tournamentId != "false") {
+          bodyData["tournament_id"] = tournamentId;
+      }
 
       final response = await http.post(
         Uri.parse('$_baseUrl?action=create_team'),
@@ -170,7 +177,7 @@ Future<int> createTeam(String name, String shortName, String coach, {String? tou
       if (body['status'] != 'success') throw Exception(body['message']);
       
       // Devolvemos el ID nuevo que viene del PHP
-      return body['newId']; 
+      return int.parse(body['newId'].toString()); 
 
     } catch (e) {
       throw Exception('Error creando equipo: $e');
@@ -181,6 +188,7 @@ Future<int> addPlayer(int teamId, String name, int number) async {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl?action=add_player'),
+        headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           "teamId": teamId,
           "name": name,
@@ -197,13 +205,49 @@ Future<int> addPlayer(int teamId, String name, int number) async {
       throw Exception('Error agregando jugador: $e');
     }
   }
-  // Crear Torneo
-  Future<void> createTournament(String name, String category) async {
+
+  Future<bool> updatePlayer(String id, String name, int number) async {
+  try {
+    final response = await http.post(
+      Uri.parse('$_baseUrl?action=update_player'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        "id": id,
+        "name": name,
+        "number": number,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final body = jsonDecode(response.body);
+      return body['status'] == 'success';
+    }
+    return false;
+  } catch (e) {
+    
+    print("Error editando jugador en nube: $e");
+    return false;
+  }
+}
+
+
+// AHORA DEVUELVE UN Future<String> (El ID real que genera PHP)
+  Future<String> createTournament(String name, String category) async {
     final response = await http.post(
       Uri.parse('$_baseUrl?action=create_tournament'),
+      headers: {'Content-Type': 'application/json'},
       body: jsonEncode({"name": name, "category": category}),
     );
+    
     _checkResponse(response);
+    
+    final jsonResponse = jsonDecode(response.body);
+    // Tu PHP devuelve 'newId', lo capturamos aquí
+    if (jsonResponse['status'] == 'success' && jsonResponse['newId'] != null) {
+      return jsonResponse['newId'].toString(); // Retorna el número como String (ej. "15")
+    } else {
+      throw Exception("No se recibió el ID del torneo creado");
+    }
   }
 
   // Helper para validar respuestas genéricas
@@ -269,11 +313,9 @@ Future<int> addPlayer(int teamId, String name, int number) async {
         return respData['status'] == 'success';
       } else {
         // Puedes loguear response.body aquí para ver errores de PHP
-        print("Error upload: $response.body");
         return false;
       }
     } catch (e) {
-      print("Error upload: $e");
       return false;
     }
   } 
