@@ -70,20 +70,26 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(matchGameProvider.notifier).initializeNewMatch(
-            matchId: widget.matchId,
-            rosterA: widget.fullRosterA,
-            rosterB: widget.fullRosterB,
-            startersA: widget.startersAIds,
-            startersB: widget.startersBIds,
-            tournamentId: widget.tournamentId,
-            venueId: widget.venueId,
-            teamAId: widget.teamAId,
-            teamBId: widget.teamBId,
-            mainReferee: widget.mainReferee,
-            auxReferee: widget.auxReferee,
-            scorekeeper: widget.scorekeeper,
-          );
+      // 1. Leemos el estado actual del partido en memoria
+      final currentState = ref.read(matchGameProvider);
+
+      // 2. Solo reiniciamos los marcadores a 0 si es un partido nuevo
+      if (currentState.matchId != widget.matchId) {
+        ref.read(matchGameProvider.notifier).initializeNewMatch(
+              matchId: widget.matchId,
+              rosterA: widget.fullRosterA,
+              rosterB: widget.fullRosterB,
+              startersA: widget.startersAIds,
+              startersB: widget.startersBIds,
+              tournamentId: widget.tournamentId,
+              venueId: widget.venueId,
+              teamAId: widget.teamAId,
+              teamBId: widget.teamBId,
+              mainReferee: widget.mainReferee,
+              auxReferee: widget.auxReferee,
+              scorekeeper: widget.scorekeeper,
+            );
+      }
     });
   }
 

@@ -10,27 +10,31 @@ import 'package:drift/drift.dart' as drift;
 import '../core/database/app_database.dart';
 import '../core/di/dependency_injection.dart';
 import 'match_setup_screen.dart';
+import '../logic/match_game_controller.dart';
+import 'match_control_screen.dart';
 
 // --- IMPORTAMOS EL FONDO REUTILIZABLE ---
 import '../ui/widgets/app_background.dart';
 
-// Provider para leer el fixture local de un torneo específico
-final localFixtureProvider = FutureProvider.family<Map<String, List<Fixture>>, String>((ref, tournamentId) async {
+// Provider REACTIVO para leer el fixture local de un torneo específico
+final localFixtureProvider = StreamProvider.family<Map<String, List<Fixture>>, String>((ref, tournamentId) {
   final db = ref.read(databaseProvider);
   
-  final matches = await (db.select(db.fixtures)
+  // Usamos .watch() en lugar de .get() para escuchar los cambios en tiempo real
+  return (db.select(db.fixtures)
         ..where((tbl) => tbl.tournamentId.equals(tournamentId))
-      ).get();
-
-  final Map<String, List<Fixture>> grouped = {};
-  for (var m in matches) {
-    if (!grouped.containsKey(m.roundName)) {
-      grouped[m.roundName] = [];
+      ).watch().map((matches) {
+        
+    final Map<String, List<Fixture>> grouped = {};
+    for (var m in matches) {
+      if (!grouped.containsKey(m.roundName)) {
+        grouped[m.roundName] = [];
+      }
+      grouped[m.roundName]!.add(m);
     }
-    grouped[m.roundName]!.add(m);
-  }
-  
-  return grouped;
+    
+    return grouped;
+  });
 });
 
 class FixtureListScreen extends ConsumerStatefulWidget {
@@ -326,7 +330,10 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
 
   // --- DISEÑO DE TARJETA DE PARTIDO (MatchCard) ---
   Widget _buildMatchCard(BuildContext context, Fixture match) {
-    final isPlayable = match.status == 'SCHEDULED' || match.status == 'PENDING';
+    final isPlayable = match.status == 'SCHEDULED' || 
+                       match.status == 'PENDING' || 
+                       match.status == 'IN_PROGRESS' || 
+                       match.status == 'PLAYING';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
@@ -338,6 +345,46 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
             color: Colors.white.withOpacity(0.15),
             child: InkWell(
               onTap: isPlayable ? () {
+                 // 1. Verificar si el partido ya está en progreso
+                 if (match.status == 'IN_PROGRESS' || match.status == 'PLAYING') {
+                   final currentState = ref.read(matchGameProvider);
+                   
+                   // 2. Si el partido sigue vivo en memoria (el usuario solo le dio "Atrás")
+                   if (currentState.matchId == match.matchId && currentState.matchId.isNotEmpty) {
+                     Navigator.push(
+                       context,
+                       MaterialPageRoute(
+                         builder: (_) => MatchControlScreen(
+                           // Recuperamos la información vital de la memoria
+                           matchId: currentState.matchId,
+                           teamAName: match.teamAName,
+                           teamBName: match.teamBName,
+                           tournamentName: "Torneo Activo", 
+                           venueName: match.venueName ?? '',
+                           mainReferee: currentState.mainReferee,
+                           auxReferee: currentState.auxReferee,
+                           scorekeeper: currentState.scorekeeper,
+                           
+                           // Estas listas se ignoran porque el partido ya inicializó
+                           fullRosterA: const [], 
+                           fullRosterB: const [], 
+                           startersAIds: const {},
+                           startersBIds: const {},
+                           
+                           tournamentId: currentState.tournamentId ?? int.tryParse(widget.tournamentId) ?? 0,
+                           venueId: currentState.venueId ?? 0,
+                           teamAId: currentState.teamAId ?? 0,
+                           teamBId: currentState.teamBId ?? 0,
+                           coachA: '',
+                           coachB: '',
+                         ),
+                       ),
+                     );
+                     return; // Salimos de la función para NO abrir el Setup
+                   }
+                 }
+
+                 // 3. Flujo normal: Si es un partido nuevo o la app se cerró por completo
                  Navigator.push(
                    context,
                    MaterialPageRoute(
@@ -415,7 +462,12 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
                       ? Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(color: Colors.orange.withOpacity(0.2), shape: BoxShape.circle),
-                          child: const Icon(Icons.play_arrow, color: Colors.orangeAccent, size: 24)
+                          child: Icon(
+                            // 2. ACTUALIZAMOS EL ICONO PARA QUE MUESTRE REANUDAR
+                            (match.status == 'IN_PROGRESS' || match.status == 'PLAYING') ? Icons.restore : Icons.play_arrow,
+                            color: Colors.orangeAccent, 
+                            size: 24
+                          )
                         )
                       : (match.status == 'FINISHED' 
                           ? const Icon(Icons.check_circle, color: Colors.greenAccent, size: 28) 

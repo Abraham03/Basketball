@@ -480,7 +480,7 @@ class _StartersSelectionScreenState
           dbBase.fixtures,
         )..where((t) => t.id.equals(widget.fixtureId!))).write(
           db.FixturesCompanion(
-            status: const drift.Value('PLAYING'),
+            status: const drift.Value('IN_PROGRESS'), // Cambiado de 'PLAYING' a 'IN_PROGRESS'
             matchId: drift.Value(widget.matchId),
           ),
         );
