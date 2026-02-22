@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:drift/drift.dart' as drift;
 
 import '../core/di/dependency_injection.dart';
 import '../core/models/catalog_models.dart';
@@ -11,6 +12,7 @@ import '../core/utils/pdf_generator.dart';
 import '../logic/match_game_controller.dart';
 import '../ui/protest_signature_screen.dart';
 import '../ui/pdf_preview_screen.dart';
+import '../core/database/app_database.dart' as db;
 
 // --- IMPORTAMOS EL FONDO REUTILIZABLE ---
 import '../ui/widgets/app_background.dart';
@@ -71,6 +73,7 @@ class MatchControlScreen extends ConsumerStatefulWidget {
 
 class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
   Uint8List? _capturedSignature;
+  bool _isFinished = false;
 
   @override
   void initState() {
@@ -187,7 +190,10 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
       extendBodyBehindAppBar: true, 
       backgroundColor: Colors.transparent, 
       appBar: AppBar(
-        title: const Text("CONTROL DE JUEGO", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2.0, fontSize: 16)),
+        title: Text(
+          _isFinished ? "PARTIDO FINALIZADO" : "CONTROL DE JUEGO", 
+          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2.0, fontSize: 16, color: _isFinished ? Colors.redAccent : Colors.white)
+        ),
         centerTitle: true,
         backgroundColor: Colors.black.withOpacity(0.5), 
         foregroundColor: Colors.white,
@@ -200,18 +206,13 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
           IconButton(
             icon: const Icon(Icons.undo),
             tooltip: "Deshacer",
-            onPressed: controller.undo,
+            onPressed: _isFinished ? null : controller.undo,
           ),
           IconButton(
             icon: const Icon(Icons.visibility_outlined),
             tooltip: "Ver Acta",
             onPressed: () => _goToPdfPreview(context, gameState, _capturedSignature),
-          ),
-          IconButton(
-            icon: const Icon(Icons.save_alt),
-            tooltip: "Guardar",
-            onPressed: () => _finishMatchProcess(context, gameState, _capturedSignature),
-          ),
+          )
         ],
       ),
       body: AppBackground(
@@ -357,7 +358,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               GestureDetector(
-                onTap: () => _showPeriodSelector(context, controller),
+                onTap: _isFinished ? null : () => _showPeriodSelector(context, controller),
                 child: Container(
                   padding: EdgeInsets.symmetric(horizontal: isWideScreen ? 20 : 12, vertical: 6),
                   decoration: BoxDecoration(
@@ -400,8 +401,8 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                       child: Column(
                         children: [
                           GestureDetector(
-                            onTap: controller.toggleTimer,
-                            onLongPress: () => !state.isRunning ? _showTimePicker(context, controller, state.timeLeft) : null,
+                            onTap: _isFinished ? null : controller.toggleTimer,
+                            onLongPress: (_isFinished || state.isRunning) ? null : () => _showTimePicker(context, controller, state.timeLeft),
                             child: Container(
                               padding: EdgeInsets.symmetric(horizontal: isWideScreen ? 20 : 10, vertical: 10),
                               decoration: BoxDecoration(
@@ -430,7 +431,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                           if (!state.isRunning)
                             Padding(
                               padding: const EdgeInsets.only(top: 6),
-                              child: Text("RELOJ DETENIDO", style: TextStyle(color: Colors.redAccent, fontSize: isWideScreen ? 11 : 9, fontWeight: FontWeight.w900, letterSpacing: 1), textAlign: TextAlign.center,),
+                              child: Text(_isFinished ? "FINALIZADO" : "RELOJ DETENIDO", style: TextStyle(color: Colors.redAccent, fontSize: isWideScreen ? 11 : 9, fontWeight: FontWeight.w900, letterSpacing: 1), textAlign: TextAlign.center,),
                             ),
                           
                           SizedBox(height: isWideScreen ? 25 : 15),
@@ -444,7 +445,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                                 color: Colors.amber, 
                                 icon: Icons.arrow_left_rounded,
                                 size: arrowSize,
-                                onTap: () => controller.setPossession('A')
+                                onTap: _isFinished ? null : () => controller.setPossession('A')
                               ),
                               SizedBox(width: isWideScreen ? 15 : (isLandscape ? 4 : 8)),
                               Container(
@@ -458,7 +459,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                                 color: Colors.amber, 
                                 icon: Icons.arrow_right_rounded,
                                 size: arrowSize,
-                                onTap: () => controller.setPossession('B')
+                                onTap: _isFinished ? null : () => controller.setPossession('B')
                               ),
                             ],
                           )
@@ -491,7 +492,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     );
   }
 
-  Widget _buildLargePossessionArrow({required bool isActive, required Color color, required IconData icon, required double size, required VoidCallback onTap}) {
+  Widget _buildLargePossessionArrow({required bool isActive, required Color color, required IconData icon, required double size, required VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -616,17 +617,17 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                        mainAxisSize: MainAxisSize.min,
                        children: [
                          IconButton(
-                           onPressed: () => _showTeamOptions(context, controller, teamId, teamName),
-                           icon: Icon(Icons.more_vert, color: primaryColor, size: isWideScreen ? 28 : 24),
+                           onPressed: _isFinished ? null : () => _showTeamOptions(context, controller, teamId, teamName),
+                           icon: Icon(Icons.more_vert, color: _isFinished ? Colors.white24 : primaryColor, size: isWideScreen ? 28 : 24),
                            tooltip: "Opciones de Equipo (Faltas, Tiempos)",
                            padding: EdgeInsets.zero,
                            constraints: const BoxConstraints(),
                          ),
                          SizedBox(width: isWideScreen ? 16 : 8),
                          InkWell(
-                           onTap: () => _showSubstitutionDialog(context, teamId, onCourt, bench, controller),
+                           onTap: _isFinished ? null : () => _showSubstitutionDialog(context, teamId, onCourt, bench, controller),
                            borderRadius: BorderRadius.circular(20),
-                           child: Icon(Icons.swap_horizontal_circle, color: primaryColor, size: isWideScreen ? 34 : 28),
+                           child: Icon(Icons.swap_horizontal_circle, color: _isFinished ? Colors.white24 : primaryColor, size: isWideScreen ? 34 : 28),
                          )
                        ],
                      )
@@ -647,8 +648,8 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                     bool isDisqualified = stats.fouls >= 5;
 
                     return InkWell(
-                      onTap: () => _showActionMenu(context, teamId, playerName, controller, stats.fouls, isWideScreen),
-                      onLongPress: () {
+                      onTap: _isFinished ? null : () => _showActionMenu(context, teamId, playerName, controller, stats.fouls, isWideScreen),
+                     onLongPress: _isFinished ? null : () {
                         _showEditPlayerDialog(context, controller, playerName, stats.playerNumber, teamId);
                       },
                       borderRadius: BorderRadius.circular(15),
@@ -1148,6 +1149,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     try {
       final api = ref.read(apiServiceProvider);
       final controller = ref.read(matchGameProvider.notifier);
+      final dbBase = ref.read(databaseProvider);
 
       final pdfBytes = await PdfGenerator.generateBytes(
         state,
@@ -1168,7 +1170,27 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
 
       bool synced = await controller.finalizeAndSync(api, signature, pdfBytes, widget.teamAName, widget.teamBName);
 
+      
+      // 1. Marcar el partido como FINISHED en local
+      await (dbBase.update(dbBase.matches)..where((tbl) => tbl.id.equals(state.matchId)))
+          .write(const db.MatchesCompanion(status: drift.Value('FINISHED')));
+
+      // 2. Marcar el Fixture (Calendario) como FINISHED en local
+      if (state.fixtureId != null) {
+        await (dbBase.update(dbBase.fixtures)..where((tbl) => tbl.id.equals(state.fixtureId!)))
+            .write(db.FixturesCompanion(
+              status: const drift.Value('FINISHED'),
+              scoreA: drift.Value(state.scoreA),
+              scoreB: drift.Value(state.scoreB),
+            ));
+      }
+
       if (context.mounted) {
+        // ACTUALIZAMOS EL ESTADO PARA BLOQUEAR LA PANTALLA
+        setState(() {
+          _isFinished = true;
+        });
+
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(synced ? "Sincronizado correctamente" : "Guardado localmente (Sin conexión)"), 
@@ -1187,6 +1209,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
   }
   
   void _goToPdfPreview(BuildContext context, MatchState state, Uint8List? signature) {
+      // pushReplacement evita que el usuario regrese a la pantalla de control y siga modificando el partido
       Navigator.push(context, MaterialPageRoute(builder: (_) => PdfPreviewScreen(
           state: state, teamAName: widget.teamAName, teamBName: widget.teamBName, 
           tournamentName: widget.tournamentName, venueName: widget.venueName, 
@@ -1197,6 +1220,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
   }
   
   void _showFinalOptionsDialog(BuildContext context, MatchState currentState) {
+    if (_isFinished) return; // Si ya terminó, ignorar.
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1266,7 +1290,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
       final Uint8List? signature = await Navigator.push(context, MaterialPageRoute(builder: (_) => ProtestSignatureScreen(teamName: protestingTeam)));
       if (signature != null && context.mounted) {
         setState(() => _capturedSignature = signature);
-        _finishMatchProcess(context, state, signature, autoShow: false);
+        _finishMatchProcess(context, state, signature, autoShow: true);
       }
     }
   }
