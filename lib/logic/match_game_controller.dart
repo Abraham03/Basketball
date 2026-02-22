@@ -73,6 +73,7 @@ class PlayerStats {
 
 class MatchState {
   final String matchId;
+  final String? fixtureId;
   final int scoreA;
   final int scoreB;
   final Duration timeLeft;
@@ -105,6 +106,7 @@ class MatchState {
 
   const MatchState({
     this.matchId = '',
+    this.fixtureId,
     this.scoreA = 0,
     this.scoreB = 0,
     this.timeLeft = const Duration(minutes: 10),
@@ -135,6 +137,7 @@ class MatchState {
 
   MatchState copyWith({
     String? matchId,
+    String? fixtureId,
     int? scoreA,
     int? scoreB,
     Duration? timeLeft,
@@ -162,6 +165,7 @@ class MatchState {
   }) {
     return MatchState(
       matchId: matchId ?? this.matchId,
+      fixtureId: fixtureId ?? this.fixtureId,
       scoreA: scoreA ?? this.scoreA,
       scoreB: scoreB ?? this.scoreB,
       timeLeft: timeLeft ?? this.timeLeft,
@@ -255,6 +259,7 @@ class MatchGameController extends StateNotifier<MatchState> {
     final payload = {
       // IDs y Relaciones
       "match_id": state.matchId,
+      "fixture_id": state.fixtureId,
       "tournament_id": state.tournamentId,
       "venue_id": state.venueId,
       "team_a_id": state.teamAId,
@@ -469,6 +474,7 @@ void _updateTimeoutList(String teamId, int half, List<String> newList) {
   }
   void initializeNewMatch({
     required String matchId,
+    String? fixtureId,
     required List<models.Player> rosterA,
     required List<models.Player> rosterB,
     required Set<int> startersA,
@@ -540,6 +546,7 @@ void _updateTimeoutList(String teamId, int half, List<String> newList) {
 
     state = state.copyWith(
       matchId: matchId,
+      fixtureId: fixtureId,
       playerStats: initialStats,
       teamAOnCourt: courtA,
       teamABench: benchA,

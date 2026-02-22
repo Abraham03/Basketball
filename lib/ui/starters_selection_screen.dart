@@ -504,6 +504,7 @@ class _StartersSelectionScreenState
       MaterialPageRoute(
         builder: (context) => MatchControlScreen(
           matchId: widget.matchId,
+          fixtureId: widget.fixtureId,
           teamAName: widget.teamA.name,
           teamBName: widget.teamB.name,
           tournamentId: widget.tournamentId,

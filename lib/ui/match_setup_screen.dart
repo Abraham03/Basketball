@@ -380,7 +380,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
        matchIdToUse = widget.preSelectedFixture!.matchId!;
     } else {
        // Usamos negativo para indicar a PHP que es nuevo si se llega a sincronizar
-       matchIdToUse = (-DateTime.now().millisecondsSinceEpoch).toString();
+       matchIdToUse = (DateTime.now().millisecondsSinceEpoch).toString();
     }
 
     final rosterA = data.players.where((p) => p.teamId == selectedTeamA!.id).toList();

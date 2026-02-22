@@ -17,6 +17,7 @@ import '../ui/widgets/app_background.dart';
 
 class MatchControlScreen extends ConsumerStatefulWidget {
   final String matchId;
+  final String? fixtureId;
   final String teamAName;
   final String teamBName;
   final String mainReferee;
@@ -41,6 +42,7 @@ class MatchControlScreen extends ConsumerStatefulWidget {
   const MatchControlScreen({
     super.key,
     required this.matchId,
+    this.fixtureId,
     required this.teamAName,
     required this.teamBName,
     required this.mainReferee,
@@ -79,6 +81,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
       if (currentState.matchId != widget.matchId) {
         ref.read(matchGameProvider.notifier).initializeNewMatch(
               matchId: widget.matchId,
+              fixtureId: widget.fixtureId,
               rosterA: widget.fullRosterA,
               rosterB: widget.fullRosterB,
               startersA: widget.startersAIds,
