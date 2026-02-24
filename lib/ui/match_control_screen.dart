@@ -159,7 +159,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
             ? () => controller.nextPeriod()
             : () {
                 Future.delayed(const Duration(milliseconds: 100), () {
-                  if (context.mounted) _showFinalOptionsDialog(context, next);
+                  if (context.mounted && !_isFinished) _showFinalOptionsDialog(context, next);
                 });
               };
 
@@ -183,7 +183,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
       }
     });
 
-    // Detectamos la orientación de la pantalla
     final bool isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Scaffold(
@@ -212,7 +211,12 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
             icon: const Icon(Icons.visibility_outlined),
             tooltip: "Ver Acta",
             onPressed: () => _goToPdfPreview(context, gameState, _capturedSignature),
-          )
+          ),
+          IconButton(
+            icon: const Icon(Icons.save_alt),
+            tooltip: "Finalizar Partido",
+            onPressed: _isFinished ? null : () => _showFinalOptionsDialog(context, gameState),
+          ),
         ],
       ),
       body: AppBackground(
@@ -221,7 +225,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
           builder: (context, constraints) {
             final isWideScreen = constraints.maxWidth > 750;
             
-            // Creamos los widgets de los equipos para reutilizarlos en ambos diseños
             Widget teamAWidget = Expanded(
               child: _buildTeamList(
                 context, 
@@ -255,17 +258,14 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                 child: Container(
                   constraints: const BoxConstraints(maxWidth: 1200),
                   child: isLandscape 
-                    // --- DISEÑO HORIZONTAL (LANDSCAPE) ---
                     ? Row(
                         children: [
-                          // Marcador a la izquierda (ocupa 40% de la pantalla)
                           Expanded(
                             flex: 4,
                             child: SingleChildScrollView(
                               child: _buildProfessionalScoreboard(context, gameState, controller, isWideScreen, isLandscape: true),
                             ),
                           ),
-                          // Listas de equipos a la derecha (ocupa 60% de la pantalla)
                           Expanded(
                             flex: 6,
                             child: Container(
@@ -282,7 +282,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                           ),
                         ],
                       )
-                    // --- DISEÑO VERTICAL (PORTRAIT) ---
                     : Column(
                         children: [
                           _buildProfessionalScoreboard(context, gameState, controller, isWideScreen, isLandscape: false),
@@ -310,14 +309,10 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     );
   }
 
-  // =======================================================================
-  // MARCADOR DIGITAL (ESTILO PANTALLA LED CON EFECTO GLASS)
-  // =======================================================================
   Widget _buildProfessionalScoreboard(BuildContext context, MatchState state, MatchGameController controller, bool isWideScreen, {required bool isLandscape}) {
     final minutes = state.timeLeft.inMinutes.toString().padLeft(2, '0');
     final seconds = (state.timeLeft.inSeconds % 60).toString().padLeft(2, '0');
     
-    // Tamaños dinámicos ajustados. Si es Landscape, reducimos un poco para que quepa bien en la columna lateral
     final double scoreFontSize = isWideScreen ? (isLandscape ? 70 : 90) : 55;
     final double timeFontSize = isWideScreen ? (isLandscape ? 40 : 50) : 38;
     final double nameFontSize = isWideScreen ? (isLandscape ? 14 : 18) : 14;
@@ -340,7 +335,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     );
 
     return ClipRRect(
-      // Si está en Landscape, redondeamos todos los bordes, si no, solo los de abajo
       borderRadius: isLandscape ? BorderRadius.circular(20) : const BorderRadius.vertical(bottom: Radius.circular(30)),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15), 
@@ -349,11 +343,9 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
           padding: EdgeInsets.fromLTRB(16, isWideScreen ? 16 : 8, 16, isWideScreen ? 24 : 16),
           decoration: BoxDecoration(
             color: Colors.black.withOpacity(0.5), 
-            border: Border.all(color: Colors.white24, width: 2), // Borde completo si es landscape
+            border: Border.all(color: Colors.white24, width: 2), 
             borderRadius: isLandscape ? BorderRadius.circular(20) : null,
           ),
-          // Si estamos en landscape y la pantalla no es "Wide" (celular en horizontal), 
-          // evitamos que la columna estalle usando SingleChildScrollView interno.
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -377,7 +369,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // EQUIPO A
                   Expanded(
                     flex: isWideScreen ? 1 : 2,
                     child: Column(
@@ -386,16 +377,16 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                         SizedBox(height: isWideScreen ? 10 : 4),
                         FittedBox(fit: BoxFit.scaleDown, child: Text(state.scoreA.toString().padLeft(2, '0'), style: scoreStyle)),
                         SizedBox(height: isWideScreen ? 12 : 8),
-                        _buildTimeoutDots(state.teamATimeouts1, state.teamATimeouts2, Colors.orangeAccent, isWideScreen),
+                        // --- ENVIANDO LOS 6 ARGUMENTOS CORRECTAMENTE ---
+                        _buildTimeoutDots(state.teamATimeouts1, state.teamATimeouts2, state.teamAOTTimeouts, Colors.orangeAccent, isWideScreen, state.currentPeriod),
                         const SizedBox(height: 8),
                         _buildCompactFouls(controller.getTeamFouls('A'), Colors.orangeAccent, isWideScreen),
                       ],
                     ),
                   ),
 
-                  // RELOJ CENTRAL Y POSESIÓN
                   Expanded(
-                    flex: isWideScreen ? 0 : (isLandscape ? 2 : 3), // Ajuste para celulares en horizontal
+                    flex: isWideScreen ? 0 : (isLandscape ? 2 : 3), 
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: isWideScreen ? 20 : (isLandscape ? 4 : 8)),
                       child: Column(
@@ -436,7 +427,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                           
                           SizedBox(height: isWideScreen ? 25 : 15),
                           
-                          // FLECHAS DE POSESIÓN (AMARILLAS)
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -468,7 +458,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                     ),
                   ),
 
-                  // EQUIPO B
                   Expanded(
                     flex: isWideScreen ? 1 : 2,
                     child: Column(
@@ -477,7 +466,8 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                         SizedBox(height: isWideScreen ? 10 : 4),
                         FittedBox(fit: BoxFit.scaleDown, child: Text(state.scoreB.toString().padLeft(2, '0'), style: scoreStyle)),
                         SizedBox(height: isWideScreen ? 12 : 8),
-                        _buildTimeoutDots(state.teamBTimeouts1, state.teamBTimeouts2, Colors.lightBlueAccent, isWideScreen),
+                        // --- ENVIANDO LOS 6 ARGUMENTOS CORRECTAMENTE ---
+                        _buildTimeoutDots(state.teamBTimeouts1, state.teamBTimeouts2, state.teamBOTTimeouts, Colors.lightBlueAccent, isWideScreen, state.currentPeriod),
                          const SizedBox(height: 8),
                         _buildCompactFouls(controller.getTeamFouls('B'), Colors.lightBlueAccent, isWideScreen),
                       ],
@@ -492,7 +482,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     );
   }
 
-  Widget _buildLargePossessionArrow({required bool isActive, required Color color, required IconData icon, required double size, required VoidCallback? onTap}) {
+  Widget _buildLargePossessionArrow({required bool isActive, required Color color, required IconData icon, required double size, VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -512,8 +502,31 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     );
   }
 
-  Widget _buildTimeoutDots(List<String> t1, List<String> t2, Color activeColor, bool isWideScreen) {
+  // --- FUNCIÓN ACTUALIZADA CON LÓGICA DE TIEMPO EXTRA Y LOS 6 ARGUMENTOS ---
+  Widget _buildTimeoutDots(List<String> t1, List<String> t2, List<String> tOT, Color activeColor, bool isWideScreen, int currentPeriod) {
     double dotSize = isWideScreen ? 14 : 10;
+    
+    // SI ESTAMOS EN TIEMPO EXTRA (Periodo 5 o más)
+    if (currentPeriod >= 5) {
+       return Wrap( 
+          alignment: WrapAlignment.center,
+          spacing: isWideScreen ? 6 : 4,
+          runSpacing: 4,
+          children: [
+            for(int i = 0; i < 3; i++) // 3 casillas exclusivas para OT
+              Container(
+                width: dotSize, height: dotSize,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle, 
+                  color: i < tOT.length ? activeColor : Colors.white24,
+                  boxShadow: i < tOT.length ? [BoxShadow(color: activeColor.withOpacity(0.8), blurRadius: 8)] : null
+                ),
+              ),
+          ]
+       );
+    }
+    
+    // SI ESTAMOS EN TIEMPO REGULAR (Periodo 1 a 4)
     return Wrap( 
       alignment: WrapAlignment.center,
       spacing: isWideScreen ? 6 : 4,
@@ -574,9 +587,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     );
   }
 
-  // =======================================================================
-  // LISTA DE JUGADORES (EFECTO GLASS DASHBOARD CARD)
-  // =======================================================================
   Widget _buildTeamList(
     BuildContext context,
     String teamName,
@@ -600,7 +610,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
           ),
           child: Column(
             children: [
-              // CABECERA DE LA LISTA
               Container(
                 padding: EdgeInsets.symmetric(vertical: isWideScreen ? 12 : 8, horizontal: isWideScreen ? 16 : 8),
                 decoration: BoxDecoration(
@@ -635,7 +644,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                 ),
               ),
               
-              // JUGADORES
               Expanded(
                 child: ListView.separated(
                   padding: EdgeInsets.all(isWideScreen ? 12 : 8),
@@ -649,7 +657,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
 
                     return InkWell(
                       onTap: _isFinished ? null : () => _showActionMenu(context, teamId, playerName, controller, stats.fouls, isWideScreen),
-                     onLongPress: _isFinished ? null : () {
+                      onLongPress: _isFinished ? null : () {
                         _showEditPlayerDialog(context, controller, playerName, stats.playerNumber, teamId);
                       },
                       borderRadius: BorderRadius.circular(15),
@@ -721,9 +729,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     );
   }
 
-  // =======================================================================
-  // DIÁLOGOS Y MENÚS INFERIORES
-  // =======================================================================
   void _showEditPlayerDialog(BuildContext context, MatchGameController controller, String playerName, String currentNumber, String teamSide) {
     final numberController = TextEditingController(text: currentNumber);
     final errorNotifier = ValueNotifier<String?>(null);

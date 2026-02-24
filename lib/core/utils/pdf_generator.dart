@@ -6,7 +6,6 @@ import '../../logic/match_game_controller.dart';
 import 'dart:typed_data';
 
 class PdfCoords {
-  // --- 1. HEADER ---
   static const double headerY = 90.0;
   static const double competitionX = 390.0;
   static const double dateX = 188.0;
@@ -15,13 +14,11 @@ class PdfCoords {
   static const double placeY = 105.0;
   static const double gameNoX = 100.0;
 
-  // --- REFEREES ---
   static const double referee1X = 365.0;
   static const double referee1Y = 105.0;
   static const double referee2X = 495.0;
   static const double referee2Y = 105.0;
 
-  // --- FOOTER ---
   static const double footerY = 795.0;
   static const double footerReferee1X = 72.0;
   static const double footerReferee2X = 210.0;
@@ -30,7 +27,6 @@ class PdfCoords {
   static const double winningTeamX = 400.0;
   static const double winningTeamY = 810.0;
 
-  // --- 2. TEAM HEADERS ---
   static const double teamANameX = 115.0;
   static const double teamANameY = 123.0;
   static const double teamBNameX = 115.0;
@@ -40,11 +36,10 @@ class PdfCoords {
   static const double teamBName2X = 390.0;
   static const double teamBName2Y = 55.0;
 
-  // --- 3. ROSTER TABLES ---
   static const double teamAListStartY = 367.0;
   static const double teamAColNumX = 195.5;
   static const double teamAColNameX = 50.0;
-  static const double teamAColCaptainX = 20.0; // "C" 
+  static const double teamAColCaptainX = 20.0;
   static const double teamAColFoulsX = 232.5;
   static const double teamAColEntryX = 215.5;
 
@@ -58,37 +53,32 @@ class PdfCoords {
   static const double rowHeight = 13.5;
   static const double foulBoxWidth = 12.0;
 
-  // --- COACHES  ---
-  // Ubicados debajo de la lista de jugadores
   static const double coachAX = 50.0;
-  static const double coachAY = 380.0; // Debajo de teamAListStartY
+  static const double coachAY = 380.0;
   static const double coachAFoulsX = 232.5;
 
   static const double coachBX = 50.0;
-  static const double coachBY = 664.0; // Debajo de teamBListStartY
+  static const double coachBY = 664.0;
   static const double coachBFoulsX = 232.5;
 
-  // --- 4. TIMEOUTS  ---
-  // Ajustadas para estar debajo del nombre y antes de la lista
-  // Equipo A
   static const double teamATimeoutsX = 28.0;
-  static const double teamATimeoutsY1 = 153.0; // 1a Mitad (Fila superior)
-  static const double teamATimeoutsY2 = 168.0; // 2a Mitad (Fila inferior)
+  static const double teamATimeoutsY1 = 153.0;
+  static const double teamATimeoutsY2 = 168.0;
+  static const double teamATimeoutsY3 = 185.0;
 
-  // Equipo B
+
   static const double teamBTimeoutsX = 28.0;
   static const double teamBTimeoutsY1 = 433.0;
   static const double teamBTimeoutsY2 = 450.0;
+  static const double teamBTimeoutsY3 = 468.0;
 
-  static const double timeoutBoxStep =12.0; // Espacio entre cuadros de tiempo fuera
+  static const double timeoutBoxStep = 12.0;
 
-  // --- 6. FINAL SCORE ---
   static const double scoreBoxY = 772.0;
   static const double scoreAX = 450.0;
   static const double scoreBX = 535.0;
   static const double scoreFontSize = 20.0;
 
-  // --- 7. PERIOD SCORES ---
   static const double period1AX = 446.0;
   static const double period1BX = 532.0;
   static const double period1Y = 692.0;
@@ -105,7 +95,6 @@ class PdfCoords {
   static const double overtimeBX = 532.0;
   static const double overtimeY = 755.0;
 
-  // --- 9. RUNNING SCORE ---
   static const double runScoreCol1X = 335.0;
   static const double runScoreTeamSpacing = 10.0;
   static const double runScoreBlockSpacing = 68.0;
@@ -113,7 +102,6 @@ class PdfCoords {
   static const double runScoreStartY = 157.0;
   static const double runScoreEndY = 680.0;
 
-  // --- 10. TEAM FOULS ---
   static const double teamAFoulsX = 156.0;
   static const double teamAFoulsPeriod1Y = 150.0;
   static const double teamAFoulsPeriod2Y = 165.0;
@@ -275,7 +263,6 @@ class PdfGenerator {
       winningTeam = "EMPATE";
     }
 
-    // FORMATO DE FECHA Y HORA
     final dateStr = matchDate != null
         ? "${matchDate.day.toString().padLeft(2, '0')}/${matchDate.month.toString().padLeft(2, '0')}/${matchDate.year}"
         : "";
@@ -364,7 +351,6 @@ class PdfGenerator {
                     fontSize: 8,
                     color: PdfColors.blue900,
                   ),
-
                 if (mainReferee.isNotEmpty)
                   _drawText(
                     mainReferee,
@@ -430,25 +416,52 @@ class PdfGenerator {
                   fontSize: 10,
                   color: PdfColors.blue900,
                 ),
-              
-                // --- COACH A ---
+
                 if (coachA.isNotEmpty)
-                  _drawText(coachA, x: PdfCoords.coachAX, y: PdfCoords.coachAY, fontSize: 10, isBold: true, color: PdfColors.blue900)
+                  _drawText(
+                    coachA,
+                    x: PdfCoords.coachAX,
+                    y: PdfCoords.coachAY,
+                    fontSize: 10,
+                    isBold: true,
+                    color: PdfColors.blue900,
+                  )
                 else
-                  _drawHorizontalLine(PdfCoords.coachAX, PdfCoords.coachAY, 150),
-                
-                // --- AQUI LLAMAMOS A LA NUEVA FUNCION PARA FALTAS DE COACH A ---
-                ..._drawCoachFoulsMarks(state, 'A', PdfCoords.coachAFoulsX, PdfCoords.coachAY),
+                  _drawHorizontalLine(
+                    PdfCoords.coachAX,
+                    PdfCoords.coachAY,
+                    150,
+                  ),
 
+                ..._drawCoachFoulsMarks(
+                  state,
+                  'A',
+                  PdfCoords.coachAFoulsX,
+                  PdfCoords.coachAY,
+                ),
 
-                // --- COACH B ---
                 if (coachB.isNotEmpty)
-                  _drawText(coachB, x: PdfCoords.coachBX, y: PdfCoords.coachBY, fontSize: 10, isBold: true, color: PdfColors.blue900)
+                  _drawText(
+                    coachB,
+                    x: PdfCoords.coachBX,
+                    y: PdfCoords.coachBY,
+                    fontSize: 10,
+                    isBold: true,
+                    color: PdfColors.blue900,
+                  )
                 else
-                  _drawHorizontalLine(PdfCoords.coachBX, PdfCoords.coachBY, 150),
+                  _drawHorizontalLine(
+                    PdfCoords.coachBX,
+                    PdfCoords.coachBY,
+                    150,
+                  ),
 
-                // --- AQUI LLAMAMOS A LA NUEVA FUNCION PARA FALTAS DE COACH B ---
-                ..._drawCoachFoulsMarks(state, 'B', PdfCoords.coachBFoulsX, PdfCoords.coachBY),
+                ..._drawCoachFoulsMarks(
+                  state,
+                  'B',
+                  PdfCoords.coachBFoulsX,
+                  PdfCoords.coachBY,
+                ),
 
                 ..._drawTeamFoulsSection(state),
 
@@ -478,7 +491,7 @@ class PdfGenerator {
                   stats: state.playerStats,
                   startXNum: PdfCoords.teamBColNumX,
                   startXName: PdfCoords.teamBColNameX,
-                  startXCaptain: PdfCoords.teamBColCaptainX, // Nueva coordenada
+                  startXCaptain: PdfCoords.teamBColCaptainX,
                   startXFouls: PdfCoords.teamBColFoulsX,
                   startY: PdfCoords.teamBListStartY,
                   entryX: PdfCoords.teamBColEntryX,
@@ -550,7 +563,6 @@ class PdfGenerator {
     return pdf;
   }
 
-  // Función para dibujar los tiempos fuera ---
   static List<pw.Widget> _drawTimeouts(MatchState state) {
     List<pw.Widget> widgets = [];
 
@@ -571,6 +583,14 @@ class PdfGenerator {
         y: PdfCoords.teamATimeoutsY2,
       ),
     );
+    widgets.addAll(
+      _drawTimeoutRow(
+        timeouts: state.teamAOTTimeouts,
+        maxBoxes: 3,
+        startX: PdfCoords.teamATimeoutsX,
+        y: PdfCoords.teamATimeoutsY3,
+      ),
+    ); // OT
 
     // EQUIPO B
     widgets.addAll(
@@ -589,11 +609,18 @@ class PdfGenerator {
         y: PdfCoords.teamBTimeoutsY2,
       ),
     );
+    widgets.addAll(
+      _drawTimeoutRow(
+        timeouts: state.teamBOTTimeouts,
+        maxBoxes: 3,
+        startX: PdfCoords.teamBTimeoutsX,
+        y: PdfCoords.teamBTimeoutsY3,
+      ),
+    ); // OT
 
     return widgets;
   }
 
-  // Helper para fila de tiempos fuera
   static List<pw.Widget> _drawTimeoutRow({
     required List<String> timeouts,
     required int maxBoxes,
@@ -606,37 +633,46 @@ class PdfGenerator {
       String text = (i < timeouts.length) ? timeouts[i] : "";
       if (text.isNotEmpty) {
         rowWidgets.add(_drawText(text, x: x, y: y, fontSize: 9, isBold: true));
-      }else{
+      } else {
         rowWidgets.add(_drawBlueHorizontalMark(x, y));
       }
     }
     return rowWidgets;
   }
 
-  static List<pw.Widget> _drawCoachFoulsMarks(MatchState state, String teamId, double startX, double y) {
-      List<pw.Widget> widgets = [];
-      
-      // Filtramos eventos que sean faltas de coach (C) o banca (B) para este equipo
-      final coachEvents = state.scoreLog.where((e) {
-         return e.teamId == teamId && (e.type == 'C' || e.type == 'B');
-      }).toList();
+  static List<pw.Widget> _drawCoachFoulsMarks(
+    MatchState state,
+    String teamId,
+    double startX,
+    double y,
+  ) {
+    List<pw.Widget> widgets = [];
 
-      // Dibujamos hasta 3 casillas (estándar FIBA C, B, B)
-      for (int i = 0; i < 3; i++) {
-         double x = startX + (i * PdfCoords.foulBoxWidth);
-         
-         if (i < coachEvents.length) {
-            // Dibuja una 'X' gruesa en lugar de la letra 'C' o 'B' para tachar la casilla
-            widgets.add(_drawText("X", x: x, y: y, fontSize: 10, isBold: true, color: PdfColors.blue900));
-         } else {
-            // Dibuja raya horizontal indicando que la casilla quedó vacía al finalizar
-            widgets.add(_drawBlueHorizontalMark(x, y));
-         }
+    final coachEvents = state.scoreLog.where((e) {
+      return e.teamId == teamId && (e.type == 'C' || e.type == 'B');
+    }).toList();
+
+    for (int i = 0; i < 3; i++) {
+      double x = startX + (i * PdfCoords.foulBoxWidth);
+
+      if (i < coachEvents.length) {
+        widgets.add(
+          _drawText(
+            "X",
+            x: x,
+            y: y,
+            fontSize: 10,
+            isBold: true,
+            color: PdfColors.blue900,
+          ),
+        );
+      } else {
+        widgets.add(_drawBlueHorizontalMark(x, y));
       }
-      return widgets;
+    }
+    return widgets;
   }
 
-  // --- Dibuja líneas azules en casillas vacías y filas vacías ---
   static List<pw.Widget> _buildRosterList({
     required List<String> players,
     required Map<String, PlayerStats> stats,
@@ -649,25 +685,28 @@ class PdfGenerator {
     int? captainId,
   }) {
     List<pw.Widget> widgets = [];
-    int limit = 12; // Siempre 12 filas en la hoja
+    int limit = 12;
 
-    // 'startY' es la coordenada inferior (312).
-    // Para empezar desde arriba, restamos la altura de las 11 filas previas.
-    // Así 'currentY' empieza en la primera línea superior visualmente.
     double currentY = startY - (11 * PdfCoords.rowHeight);
 
     for (var i = 0; i < limit; i++) {
       if (i < players.length) {
-        // --- JUGADOR EXISTENTE ---
         final playerName = players[i];
         final stat = stats[playerName] ?? const PlayerStats();
         final dorsal = stat.playerNumber.isNotEmpty ? stat.playerNumber : "";
 
         widgets.add(_drawText(dorsal, x: startXNum, y: currentY, fontSize: 10));
 
-        // DIBUJAR CAPITÁN (C) A LA IZQUIERDA
         if (captainId != null && stat.dbId == captainId) {
-           widgets.add(_drawText("C", x: startXCaptain, y: currentY, fontSize: 9, isBold: true));
+          widgets.add(
+            _drawText(
+              "C",
+              x: startXCaptain,
+              y: currentY,
+              fontSize: 9,
+              isBold: true,
+            ),
+          );
         }
 
         String displayName = playerName;
@@ -687,7 +726,6 @@ class PdfGenerator {
           widgets.add(_drawText("X", x: entryX, y: currentY, fontSize: 10));
         }
 
-        // Dibujar faltas (código) o línea azul si está vacía
         for (int f = 0; f < 5; f++) {
           double foulX = startXFouls + (f * PdfCoords.foulBoxWidth);
           if (f < stat.foulDetails.length) {
@@ -706,19 +744,12 @@ class PdfGenerator {
               ),
             );
           } else {
-            // SIN FALTA: Línea horizontal azul
             widgets.add(_drawBlueHorizontalMark(foulX, currentY));
           }
         }
       } else {
-        // --- FILA VACÍA (SIN JUGADOR) ---
-        // Tachamos el nombre
-        widgets.add(
-          _drawHorizontalLine(startXName, currentY, 130),
-        ); // Ajusta ancho según columna
-        // Tachamos el número
+        widgets.add(_drawHorizontalLine(startXName, currentY, 130));
         widgets.add(_drawHorizontalLine(startXNum, currentY, 20));
-        // Tachamos las 5 casillas de faltas
         for (int f = 0; f < 5; f++) {
           double foulX = startXFouls + (f * PdfCoords.foulBoxWidth);
           widgets.add(_drawHorizontalLine(foulX, currentY, 10));
@@ -729,14 +760,13 @@ class PdfGenerator {
     return widgets;
   }
 
-  // Línea azul en casillas de faltas de equipo no usadas ---
   static List<pw.Widget> _drawFoulMarks({
     required int count,
     required double startX,
     required double startY,
   }) {
     List<pw.Widget> marks = [];
-    int limit = 4; // Siempre 4 casillas
+    int limit = 4;
     for (int i = 0; i < limit; i++) {
       double currentX = startX + (i * PdfCoords.teamFoulBoxStep);
       if (i < count) {
@@ -751,27 +781,20 @@ class PdfGenerator {
           ),
         );
       } else {
-        // SIN FALTA: Línea horizontal azul
         marks.add(_drawBlueHorizontalMark(currentX, startY));
       }
     }
     return marks;
   }
 
-  // --- HELPER: Línea horizontal azul para casillas pequeñas (Faltas) ---
   static pw.Widget _drawBlueHorizontalMark(double x, double y) {
     return pw.Positioned(
-      left: x, // Pequeño margen izquierdo
-      top: y + 4, // Centrado verticalmente (aprox mitad de fuente 10)
-      child: pw.Container(
-        width: 10, // Ancho de la casilla
-        height: 1.0,
-        color: PdfColors.blue900,
-      ),
+      left: x,
+      top: y + 4,
+      child: pw.Container(width: 10, height: 1.0, color: PdfColors.blue900),
     );
   }
 
-  // --- HELPER: Línea horizontal azul larga para tachar filas ---
   static pw.Widget _drawHorizontalLine(double x, double y, double width) {
     return pw.Positioned(
       left: x - 3,

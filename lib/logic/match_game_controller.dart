@@ -39,7 +39,7 @@ class PlayerStats {
   final int fouls;
   final bool isOnCourt;
   final bool isStarter;
-  final String playerNumber; // Guardamos el dorsal aquí
+  final String playerNumber; 
   final List<String> foulDetails;
 
   const PlayerStats({
@@ -48,7 +48,7 @@ class PlayerStats {
     this.fouls = 0,
     this.isOnCourt = false,
     this.isStarter = false,
-    this.playerNumber = "00", // Valor por defecto
+    this.playerNumber = "00", 
     this.foulDetails = const [],
   });
 
@@ -86,23 +86,25 @@ class MatchState {
   final List<ScoreEvent> scoreLog;
   final int? tournamentId;
   final int? venueId;
-  final int? teamAId; // ID real de la base de datos (ej: 45)
-  final int? teamBId; // ID real de la base de datos (ej: 48)
+  final int? teamAId; 
+  final int? teamBId; 
   final String mainReferee;
   final String auxReferee;
   final String scorekeeper;
 
-  // Listas de NOMBRES (Strings) para referenciar el mapa
   final List<String> teamAOnCourt;
   final List<String> teamABench;
   final List<String> teamBOnCourt;
   final List<String> teamBBench;
 
-  // Tiempos fuera (guardamos el minuto como String, ej: "7")
-  final List<String> teamATimeouts1; // 1a Mitad (Periodos 1-2)
-  final List<String> teamATimeouts2; // 2a Mitad (Periodos 3-4)
+  // --- Tiempos fuera (guardamos el minuto) ---
+  final List<String> teamATimeouts1; // 1a Mitad
+  final List<String> teamATimeouts2; // 2a Mitad
+  final List<String> teamAOTTimeouts; // Tiempos Extras
+
   final List<String> teamBTimeouts1;
   final List<String> teamBTimeouts2;
+  final List<String> teamBOTTimeouts; // Tiempos Extras
 
   final Map<String, PlayerStats> playerStats;
 
@@ -115,9 +117,7 @@ class MatchState {
     this.isRunning = false,
     this.currentPeriod = 1,
     this.possession = '',
-    this.periodScores = const {
-      1: [0, 0],
-    },
+    this.periodScores = const { 1: [0, 0] },
     this.scoreLog = const [],
     this.teamAOnCourt = const [],
     this.teamABench = const [],
@@ -133,8 +133,10 @@ class MatchState {
     this.scorekeeper = '',
     this.teamATimeouts1 = const [],
     this.teamATimeouts2 = const [],
+    this.teamAOTTimeouts = const [],
     this.teamBTimeouts1 = const [],
     this.teamBTimeouts2 = const [],
+    this.teamBOTTimeouts = const [],
   });
 
   MatchState copyWith({
@@ -162,8 +164,10 @@ class MatchState {
     String? scorekeeper,
     List<String>? teamATimeouts1,
     List<String>? teamATimeouts2,
+    List<String>? teamAOTTimeouts,
     List<String>? teamBTimeouts1,
     List<String>? teamBTimeouts2,
+    List<String>? teamBOTTimeouts,
   }) {
     return MatchState(
       matchId: matchId ?? this.matchId,
@@ -190,8 +194,10 @@ class MatchState {
       scorekeeper: scorekeeper ?? this.scorekeeper,
       teamATimeouts1: teamATimeouts1 ?? this.teamATimeouts1,
       teamATimeouts2: teamATimeouts2 ?? this.teamATimeouts2,
+      teamAOTTimeouts: teamAOTTimeouts ?? this.teamAOTTimeouts,
       teamBTimeouts1: teamBTimeouts1 ?? this.teamBTimeouts1,
       teamBTimeouts2: teamBTimeouts2 ?? this.teamBTimeouts2,
+      teamBOTTimeouts: teamBOTTimeouts ?? this.teamBOTTimeouts,
     );
   }
 }
@@ -203,17 +209,13 @@ class MatchGameController extends StateNotifier<MatchState> {
 
   MatchGameController(this._dao) : super(const MatchState());
 
-  // Calcula faltas por equipo/periodo
   int getTeamFouls(String teamId) {
     return state.scoreLog.where((e) {
-      // Es del equipo correcto, periodo actual y no sumó puntos (asumimos falta)
       return e.teamId == teamId && 
              e.period == state.currentPeriod && 
              e.points == 0;
     }).length;
   }
-
-
 
   Future<bool> finalizeAndSync(
     ApiService api, 
@@ -223,14 +225,12 @@ class MatchGameController extends StateNotifier<MatchState> {
     String teamBName
   ) async {
     
-    // 1. Convertir Firma a Base64
     String? signatureBase64;
     if (signatureBytes != null) {
       signatureBase64 = base64Encode(signatureBytes);
       await _dao.saveSignature(state.matchId, signatureBase64);
     }
 
-    // 2. GUARDAR EL PDF LOCALMENTE SIEMPRE
     String? localPdfPath;
     if (pdfBytes != null) {
       try {
@@ -239,7 +239,6 @@ class MatchGameController extends StateNotifier<MatchState> {
         await file.writeAsBytes(pdfBytes);
         localPdfPath = file.path;
         
-        // Actualizamos la base de datos con la ruta del PDF
         await (_dao.update(_dao.db.matches)..where((tbl) => tbl.id.equals(state.matchId)))
             .write(MatchesCompanion(matchReportPath: drift.Value(localPdfPath)));
       } catch (e) {
@@ -247,12 +246,10 @@ class MatchGameController extends StateNotifier<MatchState> {
       }
     }
 
-    // 3. Preparar eventos para JSON
     final eventsList = state.scoreLog.map((e) {
       final currentStats = state.playerStats[e.playerId]; 
       final updatedNumber = currentStats?.playerNumber ?? e.playerNumber;
       
-      // Ajuste para evitar Foreign Key error enviando null para C, B o TIMEOUT
       String? parsedPlayerId = (e.dbPlayerId == 0 || e.dbPlayerId == -1) ? null : e.dbPlayerId.toString();
 
       return {
@@ -291,7 +288,6 @@ class MatchGameController extends StateNotifier<MatchState> {
       "events": eventsList,
     };
 
-    // 4. Intentar enviar a la nube
     try {
         final success = await api.syncMatchDataMultipart(
           matchData: payload, 
@@ -299,33 +295,25 @@ class MatchGameController extends StateNotifier<MatchState> {
         ); 
         if (success) {
             await _dao.markAsSynced(state.matchId);
-            // Opcional: Podrías borrar el PDF local aquí si ya se subió para ahorrar espacio
              if (localPdfPath != null) File(localPdfPath).delete();
         }
         return success;
     } catch (e) {
-        return false; // Falló red, pero los datos y el PDF ya están en SQLite y en local
+        return false; 
     }
   }
 
-
- // Método para agregar Tiempo Fuera
-void addTimeout(String teamId) {
+  void addTimeout(String teamId) {
     _saveToHistory();
 
-    // NUEVO CÁLCULO DE MINUTO EXACTO FIBA (Basado en el reloj regresivo)
-    // Si quedan 9:30 (570s), 570 / 60 = 9.5 -> El minuto a anotar es el "9" (piso).
-    // Si quedan 0:45 (45s), 45 / 60 = 0.75 -> El minuto es "0" (pero solemos anotar 1 si es menor a 1).
     int minutesLeft = (state.timeLeft.inSeconds / 60).floor(); 
-    // Si es exactamente 10:00, se anota el minuto 10.
     if (state.timeLeft.inSeconds % 60 > 0 && minutesLeft == 10) {
-       minutesLeft = 9; // Ajuste si la app empezó en 10:00 y no bajó el primer segundo
+       minutesLeft = 9; 
     }
-    // Si quedan segundos (ej: 0:45), FIBA anota el minuto 1
     if (minutesLeft == 0 && state.timeLeft.inSeconds > 0) {
        minutesLeft = 1;
     } else if (state.timeLeft.inSeconds == 0) {
-       minutesLeft = 0; // Si el reloj está en cero.
+       minutesLeft = 0; 
     }
 
     String minStr = minutesLeft.toString();
@@ -341,29 +329,21 @@ void addTimeout(String teamId) {
     _logEventToDb(null, 0, 0, 'TIMEOUT_$teamId');
   }
 
-
-void addTeamFoul(String teamId, String type) { // type: 'C' (Coach), 'B' (Bench)
+  void addTeamFoul(String teamId, String type) { 
     _saveToHistory();
-
-    // 1. Aumentar contador de faltas del periodo
-    // (Tu lógica actual cuenta faltas sumando eventos con points=0 de ese periodo)
-    // Así que necesitamos insertar un evento.
-
-    // Usaremos un nombre especial para que no salga en la lista de jugadores normales
     String specialName = type == 'C' ? "Entrenador" : "Banca";
     
-    // Agregamos el evento al log
     List<ScoreEvent> newScoreLog = List.from(state.scoreLog);
     newScoreLog.add(
       ScoreEvent(
         period: state.currentPeriod,
         teamId: teamId,
-        playerId: specialName, // Nombre ficticio
-        dbPlayerId: 0, // ID ficticio
+        playerId: specialName, 
+        dbPlayerId: 0, 
         playerNumber: "", 
         points: 0,
         scoreAfter: (teamId == 'A' ? state.scoreA : state.scoreB),
-        type: type, // 'C' o 'B'
+        type: type, 
       ),
     );
 
@@ -373,78 +353,74 @@ void addTeamFoul(String teamId, String type) { // type: 'C' (Coach), 'B' (Bench)
     _logEventToDb(null, 0, 1, '${type}_$teamId');
   }
 
-void _processTimeoutWithRules(String teamId, String minStr, int period, bool isClutchTime) {
+  void _processTimeoutWithRules(String teamId, String minStr, int period, bool isClutchTime) {
     List<String> currentList;
-    bool isFirstHalf = period <= 2;
-    bool isSecondHalf = period == 3 || period == 4;
 
-    // A. PRIMERA MITAD (1 y 2)
-    if (isFirstHalf) {
+    if (period <= 2) {
       currentList = List.from(teamId == 'A' ? state.teamATimeouts1 : state.teamBTimeouts1);
       if (currentList.length < 2) {
         currentList.add(minStr);
         _updateTimeoutList(teamId, 1, currentList);
       }
     } 
-    // B. SEGUNDA MITAD (3 y 4)
-    else if (isSecondHalf) {
+    else if (period == 3 || period == 4) {
       currentList = List.from(teamId == 'A' ? state.teamATimeouts2 : state.teamBTimeouts2);
 
-      // --- REGLA DE ORO (AUTO-BURN) ---
-      // Si estamos en los últimos 2 minutos Y la lista está vacía,
-      // significa que no usaron ningún tiempo antes. Pierden uno (se marca X).
       if (isClutchTime && currentList.isEmpty) {
         currentList.add("X"); 
       }
 
-      // Ahora verificamos si hay espacio.
-      // Si se agregó la "X", la longitud es 1. Aún pueden agregar 2 más (Total 3).
       if (currentList.length < 3) {
         currentList.add(minStr);
         _updateTimeoutList(teamId, 2, currentList);
-      } else {
-        // Ya tienen 3 marcas (ej: "X", "9", "10"). No pueden pedir más.
-      }
+      } 
     } 
-    // C. TIEMPO EXTRA
     else {
-       // Lógica simple para OT: Agregamos a la lista de la 2da mitad si cabe, 
-       // o podrías crear una lista nueva si tu PDF lo soporta.
-       // FIBA da 1 tiempo por cada OT.
-       currentList = List.from(teamId == 'A' ? state.teamATimeouts2 : state.teamBTimeouts2);
-       // Aquí podrías permitir ir más allá de 3 si es OT, o resetear.
-       // Por ahora, lo agregamos si hay espacio visual.
-       if (currentList.length < 5) { // Damos un poco más de margen visual para OT
-          currentList.add(minStr);
-          _updateTimeoutList(teamId, 2, currentList);
+       currentList = List.from(teamId == 'A' ? state.teamAOTTimeouts : state.teamBOTTimeouts);
+       
+       // FIBA dicta 1 tiempo fuera por cada periodo extra (OT1=5, OT2=6, OT3=7)
+       // Calculamos cuántos OT llevamos. Si el periodo es 5, llevamos 1 OT.
+       int currentOtCount = period - 4;
+
+       // Solo permitimos agregar si la cantidad actual de tiempos fuera de OT
+       // es estrictamente menor a la cantidad de OT jugados.
+       // Ej: Estamos en OT1 (Periodo 5). currentOtCount = 1.
+       // Si currentList.length es 0 (menor a 1), permitimos pedirlo.
+       // Si ya pidió uno, currentList.length es 1. (1 < 1) es falso, bloquea.
+       if (currentList.length < currentOtCount && currentList.length < 3) { 
+         currentList.add(minStr);
+         _updateTimeoutList(teamId, 3, currentList); 
        }
     }
   }
 
-void _updateTimeoutList(String teamId, int half, List<String> newList) {
-  if (teamId == 'A') {
-    state = half == 1 
-      ? state.copyWith(teamATimeouts1: newList) 
-      : state.copyWith(teamATimeouts2: newList);
-  } else {
-    state = half == 1 
-      ? state.copyWith(teamBTimeouts1: newList) 
-      : state.copyWith(teamBTimeouts2: newList);
+  void _updateTimeoutList(String teamId, int section, List<String> newList) {
+    if (teamId == 'A') {
+      if (section == 1) {
+        state = state.copyWith(teamATimeouts1: newList);
+      } else if (section == 2) {
+        state = state.copyWith(teamATimeouts2: newList);
+      } else {
+        state = state.copyWith(teamAOTTimeouts: newList);
+      }
+    } else {
+      if (section == 1) {
+        state = state.copyWith(teamBTimeouts1: newList);
+      } else if (section == 2) {
+        state = state.copyWith(teamBTimeouts2: newList);
+      } else {
+        state = state.copyWith(teamBOTTimeouts: newList);
+      }
+    }
+    _saveToDatabase();
   }
-  _saveToDatabase();
-}
 
-// ------------------------------------------------------------------------
-  // TIMER CON CHEQUEO AUTOMÁTICO
-  // ------------------------------------------------------------------------
   void _start() {
     _timer?.cancel();
     state = state.copyWith(isRunning: true);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (state.timeLeft.inSeconds > 0) {
         final newTime = state.timeLeft - const Duration(seconds: 1);
-        
-        // Verificamos si al bajar el segundo entramos a 2:00 (120s) exactos en el 4to periodo
         bool triggerAutoBurn = state.currentPeriod == 4 && newTime.inSeconds == 120;
 
         state = state.copyWith(timeLeft: newTime);
@@ -458,31 +434,21 @@ void _updateTimeoutList(String teamId, int half, List<String> newList) {
     });
   }
 
-  // Este método solo se llama automáticamete cuando el reloj cruza 2:00
   void _applyAutoBurn() {
     bool changed = false;
     List<String> listA = List.from(state.teamATimeouts2);
     List<String> listB = List.from(state.teamBTimeouts2);
 
-    if (listA.isEmpty) {
-      listA.add("X");
-      changed = true;
-    }
-    if (listB.isEmpty) {
-      listB.add("X");
-      changed = true;
-    }
+    if (listA.isEmpty) { listA.add("X"); changed = true; }
+    if (listB.isEmpty) { listB.add("X"); changed = true; }
 
     if (changed) {
       _saveToHistory();
-
-      state = state.copyWith(
-        teamATimeouts2: listA,
-        teamBTimeouts2: listB,
-      );
+      state = state.copyWith(teamATimeouts2: listA, teamBTimeouts2: listB);
       _saveToDatabase();
     }
   }
+
   void initializeNewMatch({
     required String matchId,
     String? fixtureId,
@@ -515,7 +481,6 @@ void _updateTimeoutList(String teamId, int half, List<String> newList) {
     final List<String> courtB = [];
     final List<String> benchB = [];
 
-    // Procesar Equipo A
     for (var player in rosterA) {
       final isStarter = startersA.contains(player.id);
       final pName = player.name;
@@ -524,18 +489,12 @@ void _updateTimeoutList(String teamId, int half, List<String> newList) {
         dbId: player.id,
         isOnCourt: isStarter,
         isStarter: isStarter,
-        playerNumber: player.defaultNumber
-            .toString(), // Guardamos el número real
+        playerNumber: player.defaultNumber.toString(),
       );
 
-      if (isStarter) {
-        courtA.add(pName);
-      } else {
-        benchA.add(pName);
-      }
+      if (isStarter) { courtA.add(pName); } else { benchA.add(pName); }
     }
 
-    // Procesar Equipo B
     for (var player in rosterB) {
       final isStarter = startersB.contains(player.id);
       final pName = player.name;
@@ -544,15 +503,10 @@ void _updateTimeoutList(String teamId, int half, List<String> newList) {
         dbId: player.id,
         isOnCourt: isStarter,
         isStarter: isStarter,
-        playerNumber: player.defaultNumber
-            .toString(), // Guardamos el número real
+        playerNumber: player.defaultNumber.toString(), 
       );
 
-      if (isStarter) {
-        courtB.add(pName);
-      } else {
-        benchB.add(pName);
-      }
+      if (isStarter) { courtB.add(pName); } else { benchB.add(pName); }
     }
 
     state = state.copyWith(
@@ -569,9 +523,7 @@ void _updateTimeoutList(String teamId, int half, List<String> newList) {
       possession: '',
       timeLeft: const Duration(minutes: 10),
       scoreLog: [],
-      periodScores: {
-        1: [0, 0],
-      },
+      periodScores: { 1: [0, 0] },
       tournamentId: tournamentId,
       venueId: venueId,
       teamAId: teamAId,
@@ -579,30 +531,25 @@ void _updateTimeoutList(String teamId, int half, List<String> newList) {
       mainReferee: mainReferee,
       auxReferee: auxReferee,
       scorekeeper: scorekeeper,
-
       teamATimeouts1: [],
       teamATimeouts2: [],
+      teamAOTTimeouts: [], 
       teamBTimeouts1: [],
       teamBTimeouts2: [],
+      teamBOTTimeouts: [], 
     );
   }
 
-  // Recibe el equipo ('A' o 'B') directamente
   void setPossession(String team) {
     _saveToHistory();
-
-    // Si tocas la flecha del equipo que YA tiene la posesión, la apagamos (opcional)
     if (state.possession == team) {
       state = state.copyWith(possession: '');
     } else {
-      // Si no, le damos la posesión a ese equipo
       state = state.copyWith(possession: team);
     }
   }
 
-  void initMatch(String matchId) {
-    // Legacy stub
-  }
+  void initMatch(String matchId) {}
 
   void _saveToHistory() {
     if (_history.length > 50) _history.removeAt(0);
@@ -694,7 +641,6 @@ void _updateTimeoutList(String teamId, int half, List<String> newList) {
     String? foulType,
   }) {
     final currentStats = state.playerStats[playerId] ?? const PlayerStats();
-    // Si ya está expulsado (5 faltas), no dejar hacer nada más
     if (currentStats.fouls >= 5 && (points > 0 || fouls > 0)) return;
 
     _saveToHistory();
@@ -726,12 +672,8 @@ void _updateTimeoutList(String teamId, int half, List<String> newList) {
     }
     newPeriodScores[state.currentPeriod] = currentPeriodScore;
 
-    // AQUÍ ACTUALIZAMOS LA LISTA DE FALTAS
     List<String> newFoulDetails = List.from(currentStats.foulDetails);
     if (fouls > 0) {
-      // Si recibimos un tipo específico (P1, T, etc), lo guardamos. Si no, "P" por defecto.
-      // Pero quitamos el número para el PDF si es P1, P2? No, el PDF suele usar P, P1, P2...
-      // Vamos a guardar el código tal cual viene del botón (P1, P2, P3, T, U, D)
       newFoulDetails.add(foulType ?? "P");
     }
 
@@ -744,7 +686,6 @@ void _updateTimeoutList(String teamId, int half, List<String> newList) {
 
     List<ScoreEvent> newScoreLog = List.from(state.scoreLog);
     if (points > 0 || fouls > 0) {
-      // Usamos el número real guardado en el estado
       String dorsal = currentStats.playerNumber;
       String eventType = "UNKNOWN";
       if (fouls > 0) eventType = foulType ?? "FOUL";
@@ -753,7 +694,7 @@ void _updateTimeoutList(String teamId, int half, List<String> newList) {
         ScoreEvent(
           period: state.currentPeriod,
           teamId: teamId,
-          playerId: playerId,// Nombre del jugador
+          playerId: playerId,
           dbPlayerId: currentStats.dbId,
           playerNumber: dorsal,
           points: points,
@@ -779,13 +720,9 @@ void _updateTimeoutList(String teamId, int half, List<String> newList) {
     _saveToHistory();
 
     final newStats = Map<String, PlayerStats>.from(state.playerStats);
-    // Al jugador que SALE, solo le cambiamos isOnCourt a false.
-    // isStarter se mantiene igual (si era true, seguirá siendo true).
     if (newStats.containsKey(playerOut)) {
       newStats[playerOut] = newStats[playerOut]!.copyWith(isOnCourt: false);
     }
-    // Al jugador que ENTRA, solo le cambiamos isOnCourt a true.
-    // isStarter se mantiene igual (si era false, seguirá siendo false).
     if (newStats.containsKey(playerIn)) {
       newStats[playerIn] = newStats[playerIn]!.copyWith(isOnCourt: true);
     }
@@ -834,9 +771,10 @@ void _updateTimeoutList(String teamId, int half, List<String> newList) {
     String? playeridDb,
     int points,
     int fouls,
-    String? foulType,
+    String? customType,
   ) async {
     if (state.matchId.isEmpty) return;
+    
     String type = "UNKNOWN";
     if (points == 1) {
       type = "POINT_1";
@@ -844,8 +782,8 @@ void _updateTimeoutList(String teamId, int half, List<String> newList) {
       type = "POINT_2";
     } else if (points == 3) {
       type = "POINT_3";
-    } else if (foulType != null) {
-      type = foulType; // Atrapa TIMEOUT_A, C_B, etc. o Faltas específicas (P1, T, U...)
+    } else if (customType != null) {
+      type = customType; 
     } else if (fouls > 0) {
       type = "FOUL"; 
     }
@@ -855,7 +793,7 @@ void _updateTimeoutList(String teamId, int half, List<String> newList) {
     await _dao.insertEvent(
       GameEventsCompanion.insert(
         matchId: state.matchId,
-        playerId: drift.Value(playeridDb), // Si enviamos null, SQLite guardará NULL felizmente
+        playerId: drift.Value(playeridDb), 
         type: type,
         period: state.currentPeriod,
         clockTime: timeStr,
@@ -870,29 +808,20 @@ void _updateTimeoutList(String teamId, int half, List<String> newList) {
     super.dispose();
   }
 
-// Permite editar número o nombre de un jugador SOLO para este partido
   void updateMatchPlayerInfo(String playerId, {String? newNumber}) {
-    // Verificamos si el jugador existe en las estadísticas
     if (!state.playerStats.containsKey(playerId)) return;
 
     final currentStats = state.playerStats[playerId]!;
     
-    // Creamos una copia con el nuevo número
     final newStats = currentStats.copyWith(
       playerNumber: newNumber ?? currentStats.playerNumber,
     );
 
-    // Actualizamos el mapa de estadísticas
     final newPlayerStatsMap = Map<String, PlayerStats>.from(state.playerStats);
     newPlayerStatsMap[playerId] = newStats;
 
-    // Guardamos el estado
     state = state.copyWith(playerStats: newPlayerStatsMap);
-    
-    // Opcional: Si tienes persistencia local SQLite, actualiza aquí también
-    // _dao.updateLocalPlayerNumber(...) 
   }
-
 }
 
 final matchGameProvider =
