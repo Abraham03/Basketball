@@ -8,6 +8,8 @@ import '../core/database/daos/matches_dao.dart';
 import '../core/di/dependency_injection.dart';
 import '../core/models/catalog_models.dart' as models;
 import '../core/service/api_service.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 class ScoreEvent {
   final int period;
@@ -228,79 +230,81 @@ class MatchGameController extends StateNotifier<MatchState> {
       await _dao.saveSignature(state.matchId, signatureBase64);
     }
 
+    // 2. GUARDAR EL PDF LOCALMENTE SIEMPRE
+    String? localPdfPath;
+    if (pdfBytes != null) {
+      try {
+        final directory = await getApplicationDocumentsDirectory();
+        final file = File('${directory.path}/match_${state.matchId}.pdf');
+        await file.writeAsBytes(pdfBytes);
+        localPdfPath = file.path;
+        
+        // Actualizamos la base de datos con la ruta del PDF
+        await (_dao.update(_dao.db.matches)..where((tbl) => tbl.id.equals(state.matchId)))
+            .write(MatchesCompanion(matchReportPath: drift.Value(localPdfPath)));
+      } catch (e) {
+        print("Error guardando PDF local: $e");
+      }
+    }
 
-
-    // 2. Preparar eventos para JSON
+    // 3. Preparar eventos para JSON
     final eventsList = state.scoreLog.map((e) {
-
-      // BUSCAMOS EL NÚMERO ACTUALIZADO EN LAS ESTADÍSTICAS ACTUALES
       final currentStats = state.playerStats[e.playerId]; 
       final updatedNumber = currentStats?.playerNumber ?? e.playerNumber;
+      
+      // Ajuste para evitar Foreign Key error enviando null para C, B o TIMEOUT
+      String? parsedPlayerId = (e.dbPlayerId == 0 || e.dbPlayerId == -1) ? null : e.dbPlayerId.toString();
+
       return {
         "period": e.period,
-        "team_side": e.teamId, // Enviamos 'A' o 'B' como team_side
-        // En tu lógica actual, el playerId es el nombre del jugador
+        "team_side": e.teamId, 
         "player_name": e.playerId, 
-        "player_id": e.dbPlayerId,
-        
-        // Convertimos a string por seguridad, el backend lo pasará a int
+        "player_id": parsedPlayerId,
         "player_number": updatedNumber, 
-        "points_scored": e.points, // NOMBRE CORREGIDO
-        "score_after": e.scoreAfter, // DATO FALTANTE AGREGADO
-        // "type" no está en tu tabla SQL, así que no es estrictamente necesario, 
-        // pero lo dejamos por si acaso quieres guardarlo en otro lado o futuro.
+        "points_scored": e.points, 
+        "score_after": e.scoreAfter, 
         "type": e.type, 
       };
     }).toList();
 
-      final now = DateTime.now();
-      final formattedDate = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
-      // 3. Payload Completo
+    final now = DateTime.now();
+    final formattedDate = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
+      
     final payload = {
-      // IDs y Relaciones
       "match_id": state.matchId,
-      "fixture_id": state.fixtureId,
+      "fixture_id": state.fixtureId, 
       "tournament_id": state.tournamentId,
       "venue_id": state.venueId,
       "team_a_id": state.teamAId,
       "team_b_id": state.teamBId,
-      
-      // Nombres (Redundancia útil para reportes rápidos)
       "team_a_name": teamAName,
       "team_b_name": teamBName,
-      
-      // Marcador y Estado
       "score_a": state.scoreA,
       "score_b": state.scoreB,
       "current_period": state.currentPeriod,
       "time_left": "${state.timeLeft.inMinutes}:${(state.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}",
-      
-      // Oficiales
       "main_referee": state.mainReferee,
       "aux_referee": state.auxReferee,
       "scorekeeper": state.scorekeeper,
-      
-      // Datos extra
-      "match_date": formattedDate, // Enviamos fecha actual
+      "match_date": formattedDate, 
       "signature_base64": signatureBase64,
-      
-      // Eventos (Tabla score_logs)
       "events": eventsList,
     };
 
-// 4. Intentar enviar
+    // 4. Intentar enviar a la nube
     try {
         final success = await api.syncMatchDataMultipart(
           matchData: payload, 
           pdfBytes: pdfBytes
-          ); // Enviar();
+        ); 
         if (success) {
-            // Si subió, marcamos como synced en local
             await _dao.markAsSynced(state.matchId);
+            // Opcional: Podrías borrar el PDF local aquí si ya se subió para ahorrar espacio
+             if (localPdfPath != null) File(localPdfPath).delete();
         }
         return success;
     } catch (e) {
-        return false; // Falló red, pero los datos ya están en SQLite gracias a _dao.saveSignature
+        return false; // Falló red, pero los datos y el PDF ya están en SQLite y en local
     }
   }
 
@@ -325,6 +329,8 @@ void addTimeout(String teamId) {
   } else {
     _processTimeoutWithRules(teamId, minStr, state.currentPeriod, isClutchTime);
   }
+
+  _logEventToDb(null, 0, 0, 'TIMEOUT_$teamId');
 }
 
 
@@ -345,7 +351,7 @@ void addTeamFoul(String teamId, String type) { // type: 'C' (Coach), 'B' (Bench)
         period: state.currentPeriod,
         teamId: teamId,
         playerId: specialName, // Nombre ficticio
-        dbPlayerId: -1, // ID ficticio
+        dbPlayerId: 0, // ID ficticio
         playerNumber: "", 
         points: 0,
         scoreAfter: (teamId == 'A' ? state.scoreA : state.scoreB),
@@ -356,10 +362,7 @@ void addTeamFoul(String teamId, String type) { // type: 'C' (Coach), 'B' (Bench)
     state = state.copyWith(scoreLog: newScoreLog);
     _saveToDatabase();
     
-    // Guardar evento en BD (asumiendo que tu DAO permite playerId null o string arbitrario)
-    // Si tu DAO requiere un ID de jugador real existente, esto fallará.
-    // Si es así, tendrás que adaptar tu DAO o usar un ID reservado (ej. 0 o 9999).
-    _logEventToDb("-1", 0, 1, type); 
+    _logEventToDb(null, 0, 1, '${type}_$teamId');
   }
 
 void _processTimeoutWithRules(String teamId, String minStr, int period, bool isClutchTime) {
@@ -820,27 +823,31 @@ void _updateTimeoutList(String teamId, int half, List<String> newList) {
   }
 
   Future<void> _logEventToDb(
-    String playeridDb,
+    String? playeridDb,
     int points,
     int fouls,
     String? foulType,
   ) async {
     if (state.matchId.isEmpty) return;
     String type = "UNKNOWN";
-    if (points == 1) type = "POINT_1";
-    if (points == 2) type = "POINT_2";
-    if (points == 3) type = "POINT_3";
-    if (fouls > 0) {
-      type = foulType ?? "FOUL";
+    if (points == 1) {
+      type = "POINT_1";
+    } else if (points == 2) {
+      type = "POINT_2";
+    } else if (points == 3) {
+      type = "POINT_3";
+    } else if (foulType != null) {
+      type = foulType; // Atrapa TIMEOUT_A, C_B, etc. o Faltas específicas (P1, T, U...)
+    } else if (fouls > 0) {
+      type = "FOUL"; 
     }
 
-    final timeStr =
-        "${state.timeLeft.inMinutes}:${(state.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}";
+    final timeStr = "${state.timeLeft.inMinutes}:${(state.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}";
 
     await _dao.insertEvent(
       GameEventsCompanion.insert(
         matchId: state.matchId,
-        playerId: drift.Value(playeridDb),
+        playerId: drift.Value(playeridDb), // Si enviamos null, SQLite guardará NULL felizmente
         type: type,
         period: state.currentPeriod,
         clockTime: timeStr,

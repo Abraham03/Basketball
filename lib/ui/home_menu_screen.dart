@@ -1,11 +1,13 @@
 // lib/ui/screens/home_menu_screen.dart
-// ignore_for_file: deprecated_member_use, unrelated_type_equality_checks
+// ignore_for_file: deprecated_member_use
 
+import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:uuid/uuid.dart';
+import 'dart:io';
 
 import '../core/database/app_database.dart';
 import '../logic/tournament_provider.dart';
@@ -1014,32 +1016,75 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
           final roster = row.readTableOrNull(db.matchRosters);
           final player = row.readTableOrNull(db.players);
 
-          int points = 0;
-          if (event.type == 'POINT_1' || event.type == 'FREE_THROW') points = 1;
-          if (event.type == 'POINT_2') points = 2;
-          if (event.type == 'POINT_3') points = 3;
+          // TRUCO PARA LEER EL EQUIPO
+          String rawType = event.type;
+          String teamSide = roster?.teamSide ?? 'A'; 
 
-          if (points > 0 && roster != null) {
-            if (roster.teamSide == 'A') runningScoreA += points;
-            if (roster.teamSide == 'B') runningScoreB += points;
+          if (rawType.endsWith('_A')) {
+            teamSide = 'A';
+            rawType = rawType.replaceAll('_A', '');
+          } else if (rawType.endsWith('_B')) {
+            teamSide = 'B';
+            rawType = rawType.replaceAll('_B', ''); 
           }
-          final currentScore = (roster?.teamSide == 'A')
-              ? runningScoreA
-              : runningScoreB;
 
-          return {
+          int points = 0;
+          if (rawType == 'POINT_1' || rawType == 'FREE_THROW') points = 1;
+          if (rawType == 'POINT_2') points = 2;
+          if (rawType == 'POINT_3') points = 3;
+
+          bool isTeamA = teamSide == 'A';
+
+          if (points > 0) {
+            if (isTeamA) {
+              runningScoreA += points;
+            } else {
+              runningScoreB += points;
+            }
+          }
+          final currentScore = isTeamA ? runningScoreA : runningScoreB;
+
+          // PAYLOAD LIMPIO PREVINIENDO ERROR FOREIGN KEY (NULL EN VEZ DE "-1")
+          Map<String, dynamic> eventPayload = {
             "period": event.period,
-            "team_side": roster?.teamSide ?? 'A',
-            "player_id": event.playerId,
+            "team_side": teamSide,
             "player_name": player?.name ?? '',
             "player_number": roster?.jerseyNumber ?? 0,
             "points_scored": points,
             "score_after": currentScore,
+            "type": rawType
           };
+
+          if (event.playerId != null && event.playerId!.isNotEmpty && event.playerId != '-1') {
+             eventPayload["player_id"] = int.tryParse(event.playerId!);
+          } else {
+             eventPayload["player_id"] = null;
+          }
+
+          return eventPayload;
         }).toList();
+
+        // ---------------------------------------------------------
+        // LEER EL PDF GUARDADO LOCALMENTE
+        // ---------------------------------------------------------
+        Uint8List? savedPdfBytes;
+        if (match.matchReportPath != null && match.matchReportPath!.isNotEmpty) {
+           try {
+             final file = File(match.matchReportPath!);
+             if (await file.exists()) {
+               savedPdfBytes = await file.readAsBytes();
+             }
+           } catch (e) {
+             debugPrint("No se pudo leer el PDF local: $e");
+           }
+        }
+        // ---------------------------------------------------------
+
+        final fixtureRow = await (db.select(db.fixtures)..where((f) => f.matchId.equals(match.id))).getSingleOrNull();
 
         final matchPayload = {
           "match_id": match.id,
+          "fixture_id": fixtureRow?.id,
           "tournament_id": match.tournamentId,
           "venue_id": match.venueId,
           "team_a_id": match.teamAId,
@@ -1058,12 +1103,13 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
           "events": eventsList,
         };
 
-        final successId = await api.syncMatchDataMultipart(
+        // ENVIAMOS EL ARCHIVO PDF LEÍDO DEL DISCO
+        final success = await api.syncMatchDataMultipart(
           matchData: matchPayload,
-          pdfBytes: null,
+          pdfBytes: savedPdfBytes,
         );
 
-        if (successId != -1) {
+        if (success) {
           await (db.update(db.matches)..where((tbl) => tbl.id.equals(match.id)))
               .write(const MatchesCompanion(isSynced: drift.Value(true)));
           uploadedMatches++;

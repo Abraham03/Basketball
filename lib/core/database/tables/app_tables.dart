@@ -141,6 +141,7 @@ class GameEvents extends Table with BaseTable {
     #id,
   )(); // Nullable porque un Timeout no tiene jugador
 
+
   // Tipos: 'POINT_1', 'POINT_2', 'POINT_3', 'FOUL', 'TIMEOUT'
   TextColumn get type => text()();
 
