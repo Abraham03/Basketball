@@ -621,16 +621,15 @@ class PdfGenerator {
          return e.teamId == teamId && (e.type == 'C' || e.type == 'B');
       }).toList();
 
-      // Dibujamos hasta 3 casillas (estándar)
-      for (int i = 0; i < 5; i++) {
+      // Dibujamos hasta 3 casillas (estándar FIBA C, B, B)
+      for (int i = 0; i < 3; i++) {
          double x = startX + (i * PdfCoords.foulBoxWidth);
          
          if (i < coachEvents.length) {
-            // Dibuja la letra C o B
-            String code = coachEvents[i].type;
-            widgets.add(_drawText(code, x: x, y: y, fontSize: 8, isBold: true, color: PdfColors.red));
+            // Dibuja una 'X' gruesa en lugar de la letra 'C' o 'B' para tachar la casilla
+            widgets.add(_drawText("X", x: x, y: y, fontSize: 10, isBold: true, color: PdfColors.blue900));
          } else {
-            // Dibuja raya horizontal
+            // Dibuja raya horizontal indicando que la casilla quedó vacía al finalizar
             widgets.add(_drawBlueHorizontalMark(x, y));
          }
       }

@@ -311,27 +311,35 @@ class MatchGameController extends StateNotifier<MatchState> {
 
  // Método para agregar Tiempo Fuera
 void addTimeout(String teamId) {
-  _saveToHistory();
+    _saveToHistory();
 
-  // Cálculo preciso del minuto para la hoja
-  int periodDuration = state.currentPeriod > 4 ? 5 : 10;
-  int secondsElapsed = (periodDuration * 60) - state.timeLeft.inSeconds;
-  int currentMinute = (secondsElapsed / 60).ceil();
-  if (currentMinute == 0) currentMinute = 1;
-  if (currentMinute > periodDuration) currentMinute = periodDuration;
+    // NUEVO CÁLCULO DE MINUTO EXACTO FIBA (Basado en el reloj regresivo)
+    // Si quedan 9:30 (570s), 570 / 60 = 9.5 -> El minuto a anotar es el "9" (piso).
+    // Si quedan 0:45 (45s), 45 / 60 = 0.75 -> El minuto es "0" (pero solemos anotar 1 si es menor a 1).
+    int minutesLeft = (state.timeLeft.inSeconds / 60).floor(); 
+    // Si es exactamente 10:00, se anota el minuto 10.
+    if (state.timeLeft.inSeconds % 60 > 0 && minutesLeft == 10) {
+       minutesLeft = 9; // Ajuste si la app empezó en 10:00 y no bajó el primer segundo
+    }
+    // Si quedan segundos (ej: 0:45), FIBA anota el minuto 1
+    if (minutesLeft == 0 && state.timeLeft.inSeconds > 0) {
+       minutesLeft = 1;
+    } else if (state.timeLeft.inSeconds == 0) {
+       minutesLeft = 0; // Si el reloj está en cero.
+    }
 
-  String minStr = currentMinute.toString();
+    String minStr = minutesLeft.toString();
 
-  bool isClutchTime = state.currentPeriod == 4 && state.timeLeft.inSeconds == 120;
+    bool isClutchTime = state.currentPeriod == 4 && state.timeLeft.inSeconds <= 120;
 
-  if (teamId == 'A') {
-    _processTimeoutWithRules(teamId, minStr, state.currentPeriod, isClutchTime);
-  } else {
-    _processTimeoutWithRules(teamId, minStr, state.currentPeriod, isClutchTime);
+    if (teamId == 'A') {
+      _processTimeoutWithRules(teamId, minStr, state.currentPeriod, isClutchTime);
+    } else {
+      _processTimeoutWithRules(teamId, minStr, state.currentPeriod, isClutchTime);
+    }
+
+    _logEventToDb(null, 0, 0, 'TIMEOUT_$teamId');
   }
-
-  _logEventToDb(null, 0, 0, 'TIMEOUT_$teamId');
-}
 
 
 void addTeamFoul(String teamId, String type) { // type: 'C' (Coach), 'B' (Bench)
