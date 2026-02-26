@@ -751,7 +751,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                   keyboardType: TextInputType.number,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    labelText: "Número (Dorsal)",
+                    labelText: "Número",
                     labelStyle: const TextStyle(color: Colors.white54),
                     filled: true,
                     fillColor: Colors.black26,
