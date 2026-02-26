@@ -1158,6 +1158,17 @@ class $TeamsTable extends Teams with TableInfo<$TeamsTable, Team> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _logoUrlMeta = const VerificationMeta(
+    'logoUrl',
+  );
+  @override
+  late final GeneratedColumn<String> logoUrl = GeneratedColumn<String>(
+    'logo_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1167,6 +1178,7 @@ class $TeamsTable extends Teams with TableInfo<$TeamsTable, Team> {
     name,
     shortName,
     coachName,
+    logoUrl,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1221,6 +1233,12 @@ class $TeamsTable extends Teams with TableInfo<$TeamsTable, Team> {
         coachName.isAcceptableOrUnknown(data['coach_name']!, _coachNameMeta),
       );
     }
+    if (data.containsKey('logo_url')) {
+      context.handle(
+        _logoUrlMeta,
+        logoUrl.isAcceptableOrUnknown(data['logo_url']!, _logoUrlMeta),
+      );
+    }
     return context;
   }
 
@@ -1258,6 +1276,10 @@ class $TeamsTable extends Teams with TableInfo<$TeamsTable, Team> {
         DriftSqlType.string,
         data['${effectivePrefix}coach_name'],
       ),
+      logoUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}logo_url'],
+      ),
     );
   }
 
@@ -1275,6 +1297,7 @@ class Team extends DataClass implements Insertable<Team> {
   final String name;
   final String? shortName;
   final String? coachName;
+  final String? logoUrl;
   const Team({
     required this.id,
     required this.createdAt,
@@ -1283,6 +1306,7 @@ class Team extends DataClass implements Insertable<Team> {
     required this.name,
     this.shortName,
     this.coachName,
+    this.logoUrl,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1299,6 +1323,9 @@ class Team extends DataClass implements Insertable<Team> {
     }
     if (!nullToAbsent || coachName != null) {
       map['coach_name'] = Variable<String>(coachName);
+    }
+    if (!nullToAbsent || logoUrl != null) {
+      map['logo_url'] = Variable<String>(logoUrl);
     }
     return map;
   }
@@ -1318,6 +1345,9 @@ class Team extends DataClass implements Insertable<Team> {
       coachName: coachName == null && nullToAbsent
           ? const Value.absent()
           : Value(coachName),
+      logoUrl: logoUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(logoUrl),
     );
   }
 
@@ -1334,6 +1364,7 @@ class Team extends DataClass implements Insertable<Team> {
       name: serializer.fromJson<String>(json['name']),
       shortName: serializer.fromJson<String?>(json['shortName']),
       coachName: serializer.fromJson<String?>(json['coachName']),
+      logoUrl: serializer.fromJson<String?>(json['logoUrl']),
     );
   }
   @override
@@ -1347,6 +1378,7 @@ class Team extends DataClass implements Insertable<Team> {
       'name': serializer.toJson<String>(name),
       'shortName': serializer.toJson<String?>(shortName),
       'coachName': serializer.toJson<String?>(coachName),
+      'logoUrl': serializer.toJson<String?>(logoUrl),
     };
   }
 
@@ -1358,6 +1390,7 @@ class Team extends DataClass implements Insertable<Team> {
     String? name,
     Value<String?> shortName = const Value.absent(),
     Value<String?> coachName = const Value.absent(),
+    Value<String?> logoUrl = const Value.absent(),
   }) => Team(
     id: id ?? this.id,
     createdAt: createdAt ?? this.createdAt,
@@ -1366,6 +1399,7 @@ class Team extends DataClass implements Insertable<Team> {
     name: name ?? this.name,
     shortName: shortName.present ? shortName.value : this.shortName,
     coachName: coachName.present ? coachName.value : this.coachName,
+    logoUrl: logoUrl.present ? logoUrl.value : this.logoUrl,
   );
   Team copyWithCompanion(TeamsCompanion data) {
     return Team(
@@ -1376,6 +1410,7 @@ class Team extends DataClass implements Insertable<Team> {
       name: data.name.present ? data.name.value : this.name,
       shortName: data.shortName.present ? data.shortName.value : this.shortName,
       coachName: data.coachName.present ? data.coachName.value : this.coachName,
+      logoUrl: data.logoUrl.present ? data.logoUrl.value : this.logoUrl,
     );
   }
 
@@ -1388,7 +1423,8 @@ class Team extends DataClass implements Insertable<Team> {
           ..write('isSynced: $isSynced, ')
           ..write('name: $name, ')
           ..write('shortName: $shortName, ')
-          ..write('coachName: $coachName')
+          ..write('coachName: $coachName, ')
+          ..write('logoUrl: $logoUrl')
           ..write(')'))
         .toString();
   }
@@ -1402,6 +1438,7 @@ class Team extends DataClass implements Insertable<Team> {
     name,
     shortName,
     coachName,
+    logoUrl,
   );
   @override
   bool operator ==(Object other) =>
@@ -1413,7 +1450,8 @@ class Team extends DataClass implements Insertable<Team> {
           other.isSynced == this.isSynced &&
           other.name == this.name &&
           other.shortName == this.shortName &&
-          other.coachName == this.coachName);
+          other.coachName == this.coachName &&
+          other.logoUrl == this.logoUrl);
 }
 
 class TeamsCompanion extends UpdateCompanion<Team> {
@@ -1424,6 +1462,7 @@ class TeamsCompanion extends UpdateCompanion<Team> {
   final Value<String> name;
   final Value<String?> shortName;
   final Value<String?> coachName;
+  final Value<String?> logoUrl;
   final Value<int> rowid;
   const TeamsCompanion({
     this.id = const Value.absent(),
@@ -1433,6 +1472,7 @@ class TeamsCompanion extends UpdateCompanion<Team> {
     this.name = const Value.absent(),
     this.shortName = const Value.absent(),
     this.coachName = const Value.absent(),
+    this.logoUrl = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   TeamsCompanion.insert({
@@ -1443,6 +1483,7 @@ class TeamsCompanion extends UpdateCompanion<Team> {
     required String name,
     this.shortName = const Value.absent(),
     this.coachName = const Value.absent(),
+    this.logoUrl = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : name = Value(name);
   static Insertable<Team> custom({
@@ -1453,6 +1494,7 @@ class TeamsCompanion extends UpdateCompanion<Team> {
     Expression<String>? name,
     Expression<String>? shortName,
     Expression<String>? coachName,
+    Expression<String>? logoUrl,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1463,6 +1505,7 @@ class TeamsCompanion extends UpdateCompanion<Team> {
       if (name != null) 'name': name,
       if (shortName != null) 'short_name': shortName,
       if (coachName != null) 'coach_name': coachName,
+      if (logoUrl != null) 'logo_url': logoUrl,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1475,6 +1518,7 @@ class TeamsCompanion extends UpdateCompanion<Team> {
     Value<String>? name,
     Value<String?>? shortName,
     Value<String?>? coachName,
+    Value<String?>? logoUrl,
     Value<int>? rowid,
   }) {
     return TeamsCompanion(
@@ -1485,6 +1529,7 @@ class TeamsCompanion extends UpdateCompanion<Team> {
       name: name ?? this.name,
       shortName: shortName ?? this.shortName,
       coachName: coachName ?? this.coachName,
+      logoUrl: logoUrl ?? this.logoUrl,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1513,6 +1558,9 @@ class TeamsCompanion extends UpdateCompanion<Team> {
     if (coachName.present) {
       map['coach_name'] = Variable<String>(coachName.value);
     }
+    if (logoUrl.present) {
+      map['logo_url'] = Variable<String>(logoUrl.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1529,6 +1577,7 @@ class TeamsCompanion extends UpdateCompanion<Team> {
           ..write('name: $name, ')
           ..write('shortName: $shortName, ')
           ..write('coachName: $coachName, ')
+          ..write('logoUrl: $logoUrl, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -6394,6 +6443,7 @@ typedef $$TeamsTableCreateCompanionBuilder =
       required String name,
       Value<String?> shortName,
       Value<String?> coachName,
+      Value<String?> logoUrl,
       Value<int> rowid,
     });
 typedef $$TeamsTableUpdateCompanionBuilder =
@@ -6405,6 +6455,7 @@ typedef $$TeamsTableUpdateCompanionBuilder =
       Value<String> name,
       Value<String?> shortName,
       Value<String?> coachName,
+      Value<String?> logoUrl,
       Value<int> rowid,
     });
 
@@ -6473,6 +6524,11 @@ class $$TeamsTableFilterComposer extends Composer<_$AppDatabase, $TeamsTable> {
 
   ColumnFilters<String> get coachName => $composableBuilder(
     column: $table.coachName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get logoUrl => $composableBuilder(
+    column: $table.logoUrl,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6545,6 +6601,11 @@ class $$TeamsTableOrderingComposer
     column: $table.coachName,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get logoUrl => $composableBuilder(
+    column: $table.logoUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$TeamsTableAnnotationComposer
@@ -6576,6 +6637,9 @@ class $$TeamsTableAnnotationComposer
 
   GeneratedColumn<String> get coachName =>
       $composableBuilder(column: $table.coachName, builder: (column) => column);
+
+  GeneratedColumn<String> get logoUrl =>
+      $composableBuilder(column: $table.logoUrl, builder: (column) => column);
 
   Expression<T> tournamentTeamsRefs<T extends Object>(
     Expression<T> Function($$TournamentTeamsTableAnnotationComposer a) f,
@@ -6638,6 +6702,7 @@ class $$TeamsTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<String?> shortName = const Value.absent(),
                 Value<String?> coachName = const Value.absent(),
+                Value<String?> logoUrl = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TeamsCompanion(
                 id: id,
@@ -6647,6 +6712,7 @@ class $$TeamsTableTableManager
                 name: name,
                 shortName: shortName,
                 coachName: coachName,
+                logoUrl: logoUrl,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -6658,6 +6724,7 @@ class $$TeamsTableTableManager
                 required String name,
                 Value<String?> shortName = const Value.absent(),
                 Value<String?> coachName = const Value.absent(),
+                Value<String?> logoUrl = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TeamsCompanion.insert(
                 id: id,
@@ -6667,6 +6734,7 @@ class $$TeamsTableTableManager
                 name: name,
                 shortName: shortName,
                 coachName: coachName,
+                logoUrl: logoUrl,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

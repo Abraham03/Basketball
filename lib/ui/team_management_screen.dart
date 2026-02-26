@@ -27,33 +27,36 @@ class TeamManagementScreen extends ConsumerWidget {
     final catalogAsync = ref.watch(tournamentDataByIdProvider(tournamentId));
 
     return Scaffold(
-      extendBodyBehindAppBar: true, // IMPORTANTE PARA EL EFECTO CRISTAL
-      backgroundColor: Colors.transparent, // DEJAR VER EL FONDO
+      extendBodyBehindAppBar: true, 
+      backgroundColor: Colors.transparent, 
 
       appBar: AppBar(
         title: const Text(
-          "Gestión de Equipos",
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          "GESTIÓN DE EQUIPOS",
+          style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5),
         ),
         centerTitle: true,
-        backgroundColor: Colors.black.withOpacity(0.4), // Appbar Cristalino
+        backgroundColor: Colors.black.withOpacity(0.6), 
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
+      
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddTeamDialog(context, ref),
         label: const Text(
           "Nuevo Equipo",
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
         ),
-        icon: const Icon(Icons.add),
-        backgroundColor: Colors.orange.shade600,
-        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add_circle_outline),
+        backgroundColor: Colors.orangeAccent,
+        foregroundColor: Colors.black,
+        elevation: 8,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
 
       // APLICAMOS EL FONDO REUTILIZABLE
       body: AppBackground(
-        opacity: 0.5, // Sombra para resaltar las tarjetas
+        opacity: 0.8, 
         child: catalogAsync.when(
           loading: () => const Center(
             child: CircularProgressIndicator(color: Colors.orangeAccent),
@@ -64,13 +67,14 @@ class TeamManagementScreen extends ConsumerWidget {
               children: [
                 const Icon(
                   Icons.error_outline,
-                  size: 48,
+                  size: 60,
                   color: Colors.redAccent,
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 16),
                 Text(
                   "Error: $err",
-                  style: const TextStyle(color: Colors.white),
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),
@@ -82,30 +86,33 @@ class TeamManagementScreen extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.all(28),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
+                        color: Colors.white.withOpacity(0.05),
                         shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20)]
                       ),
                       child: const Icon(
-                        Icons.groups_3,
-                        size: 64,
-                        color: Colors.white70,
+                        Icons.shield_outlined,
+                        size: 80,
+                        color: Colors.white38,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
                     const Text(
-                      "No hay equipos en este torneo.",
+                      "Aún no hay equipos",
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     Text(
-                      "Agrega un equipo con el botón inferior.",
-                      style: TextStyle(color: Colors.white.withOpacity(0.7)),
+                      "Registra el primer equipo\nusando el botón inferior.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16, height: 1.5),
                     ),
                   ],
                 ),
@@ -113,50 +120,52 @@ class TeamManagementScreen extends ConsumerWidget {
             }
 
             // --- DISEÑO RESPONSIVO (LayoutBuilder) ---
-            return LayoutBuilder(
-              builder: (context, constraints) {
-                // Si el ancho es mayor a 600px (Tablets/Web), usa Grid
-                if (constraints.maxWidth > 600) {
-                  return GridView.builder(
+            return SafeArea(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Si el ancho es mayor a 600px (Tablets/Web), usa Grid
+                  if (constraints.maxWidth > 600) {
+                    return GridView.builder(
+                      padding: const EdgeInsets.only(
+                        top: 20,
+                        bottom: 100,
+                        left: 20,
+                        right: 20,
+                      ),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: constraints.maxWidth > 900 ? 3 : 2,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: 2.5, 
+                      ),
+                      itemCount: data.teams.length,
+                      itemBuilder: (context, index) {
+                        final team = data.teams[index];
+                        return _TeamCard(team: team);
+                      },
+                    );
+                  }
+
+                  // Si es Móvil, usa ListView
+                  return ListView.builder(
                     padding: const EdgeInsets.only(
-                      top: 100,
+                      top: 20,
                       bottom: 100,
                       left: 16,
                       right: 16,
-                    ),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: constraints.maxWidth > 900 ? 3 : 2,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: 2.5, // Tarjetas más anchas que altas
-                    ),
+                    ), 
+                    physics: const BouncingScrollPhysics(),
                     itemCount: data.teams.length,
                     itemBuilder: (context, index) {
                       final team = data.teams[index];
-                      return _TeamCard(team: team);
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 14.0),
+                        child: _TeamCard(team: team),
+                      );
                     },
                   );
-                }
-
-                // Si es Móvil, usa ListView
-                return ListView.builder(
-                  padding: const EdgeInsets.only(
-                    top: 100,
-                    bottom: 100,
-                    left: 16,
-                    right: 16,
-                  ), // Padding por el AppBar y FAB
-                  physics: const BouncingScrollPhysics(),
-                  itemCount: data.teams.length,
-                  itemBuilder: (context, index) {
-                    final team = data.teams[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12.0),
-                      child: _TeamCard(team: team),
-                    );
-                  },
-                );
-              },
+                },
+              ),
             );
           },
         ),
@@ -173,46 +182,26 @@ class TeamManagementScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E2432),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
-          "🛡️ Registrar Equipo",
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: const Row(
+          children: [
+            Icon(Icons.shield_outlined, color: Colors.orangeAccent),
+            SizedBox(width: 10),
+            Text(
+              "Registrar Equipo",
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18),
+            ),
+          ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
-              controller: nameCtrl,
-              decoration: InputDecoration(
-                labelText: "Nombre del Equipo",
-                prefixIcon: const Icon(Icons.shield),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: shortCtrl,
-              decoration: InputDecoration(
-                labelText: "Abreviatura (Ej: CHI)",
-                prefixIcon: const Icon(Icons.short_text),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: coachCtrl,
-              decoration: InputDecoration(
-                labelText: "Nombre del Entrenador",
-                prefixIcon: const Icon(Icons.person),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
+            _buildModernTextField(nameCtrl, "Nombre del Equipo", Icons.groups),
+            const SizedBox(height: 16),
+            _buildModernTextField(shortCtrl, "Abreviatura (Ej: LAL)", Icons.short_text),
+            const SizedBox(height: 16),
+            _buildModernTextField(coachCtrl, "Nombre del Entrenador", Icons.sports),
           ],
         ),
         actions: [
@@ -220,13 +209,19 @@ class TeamManagementScreen extends ConsumerWidget {
             onPressed: () => Navigator.pop(ctx),
             child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange.shade600,
-              foregroundColor: Colors.white,
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.orangeAccent,
+              foregroundColor: Colors.black,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+            icon: const Icon(Icons.check, size: 18),
+            label: const Text(
+              "Guardar",
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
             onPressed: () async {
               if (nameCtrl.text.isEmpty) return;
@@ -281,8 +276,7 @@ class TeamManagementScreen extends ConsumerWidget {
                 );
               } catch (e) {
                 // Generar ID temporal local negativo
-                final tempId = (-DateTime.now().millisecondsSinceEpoch)
-                    .toString();
+                final tempId = (-DateTime.now().millisecondsSinceEpoch).toString();
 
                 await db.transaction(() async {
                   await db
@@ -293,7 +287,7 @@ class TeamManagementScreen extends ConsumerWidget {
                           name: nameCtrl.text,
                           shortName: drift.Value(shortCtrl.text),
                           coachName: drift.Value(coachCtrl.text),
-                          isSynced: const drift.Value(false), // Pendiente
+                          isSynced: const drift.Value(false), 
                         ),
                       );
                   await db
@@ -319,25 +313,49 @@ class TeamManagementScreen extends ConsumerWidget {
               // Recargar UI
               ref.invalidate(tournamentDataByIdProvider(tournamentId));
             },
-            child: const Text(
-              "Guardar",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
           ),
         ],
       ),
     );
   }
+
+  // --- Helper para inputs del diálogo ---
+  Widget _buildModernTextField(TextEditingController controller, String label, IconData icon) {
+    return TextField(
+      controller: controller,
+      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white54, fontSize: 13),
+        prefixIcon: Icon(icon, color: Colors.white54, size: 20),
+        filled: true,
+        fillColor: Colors.black26,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.orangeAccent)),
+      ),
+    );
+  }
 }
 
-// --- WIDGET TARJETA DE EQUIPO (CON GLASSMORPHISM) ---
+// =====================================================================
+// TARJETA DE EQUIPO MODERNA Y PROFESIONAL
+// =====================================================================
 class _TeamCard extends StatelessWidget {
   final dynamic team;
   const _TeamCard({required this.team});
 
+  // --- HELPER PARA RESOLVER LA RUTA DEL LOGO (Más robusto) ---
+  String _resolveLogoUrl(String? path) {
+    if (path == null || path.isEmpty) return '';
+    if (path.startsWith('http')) return path;
+    // Limpiamos los "../" o "./" que PHP suele guardar en BD
+    String cleanPath = path.replaceAll('../', '').replaceAll('./', '');
+    if (cleanPath.startsWith('/')) cleanPath = cleanPath.substring(1);
+    return 'https://basket.techsolutions.management/$cleanPath';
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Lógica para detectar si es local (ID negativo o no numérico)
     bool isLocal = false;
     try {
       final idInt = int.parse(team.id.toString());
@@ -346,12 +364,31 @@ class _TeamCard extends StatelessWidget {
       isLocal = true;
     }
 
+    // Extracción segura del logoUrl
+    String? logoPath;
+    try {
+      logoPath = team.logoUrl;
+    } catch (_) {
+      logoPath = null;
+    }
+
+    final String resolvedUrl = _resolveLogoUrl(logoPath);
+    final String initial = team.name.isNotEmpty ? team.name.substring(0, 1).toUpperCase() : '?';
+    
+    // Extracción segura de shortName
+    String shortName = '';
+    try {
+      shortName = team.shortName?.isNotEmpty == true ? team.shortName : '';
+    } catch (_) {
+      shortName = '';
+    }
+
     return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(20),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), // Efecto cristal
+        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15), 
         child: Material(
-          color: Colors.white.withOpacity(0.1), // Fondo semitransparente oscuro
+          color: Colors.transparent, 
           child: InkWell(
             onTap: () {
               Navigator.push(
@@ -360,74 +397,64 @@ class _TeamCard extends StatelessWidget {
               );
             },
             splashColor: Colors.orange.withOpacity(0.3),
+            highlightColor: Colors.white.withOpacity(0.05),
             child: Container(
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.white.withOpacity(0.2)),
-                borderRadius: BorderRadius.circular(16),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Colors.white.withOpacity(0.15), Colors.white.withOpacity(0.02)]
+                ),
+                border: Border.all(color: Colors.white.withOpacity(0.15), width: 1.5),
+                borderRadius: BorderRadius.circular(20),
               ),
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 18.0),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Avatar con iniciales
+                  // --- LOGO DEL EQUIPO O INICIAL ---
                   Container(
-                    width: 55,
-                    height: 55,
+                    width: 70, 
+                    height: 70,
                     decoration: BoxDecoration(
-                      color: isLocal
-                          ? Colors.orange.withOpacity(0.2)
-                          : Colors.white.withOpacity(0.15),
+                      color: isLocal ? Colors.orange.withOpacity(0.1) : Colors.black45,
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: isLocal ? Colors.orangeAccent : Colors.white54,
-                        width: 1.5,
+                        color: isLocal ? Colors.orangeAccent.withOpacity(0.5) : Colors.white38, 
+                        width: 2
                       ),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 10, offset: const Offset(0, 4))
+                      ]
                     ),
-                    child: Center(
-                      child: Text(
-                        team.shortName.isNotEmpty
-                            ? team.shortName
-                            : team.name.substring(0, 1).toUpperCase(),
-                        style: TextStyle(
-                          color: isLocal ? Colors.orangeAccent : Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
+                    child: ClipOval(
+                      child: resolvedUrl.isNotEmpty
+                          ? Image.network(
+                              resolvedUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => _buildInitials(initial, isLocal),
+                            )
+                          : _buildInitials(initial, isLocal),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 18),
 
-                  // Información
+                  // --- INFORMACIÓN DEL EQUIPO ---
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
-                          team.name,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white, // Letra clara
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 6),
                         Row(
                           children: [
-                            const Icon(
-                              Icons.sports,
-                              size: 14,
-                              color: Colors.white54,
-                            ),
-                            const SizedBox(width: 4),
                             Expanded(
                               child: Text(
-                                "Coach: ${team.coachName.isNotEmpty ? team.coachName : 'Sin asignar'}",
+                                team.name,
                                 style: const TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.white70,
+                                  fontSize: 18, 
+                                  fontWeight: FontWeight.w900, 
+                                  color: Colors.white,
+                                  letterSpacing: 0.5
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -435,40 +462,95 @@ class _TeamCard extends StatelessWidget {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 8),
+                        
+                        // Etiqueta (Pill) para Abreviatura y Coach
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            if (shortName.isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Colors.orangeAccent.withOpacity(0.2), 
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: Colors.orangeAccent.withOpacity(0.5))
+                                ),
+                                child: Text(
+                                  shortName, 
+                                  style: const TextStyle(color: Colors.orangeAccent, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.0)
+                                ),
+                              ),
+                            
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.sports, size: 14, color: Colors.white54),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    team.coachName?.isNotEmpty == true ? team.coachName : 'Sin entrenador',
+                                    style: TextStyle(
+                                      fontSize: 13, 
+                                      color: Colors.white.withOpacity(0.7), 
+                                      fontWeight: FontWeight.w500
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        )
                       ],
                     ),
                   ),
 
-                  // Indicador de Estado (Nube o Flecha)
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (isLocal)
-                        const Tooltip(
-                          message: "Pendiente de subir",
-                          child: Icon(
-                            Icons.cloud_off,
-                            color: Colors.orangeAccent,
-                            size: 20,
-                          ),
-                        )
-                      else
-                        const Tooltip(
-                          message: "Sincronizado",
-                          child: Icon(
-                            Icons.cloud_done,
-                            color: Colors.greenAccent,
-                            size: 20,
-                          ),
+                  const SizedBox(width: 10),
+
+                  // --- INDICADOR DE ESTADO (Nube o Flecha) ---
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black26, 
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white10)
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isLocal ? Icons.cloud_off : Icons.cloud_done,
+                          color: isLocal ? Colors.orangeAccent : Colors.greenAccent,
+                          size: 18,
                         ),
-                      const SizedBox(height: 8),
-                      const Icon(Icons.chevron_right, color: Colors.white54),
-                    ],
+                        const SizedBox(height: 6),
+                        const Icon(Icons.arrow_forward_ios, color: Colors.white38, size: 14),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  // Widget de apoyo por si no hay imagen
+  Widget _buildInitials(String initial, bool isLocal) {
+    return Center(
+      child: Text(
+        initial,
+        style: TextStyle(
+          color: isLocal ? Colors.orangeAccent : Colors.white,
+          fontWeight: FontWeight.w900,
+          fontSize: 28, // Tamaño grande
         ),
       ),
     );

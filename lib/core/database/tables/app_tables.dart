@@ -64,6 +64,7 @@ class Teams extends Table with BaseTable {
   TextColumn get name => text().withLength(min: 1, max: 100)();
   TextColumn get shortName => text().nullable()();
   TextColumn get coachName => text().nullable()();
+  TextColumn get logoUrl => text().nullable()();
   @override
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 }

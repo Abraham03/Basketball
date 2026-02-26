@@ -52,12 +52,14 @@ class Team {
   final String name;
   final String shortName;
   final String coachName;
+  final String? logoUrl;
 
   Team({
     required this.id,
     required this.name,
     required this.shortName,
     required this.coachName,
+    this.logoUrl,
   });
 
   factory Team.fromJson(Map<String, dynamic> json) {
@@ -66,6 +68,7 @@ class Team {
       name: json['name'],
       shortName: json['short_name'] ?? '',
       coachName: json['coach_name'] ?? '',
+      logoUrl: json['logo_url'],
     );
   }
 }

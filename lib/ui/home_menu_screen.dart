@@ -735,6 +735,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                 name: team.name,
                 shortName: drift.Value(team.shortName),
                 coachName: drift.Value(team.coachName),
+                logoUrl: drift.Value(team.logoUrl),
                 isSynced: const drift.Value(true),
               ),
               mode: drift.InsertMode.insertOrReplace,

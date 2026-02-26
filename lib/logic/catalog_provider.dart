@@ -1,3 +1,4 @@
+// lib/logic/catalog_provider.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart';
 
@@ -5,8 +6,6 @@ import '../core/models/catalog_models.dart' as model;
 import '../core/models/catalog_models.dart';
 import '../core/service/api_service.dart';
 import '../logic/tournament_provider.dart';
-
-
 
 // Provider que instancia el servicio API
 final apiServiceProvider = Provider((ref) => ApiService());
@@ -20,11 +19,8 @@ final catalogProvider = FutureProvider.family<CatalogData, String>((ref,tourname
 final tournamentDataByIdProvider = StreamProvider.family<model.CatalogData, String>((ref, tournamentId) async* {
   final db = ref.read(databaseProvider);
   
-  // TRUCO: Escuchamos la tabla PLAYERS.
-  // Así, cuando agregues un jugador, este stream emitirá un evento y se recargará todo.
-  // Si también agregas equipos frecuentemente, podrías necesitar combinarlos, 
-  // pero para tu caso de "Agregar Jugador", esto es suficiente.
-  final stream = db.select(db.players).watch(); 
+  // TRUCO: Escuchamos la tabla PLAYERS y TEAMS para que recargue si hay cambios.
+  final stream = db.select(db.teams).watch(); 
   
   // Iniciamos con los datos actuales
   yield* stream.asyncMap((_) async {
@@ -41,7 +37,8 @@ final tournamentDataByIdProvider = StreamProvider.family<model.CatalogData, Stri
             id: int.parse(teamRow.id), 
             name: teamRow.name, 
             shortName: teamRow.shortName ?? '', 
-            coachName: teamRow.coachName ?? ''
+            coachName: teamRow.coachName ?? '',
+            logoUrl: teamRow.logoUrl // <--- ¡AQUÍ ESTÁ LA MAGIA!
         );
     }).toList();
 
