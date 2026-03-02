@@ -1,4 +1,3 @@
-// lib/ui/screens/team_detail_screen.dart
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously
 
 import 'dart:ui';
@@ -6,18 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 
-// Modelos de negocio
 import '../core/models/catalog_models.dart';
-
-// Base de datos (con alias)
 import '../core/database/app_database.dart' as db_app;
-
-// Inyección de dependencias (con alias para evitar conflicto de nombres)
 import '../core/di/dependency_injection.dart' as di;
-
-// Importaciones de diseño
 import '../ui/widgets/app_background.dart';
-
 
 class TeamDetailScreen extends ConsumerWidget {
   final Team team;
@@ -25,25 +16,25 @@ class TeamDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Convertir ID del equipo a entero de forma segura
     final teamIdInt = int.tryParse(team.id.toString()) ?? 0;
-
-    // Escuchar cambios en tiempo real de la base de datos local
     final playersAsync = ref.watch(teamPlayersStreamProvider(teamIdInt));
     final isTeamLocal = teamIdInt < 0;
 
     return Scaffold(
-      extendBodyBehindAppBar: true, // IMPORTANTE PARA EL FONDO
-      backgroundColor: Colors.transparent, // DEJAR VER EL FONDO
-      
+      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.transparent,
+
       appBar: AppBar(
-        backgroundColor: Colors.black.withOpacity(0.4), // Cristalino
+        backgroundColor: Colors.black.withOpacity(0.4),
         iconTheme: const IconThemeData(color: Colors.white),
         title: Column(
           children: [
             Text(
               team.name,
-              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
             const Text(
               "Plantilla de Jugadores",
@@ -65,24 +56,37 @@ class TeamDetailScreen extends ConsumerWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showPlayerDialog(context, ref, teamIdInt),
-        label: const Text("Nuevo Jugador"),
+        onPressed: () =>
+            _showPlayerDialog(context, ref, teamIdInt, isTeamLocal),
+        label: const Text(
+          "Nuevo Jugador",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         icon: const Icon(Icons.person_add),
         backgroundColor: Colors.orange.shade600,
         foregroundColor: Colors.white,
       ),
-      // APLICAMOS EL APP BACKGROUND AQUÍ
+
       body: AppBackground(
-        opacity: 0.5, // Un poco más oscuro para que resalten las tarjetas
+        opacity: 0.5,
         child: SafeArea(
           child: playersAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator(color: Colors.orangeAccent)),
+            loading: () => const Center(
+              child: CircularProgressIndicator(color: Colors.orangeAccent),
+            ),
             error: (err, _) => Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
-                  Text("Error: $err", style: const TextStyle(color: Colors.white)),
+                  const Icon(
+                    Icons.error_outline,
+                    size: 48,
+                    color: Colors.redAccent,
+                  ),
+                  Text(
+                    "Error: $err",
+                    style: const TextStyle(color: Colors.white),
+                  ),
                 ],
               ),
             ),
@@ -107,7 +111,11 @@ class TeamDetailScreen extends ConsumerWidget {
                       const SizedBox(height: 16),
                       const Text(
                         "No hay jugadores registrados.",
-                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
@@ -119,19 +127,18 @@ class TeamDetailScreen extends ConsumerWidget {
                 );
               }
 
-              // --- DISEÑO RESPONSIVO ---
               return LayoutBuilder(
                 builder: (context, constraints) {
                   if (constraints.maxWidth > 600) {
-                    // Modo Tablet/Web (Grid)
                     return GridView.builder(
                       padding: const EdgeInsets.all(16),
-                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                        maxCrossAxisExtent: 400,
-                        mainAxisExtent: 90, // Altura fija de la tarjeta
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithMaxCrossAxisExtent(
+                            maxCrossAxisExtent: 400,
+                            mainAxisExtent: 90,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                          ),
                       itemCount: players.length,
                       itemBuilder: (context, index) {
                         final player = players[index];
@@ -140,12 +147,11 @@ class TeamDetailScreen extends ConsumerWidget {
                           ref,
                           player,
                           teamIdInt,
+                          isTeamLocal,
                         );
                       },
                     );
                   }
-
-                  // Modo Móvil (Lista)
                   return ListView.builder(
                     padding: const EdgeInsets.all(12),
                     itemCount: players.length,
@@ -158,6 +164,7 @@ class TeamDetailScreen extends ConsumerWidget {
                           ref,
                           player,
                           teamIdInt,
+                          isTeamLocal,
                         ),
                       );
                     },
@@ -176,6 +183,7 @@ class TeamDetailScreen extends ConsumerWidget {
     WidgetRef ref,
     db_app.Player player,
     int teamIdInt,
+    bool isTeamLocal,
   ) {
     return Dismissible(
       key: Key(player.id),
@@ -193,9 +201,18 @@ class TeamDetailScreen extends ConsumerWidget {
         return await showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-            title: const Text("¿Eliminar jugador?"),
-            content: Text("¿Estás seguro de eliminar a ${player.name}?"),
+            backgroundColor: const Color(0xFF1E2432),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+            title: const Text(
+              "¿Eliminar jugador?",
+              style: TextStyle(color: Colors.white),
+            ),
+            content: Text(
+              "¿Estás seguro de eliminar a ${player.name}?",
+              style: const TextStyle(color: Colors.white70),
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
@@ -203,7 +220,13 @@ class TeamDetailScreen extends ConsumerWidget {
               ),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: const Text("Sí, eliminar", style: TextStyle(color: Colors.red)),
+                child: const Text(
+                  "Sí, eliminar",
+                  style: TextStyle(
+                    color: Colors.redAccent,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
           ),
@@ -211,21 +234,18 @@ class TeamDetailScreen extends ConsumerWidget {
       },
       onDismissed: (direction) async {
         final db = ref.read(di.databaseProvider);
-
-        // 1. Borrar local
         await (db.delete(
           db.players,
         )..where((t) => t.id.equals(player.id))).go();
-
-        // 2. Intentar borrar en nube (si es un ID real, es decir, mayor a 0)
-        final playerIdInt = int.tryParse(player.id) ?? 0;
-        if (playerIdInt > 0) {
-          // Opcional: Implementa api.deletePlayer(player.id) en ApiService si tienes ese endpoint en PHP
-        }
       },
       child: GestureDetector(
-        onTap: () =>
-            _showPlayerDialog(context, ref, teamIdInt, playerToEdit: player),
+        onTap: () => _showPlayerDialog(
+          context,
+          ref,
+          teamIdInt,
+          isTeamLocal,
+          playerToEdit: player,
+        ),
         child: _PlayerCard(player: player),
       ),
     );
@@ -234,7 +254,8 @@ class TeamDetailScreen extends ConsumerWidget {
   void _showPlayerDialog(
     BuildContext context,
     WidgetRef ref,
-    int teamIdInt, {
+    int teamIdInt,
+    bool isTeamLocal, {
     db_app.Player? playerToEdit,
   }) {
     final isEditing = playerToEdit != null;
@@ -246,29 +267,67 @@ class TeamDetailScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E2432),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          isEditing ? "✏️ Editar Jugador" : "👤 Registrar Jugador",
-          style: const TextStyle(fontWeight: FontWeight.bold),
+        title: Row(
+          children: [
+            Icon(
+              isEditing ? Icons.edit : Icons.person_add,
+              color: Colors.orangeAccent,
+            ),
+            const SizedBox(width: 10),
+            Text(
+              isEditing ? "Editar Jugador" : "Registrar Jugador",
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameCtrl,
+              style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 labelText: "Nombre Completo",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                prefixIcon: const Icon(Icons.person),
+                labelStyle: const TextStyle(color: Colors.white54),
+                filled: true,
+                fillColor: Colors.black26,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Colors.orangeAccent),
+                ),
+                prefixIcon: const Icon(Icons.person, color: Colors.white54),
               ),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: numberCtrl,
+              style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 labelText: "Número (#)",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                prefixIcon: const Icon(Icons.format_list_numbered),
+                labelStyle: const TextStyle(color: Colors.white54),
+                filled: true,
+                fillColor: Colors.black26,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Colors.orangeAccent),
+                ),
+                prefixIcon: const Icon(
+                  Icons.format_list_numbered,
+                  color: Colors.white54,
+                ),
               ),
               keyboardType: TextInputType.number,
             ),
@@ -283,25 +342,22 @@ class TeamDetailScreen extends ConsumerWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.orange.shade600,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             onPressed: () async {
-              // 1. VALIDACIÓN BÁSICA
               if (nameCtrl.text.trim().isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text("⚠️ El nombre es obligatorio")),
                 );
                 return;
               }
-
               final db = ref.read(di.databaseProvider);
               final api = ref.read(di.apiServiceProvider);
               final playerNum = int.tryParse(numberCtrl.text) ?? 0;
-
-              // 2. VALIDACIÓN DE DUPLICADOS EN EL MISMO EQUIPO
               final currentPlayers =
                   ref.read(teamPlayersStreamProvider(teamIdInt)).value ?? [];
-
               final isDuplicate = currentPlayers.any(
                 (p) => p.defaultNumber == playerNum && p.id != playerToEdit?.id,
               );
@@ -315,20 +371,18 @@ class TeamDetailScreen extends ConsumerWidget {
                     backgroundColor: Colors.redAccent,
                   ),
                 );
-                return; // IMPORTANTE: No cerramos el diálogo
+                return;
               }
 
               try {
                 if (isEditing) {
-                  // --- LÓGICA DE EDICIÓN ---
                   final isRealId = (int.tryParse(playerToEdit.id) ?? 0) > 0;
                   bool syncSuccess = false;
 
-                  if (isRealId) {
-                    // MODIFICADO: AHORA ENVIAMOS EL teamIdInt TAMBIÉN
+                  if (isRealId && !isTeamLocal) {
                     syncSuccess = await api.updatePlayer(
                       playerToEdit.id,
-                      teamIdInt, 
+                      teamIdInt,
                       nameCtrl.text,
                       playerNum,
                     );
@@ -343,8 +397,7 @@ class TeamDetailScreen extends ConsumerWidget {
                       isSynced: drift.Value(syncSuccess),
                     ),
                   );
-
-                  if (context.mounted) {
+                  if (context.mounted)
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
@@ -352,20 +405,24 @@ class TeamDetailScreen extends ConsumerWidget {
                               ? "✅ Jugador actualizado en la nube"
                               : "💾 Editado localmente (Pendiente de subir)",
                         ),
-                        backgroundColor: syncSuccess ? Colors.green : Colors.orange,
+                        backgroundColor: syncSuccess
+                            ? Colors.green
+                            : Colors.orange,
                       ),
                     );
-                  }
                 } else {
-                  // --- LÓGICA DE CREACIÓN ---
                   try {
-                    // INTENTO ONLINE
+                    // REGLA DE ORO: Si el equipo es local, forzar offline al jugador. MySQL no aceptará un team_id negativo.
+                    if (isTeamLocal)
+                      throw Exception(
+                        "Equipo padre es local. Forzando cascada offline.",
+                      );
+
                     final newId = await api.addPlayer(
                       teamIdInt,
                       nameCtrl.text,
                       playerNum,
                     );
-
                     await db
                         .into(db.players)
                         .insert(
@@ -379,20 +436,16 @@ class TeamDetailScreen extends ConsumerWidget {
                           ),
                           mode: drift.InsertMode.insertOrReplace,
                         );
-
-                    if (context.mounted) {
+                    if (context.mounted)
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text("✅ Jugador agregado"),
                           backgroundColor: Colors.green,
                         ),
                       );
-                    }
                   } catch (e) {
-                    // FALLO ONLINE (GUARDAR OFFLINE)
                     final tempId = (-DateTime.now().millisecondsSinceEpoch)
                         .toString();
-
                     await db
                         .into(db.players)
                         .insert(
@@ -402,27 +455,22 @@ class TeamDetailScreen extends ConsumerWidget {
                             name: nameCtrl.text,
                             defaultNumber: drift.Value(playerNum),
                             active: const drift.Value(true),
-                            isSynced: const drift.Value(false), // Pendiente
+                            isSynced: const drift.Value(false),
                           ),
                         );
-
-                    if (context.mounted) {
+                    if (context.mounted)
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text("💾 Sin conexión. Guardado localmente."),
+                          content: Text(
+                            "💾 Sin conexión. Guardado localmente.",
+                          ),
                           backgroundColor: Colors.orange,
                         ),
                       );
-                    }
                   }
                 }
-
-                // 3. ÉXITO TOTAL: Cerramos el diálogo
-                if (context.mounted) {
-                  Navigator.pop(ctx);
-                }
+                if (context.mounted) Navigator.pop(ctx);
               } catch (e) {
-                // Si hay un error crítico
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text("❌ Error: $e"),
@@ -431,7 +479,10 @@ class TeamDetailScreen extends ConsumerWidget {
                 );
               }
             },
-            child: Text(isEditing ? "Actualizar" : "Guardar"),
+            child: Text(
+              isEditing ? "Actualizar" : "Guardar",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -439,52 +490,50 @@ class TeamDetailScreen extends ConsumerWidget {
   }
 }
 
-// --- WIDGET TARJETA DE JUGADOR (Con Glassmorphism) ---
 class _PlayerCard extends StatelessWidget {
   final db_app.Player player;
   const _PlayerCard({required this.player});
 
   @override
   Widget build(BuildContext context) {
-    // Determinar si es local
     final isLocal = (int.tryParse(player.id) ?? 0) < 0 || !player.isSynced;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), // Efecto cristal
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.15), // Fondo semitransparente
+            color: Colors.white.withOpacity(0.10),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.white.withOpacity(0.2)),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
           child: Row(
             children: [
-              // Número de camiseta
               Container(
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
                   color: Colors.orange.withOpacity(0.2),
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.orangeAccent.withOpacity(0.5)),
+                  border: Border.all(
+                    color: Colors.orangeAccent.withOpacity(0.5),
+                    width: 2,
+                  ),
                 ),
                 child: Center(
                   child: Text(
                     "#${player.defaultNumber}",
                     style: const TextStyle(
                       color: Colors.orangeAccent,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w900,
                       fontSize: 18,
                     ),
                   ),
                 ),
               ),
               const SizedBox(width: 16),
-
-              // Nombre y Estado
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -495,7 +544,7 @@ class _PlayerCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white, // Letra blanca para el fondo oscuro
+                        color: Colors.white,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -505,14 +554,16 @@ class _PlayerCard extends StatelessWidget {
                         padding: EdgeInsets.only(top: 4.0),
                         child: Text(
                           "Pendiente de subir",
-                          style: TextStyle(fontSize: 12, color: Colors.orangeAccent),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.orangeAccent,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                   ],
                 ),
               ),
-
-              // Icono de estado
               if (isLocal)
                 const Tooltip(
                   message: "Guardado en dispositivo",
@@ -531,7 +582,6 @@ class _PlayerCard extends StatelessWidget {
   }
 }
 
-// --- PROVIDER DEL STREAM ---
 final teamPlayersStreamProvider =
     StreamProvider.family<List<db_app.Player>, int>((ref, teamId) {
       final db = ref.watch(di.databaseProvider);

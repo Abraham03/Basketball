@@ -1,4 +1,3 @@
-// lib/ui/screens/home_menu_screen.dart
 // ignore_for_file: deprecated_member_use
 
 import 'dart:typed_data';
@@ -12,11 +11,11 @@ import 'dart:io';
 import '../core/database/app_database.dart';
 import '../logic/tournament_provider.dart';
 import '../logic/catalog_provider.dart';
+import 'client_scoreboard_screen.dart';
 import 'fixture_list_screen.dart';
 import '../ui/match_setup_screen.dart';
 import 'team_management_screen.dart';
 
-// Importaciones de los componentes de diseño
 import '../ui/widgets/glass_dashboard_card.dart';
 import '../ui/widgets/app_background.dart';
 
@@ -71,7 +70,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
 
     try {
       finalId = await api.createTournament(name, category);
-
       await db
           .into(db.tournaments)
           .insert(
@@ -97,7 +95,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
       }
     } catch (e) {
       finalId = const Uuid().v4();
-
       await db
           .into(db.tournaments)
           .insert(
@@ -210,9 +207,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      backgroundColor:
-          Colors.transparent, 
-
+      backgroundColor: Colors.transparent,
       floatingActionButton: _isAdminMode
           ? FloatingActionButton.extended(
               onPressed: _showCreateDialog,
@@ -222,7 +217,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
               foregroundColor: Colors.white,
             )
           : null,
-
       body: AppBackground(
         child: Stack(
           children: [
@@ -327,7 +321,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                                       ),
                                     );
                                   }
-
                                   if (selectedTournamentId == null &&
                                       tournaments.isNotEmpty) {
                                     Future.microtask(
@@ -341,7 +334,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                                               tournaments.first.id,
                                     );
                                   }
-
                                   final selectedName = tournaments
                                       .firstWhere(
                                         (t) => t.id == selectedTournamentId,
@@ -450,13 +442,25 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                                           context,
                                           MaterialPageRoute(
                                             builder: (_) => MatchSetupScreen(
-                                              tournamentId: selectedTournamentId,
-                                              // SE ELIMINARON LOS PARÁMETROS EXTRAS QUE CAUSABAN ERROR
+                                              tournamentId:
+                                                  selectedTournamentId,
                                             ),
                                           ),
                                         ),
                                 ),
                                 if (_isAdminMode) ...[
+                                  GlassDashboardCard(
+                                    title: "Pantalla Tablero",
+                                    icon: Icons.tv,
+                                    color: Colors.deepPurpleAccent,
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const ClientScoreboardScreen(),
+                                      ),
+                                    ),
+                                  ),
                                   GlassDashboardCard(
                                     title: "Equipos",
                                     icon: Icons.groups,
@@ -514,7 +518,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                 );
               },
             ),
-
             Positioned(
               bottom: 20,
               left: 20,
@@ -666,112 +669,118 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
     try {
       final api = ref.read(apiServiceProvider);
       final db = ref.read(databaseProvider);
-      
-      final unsyncedTournaments = await (db.select(db.tournaments)..where((t) => t.isSynced.equals(false))).get();
-      final unsyncedTeams = await (db.select(db.teams)..where((t) => t.isSynced.equals(false))).get();
-      final unsyncedPlayers = await (db.select(db.players)..where((t) => t.isSynced.equals(false))).get();
 
       final catalogData = await api.fetchCatalogs(syncId);
 
       await db.transaction(() async {
-        await (db.delete(db.tournaments)..where((t) => t.isSynced.equals(true))).go();
-        for (var t in catalogData.tournaments) {
-          if (!unsyncedTournaments.any((local) => local.id == t.id.toString())) {
-             await db.into(db.tournaments).insert(
-              TournamentsCompanion.insert(
-                id: drift.Value(t.id.toString()),
-                name: t.name,
-                category: drift.Value(t.category),
-                status: drift.Value(t.status ?? 'ACTIVE'),
-                isSynced: const drift.Value(true),
-              ),
-              mode: drift.InsertMode.insertOrReplace,
-            );
-          }
-        }
-
+        // --- LIMPIEZA ABSOLUTA DE FANTASMAS ---
+        await db.delete(db.tournaments).go();
+        await db.delete(db.teams).go();
+        await db.delete(db.players).go();
+        await db.delete(db.tournamentTeams).go();
+        await db.delete(db.venues).go();
         await db.delete(db.fixtures).go();
-        
-        for (var m in catalogData.fixturesRaw) {
-            DateTime? scheduledDate;
-            if (m['scheduled_datetime'] != null && m['scheduled_datetime'].toString().isNotEmpty) {
-              scheduledDate = DateTime.tryParse(m['scheduled_datetime'].toString());
-            }
 
-            int? sA;
-            int? sB;
-            if (m['score_a'] != null) sA = int.tryParse(m['score_a'].toString());
-            if (m['score_b'] != null) sB = int.tryParse(m['score_b'].toString());
-
-            await db.into(db.fixtures).insert(
-              FixturesCompanion.insert(
-                id: m['id'].toString(),
-                tournamentId: m['tournament_id'].toString(),
-                roundName: m['round_name'] ?? 'Jornada',
-                teamAId: m['team_a_id'].toString(),
-                teamBId: m['team_b_id'].toString(),
-                teamAName: m['team_a'] ?? 'Equipo A',
-                teamBName: m['team_b'] ?? 'Equipo B',
-                logoA: drift.Value(m['logo_a']),
-                logoB: drift.Value(m['logo_b']),
-                venueId: drift.Value(m['venue_id']?.toString()),
-                venueName: drift.Value(m['venue_name']),
-                scheduledDatetime: drift.Value(scheduledDate),
-                matchId: drift.Value(m['match_id']?.toString()),
-                scoreA: drift.Value(sA),
-                scoreB: drift.Value(sB),
-                status: drift.Value(m['status'] ?? 'SCHEDULED'),
-              ),
-              mode: drift.InsertMode.insertOrReplace,
-            );
+        for (var t in catalogData.tournaments) {
+          await db
+              .into(db.tournaments)
+              .insert(
+                TournamentsCompanion.insert(
+                  id: drift.Value(t.id.toString()),
+                  name: t.name,
+                  category: drift.Value(t.category),
+                  status: drift.Value(t.status ?? 'ACTIVE'),
+                  isSynced: const drift.Value(true),
+                ),
+                mode: drift.InsertMode.insertOrReplace,
+              );
         }
 
-        await (db.delete(db.teams)..where((t) => t.isSynced.equals(true))).go();
-        for (var team in catalogData.teams) {
-          if (!unsyncedTeams.any((local) => local.id == team.id.toString())) {
-            await db.into(db.teams).insert(
-              TeamsCompanion.insert(
-                id: drift.Value(team.id.toString()),
-                name: team.name,
-                shortName: drift.Value(team.shortName),
-                coachName: drift.Value(team.coachName),
-                logoUrl: drift.Value(team.logoUrl),
-                isSynced: const drift.Value(true),
-              ),
-              mode: drift.InsertMode.insertOrReplace,
+        for (var m in catalogData.fixturesRaw) {
+          DateTime? scheduledDate;
+          if (m['scheduled_datetime'] != null &&
+              m['scheduled_datetime'].toString().isNotEmpty) {
+            scheduledDate = DateTime.tryParse(
+              m['scheduled_datetime'].toString(),
             );
           }
+          int? sA;
+          int? sB;
+          if (m['score_a'] != null) sA = int.tryParse(m['score_a'].toString());
+          if (m['score_b'] != null) sB = int.tryParse(m['score_b'].toString());
+
+          await db
+              .into(db.fixtures)
+              .insert(
+                FixturesCompanion.insert(
+                  id: m['id'].toString(),
+                  tournamentId: m['tournament_id'].toString(),
+                  roundName: m['round_name'] ?? 'Jornada',
+                  teamAId: m['team_a_id'].toString(),
+                  teamBId: m['team_b_id'].toString(),
+                  teamAName: m['team_a'] ?? 'Equipo A',
+                  teamBName: m['team_b'] ?? 'Equipo B',
+                  logoA: drift.Value(m['logo_a']),
+                  logoB: drift.Value(m['logo_b']),
+                  venueId: drift.Value(m['venue_id']?.toString()),
+                  venueName: drift.Value(m['venue_name']),
+                  scheduledDatetime: drift.Value(scheduledDate),
+                  matchId: drift.Value(m['match_id']?.toString()),
+                  scoreA: drift.Value(sA),
+                  scoreB: drift.Value(sB),
+                  status: drift.Value(m['status'] ?? 'SCHEDULED'),
+                ),
+                mode: drift.InsertMode.insertOrReplace,
+              );
         }
 
-        await (db.delete(db.venues)..where((t) => t.isSynced.equals(true))).go();
+        for (var team in catalogData.teams) {
+          await db
+              .into(db.teams)
+              .insert(
+                TeamsCompanion.insert(
+                  id: drift.Value(team.id.toString()),
+                  name: team.name,
+                  shortName: drift.Value(team.shortName),
+                  coachName: drift.Value(team.coachName),
+                  logoUrl: drift.Value(team.logoUrl),
+                  isSynced: const drift.Value(true),
+                ),
+                mode: drift.InsertMode.insertOrReplace,
+              );
+        }
+
         for (var venue in catalogData.venues) {
-          await db.into(db.venues).insert(
-            VenuesCompanion.insert(
-              id: drift.Value(venue.id.toString()),
-              name: venue.name,
-              address: drift.Value(venue.address),
-              isSynced: const drift.Value(true),
-            ),
-            mode: drift.InsertMode.insertOrReplace,
-          );
-        }
-        
-        await (db.delete(db.tournamentTeams)..where((t) => t.isSynced.equals(true))).go();
-        for (var rel in catalogData.relationships) {
-          await db.into(db.tournamentTeams).insert(
-            TournamentTeamsCompanion.insert(
-              tournamentId: rel.tournamentId.toString(),
-              teamId: rel.teamId.toString(),
-              isSynced: const drift.Value(true),
-            ),
-            mode: drift.InsertMode.insertOrReplace,
-          );
+          await db
+              .into(db.venues)
+              .insert(
+                VenuesCompanion.insert(
+                  id: drift.Value(venue.id.toString()),
+                  name: venue.name,
+                  address: drift.Value(venue.address),
+                  isSynced: const drift.Value(true),
+                ),
+                mode: drift.InsertMode.insertOrReplace,
+              );
         }
 
-        await (db.delete(db.players)..where((t) => t.isSynced.equals(true))).go();
+        for (var rel in catalogData.relationships) {
+          await db
+              .into(db.tournamentTeams)
+              .insert(
+                TournamentTeamsCompanion.insert(
+                  tournamentId: rel.tournamentId.toString(),
+                  teamId: rel.teamId.toString(),
+                  isSynced: const drift.Value(true),
+                ),
+                mode: drift.InsertMode.insertOrReplace,
+              );
+        }
+
         for (var p in catalogData.players) {
-           if (!unsyncedPlayers.any((local) => local.id == p.id.toString())) {
-              await db.into(db.players).insert(
+          await db
+              .into(db.players)
+              .insert(
                 PlayersCompanion.insert(
                   id: drift.Value(p.id.toString()),
                   name: p.name,
@@ -782,7 +791,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                 ),
                 mode: drift.InsertMode.insertOrReplace,
               );
-           }
         }
       });
 
@@ -792,7 +800,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("✅ Datos actualizados sin perder cambios locales."),
+            content: Text("✅ Base de datos restaurada como espejo de la nube."),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
           ),
@@ -827,7 +835,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("Iniciando subida de datos a la nube...")),
     );
-
     int uploadedTournaments = 0;
     int uploadedTeams = 0;
     int uploadedPlayers = 0;
@@ -837,7 +844,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
       final pendingTournaments = await (db.select(
         db.tournaments,
       )..where((tbl) => tbl.isSynced.equals(false))).get();
-
       for (var tourn in pendingTournaments) {
         try {
           final realIdString = await api.createTournament(
@@ -845,11 +851,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
             tourn.category ?? 'Libre',
           );
           final String oldUuid = tourn.id;
-
           await db.transaction(() async {
-            await (db.delete(
-              db.tournaments,
-            )..where((t) => t.id.equals(oldUuid))).go();
             await db
                 .into(db.tournaments)
                 .insert(
@@ -861,7 +863,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                     isSynced: const drift.Value(true),
                   ),
                 );
-
             await (db.update(
               db.tournamentTeams,
             )..where((t) => t.tournamentId.equals(oldUuid))).write(
@@ -877,8 +878,10 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
             )..where((m) => m.tournamentId.equals(oldUuid))).write(
               MatchesCompanion(tournamentId: drift.Value(realIdString)),
             );
+            await (db.delete(
+              db.tournaments,
+            )..where((t) => t.id.equals(oldUuid))).go();
           });
-
           uploadedTournaments++;
         } catch (e) {
           debugPrint("Error subiendo torneo: $e");
@@ -888,7 +891,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
       final pendingTeams = await (db.select(
         db.teams,
       )..where((tbl) => tbl.isSynced.equals(false))).get();
-
       for (var team in pendingTeams) {
         try {
           final relation = await (db.select(
@@ -900,11 +902,21 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
             team.coachName ?? '',
             tournamentId: relation?.tournamentId,
           );
-
           final String oldTeamId = team.id;
           final String newTeamIdString = realIdInt.toString();
 
           await db.transaction(() async {
+            await db
+                .into(db.teams)
+                .insert(
+                  TeamsCompanion.insert(
+                    id: drift.Value(newTeamIdString),
+                    name: team.name,
+                    shortName: drift.Value(team.shortName),
+                    coachName: drift.Value(team.coachName),
+                    isSynced: const drift.Value(true),
+                  ),
+                );
             await (db.update(
               db.tournamentTeams,
             )..where((t) => t.teamId.equals(oldTeamId))).write(
@@ -917,33 +929,19 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
             await (db.delete(
               db.teams,
             )..where((t) => t.id.equals(oldTeamId))).go();
-            await db
-                .into(db.teams)
-                .insert(
-                  TeamsCompanion.insert(
-                    id: drift.Value(newTeamIdString),
-                    name: team.name,
-                    shortName: drift.Value(team.shortName),
-                    coachName: drift.Value(team.coachName),
-                    isSynced: const drift.Value(true),
-                  ),
-                );
           });
-
           uploadedTeams++;
         } catch (e) {
-          throw Exception('Error al subir equipo: $e');
+          debugPrint("Error al subir equipo: $e");
         }
       }
 
       final pendingPlayers = await (db.select(
         db.players,
       )..where((tbl) => tbl.isSynced.equals(false))).get();
-
       for (var player in pendingPlayers) {
         try {
           final isExistingPlayer = (int.tryParse(player.id) ?? 0) > 0;
-
           if (isExistingPlayer) {
             final success = await api.updatePlayer(
               player.id,
@@ -951,7 +949,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
               player.name,
               player.defaultNumber,
             );
-
             if (success) {
               await (db.update(db.players)
                     ..where((p) => p.id.equals(player.id)))
@@ -964,11 +961,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
               player.name,
               player.defaultNumber,
             );
-
             await db.transaction(() async {
-              await (db.delete(
-                db.players,
-              )..where((p) => p.id.equals(player.id))).go();
               await db
                   .into(db.players)
                   .insert(
@@ -981,18 +974,27 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                       active: const drift.Value(true),
                     ),
                   );
+              await (db.update(
+                db.gameEvents,
+              )..where((e) => e.playerId.equals(player.id))).write(
+                GameEventsCompanion(
+                  playerId: drift.Value(realPlayerId.toString()),
+                ),
+              );
+              await (db.delete(
+                db.players,
+              )..where((p) => p.id.equals(player.id))).go();
             });
             uploadedPlayers++;
           }
         } catch (e) {
-          throw Exception('Error al subir jugador: $e');
+          debugPrint("Error al subir jugador: $e");
         }
       }
 
       final pendingMatches = await (db.select(
         db.matches,
       )..where((tbl) => tbl.isSynced.equals(false))).get();
-
       for (var match in pendingMatches) {
         final query = db.select(db.gameEvents).join([
           drift.leftOuterJoin(
@@ -1005,37 +1007,28 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
             db.players.id.equalsExp(db.gameEvents.playerId),
           ),
         ]);
-
         query.where(db.gameEvents.matchId.equals(match.id));
         final rows = await query.get();
-
         int runningScoreA = 0;
         int runningScoreB = 0;
-
         final eventsList = rows.map((row) {
           final event = row.readTable(db.gameEvents);
           final roster = row.readTableOrNull(db.matchRosters);
           final player = row.readTableOrNull(db.players);
-
-          // TRUCO PARA LEER EL EQUIPO
           String rawType = event.type;
-          String teamSide = roster?.teamSide ?? 'A'; 
-
+          String teamSide = roster?.teamSide ?? 'A';
           if (rawType.endsWith('_A')) {
             teamSide = 'A';
             rawType = rawType.replaceAll('_A', '');
           } else if (rawType.endsWith('_B')) {
             teamSide = 'B';
-            rawType = rawType.replaceAll('_B', ''); 
+            rawType = rawType.replaceAll('_B', '');
           }
-
           int points = 0;
           if (rawType == 'POINT_1' || rawType == 'FREE_THROW') points = 1;
           if (rawType == 'POINT_2') points = 2;
           if (rawType == 'POINT_3') points = 3;
-
           bool isTeamA = teamSide == 'A';
-
           if (points > 0) {
             if (isTeamA) {
               runningScoreA += points;
@@ -1044,8 +1037,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
             }
           }
           final currentScore = isTeamA ? runningScoreA : runningScoreB;
-
-          // PAYLOAD LIMPIO PREVINIENDO ERROR FOREIGN KEY (NULL EN VEZ DE "-1")
           Map<String, dynamic> eventPayload = {
             "period": event.period,
             "team_side": teamSide,
@@ -1053,36 +1044,32 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
             "player_number": roster?.jerseyNumber ?? 0,
             "points_scored": points,
             "score_after": currentScore,
-            "type": rawType
+            "type": rawType,
           };
-
-          if (event.playerId != null && event.playerId!.isNotEmpty && event.playerId != '-1') {
-             eventPayload["player_id"] = int.tryParse(event.playerId!);
+          if (event.playerId != null &&
+              event.playerId!.isNotEmpty &&
+              event.playerId != '-1') {
+            eventPayload["player_id"] = int.tryParse(event.playerId!);
           } else {
-             eventPayload["player_id"] = null;
+            eventPayload["player_id"] = null;
           }
-
           return eventPayload;
         }).toList();
 
-        // ---------------------------------------------------------
-        // LEER EL PDF GUARDADO LOCALMENTE
-        // ---------------------------------------------------------
         Uint8List? savedPdfBytes;
-        if (match.matchReportPath != null && match.matchReportPath!.isNotEmpty) {
-           try {
-             final file = File(match.matchReportPath!);
-             if (await file.exists()) {
-               savedPdfBytes = await file.readAsBytes();
-             }
-           } catch (e) {
-             debugPrint("No se pudo leer el PDF local: $e");
-           }
+        if (match.matchReportPath != null &&
+            match.matchReportPath!.isNotEmpty) {
+          try {
+            final file = File(match.matchReportPath!);
+            if (await file.exists()) savedPdfBytes = await file.readAsBytes();
+          } catch (e) {
+            debugPrint("No se pudo leer el PDF local: $e");
+          }
         }
-        // ---------------------------------------------------------
 
-        final fixtureRow = await (db.select(db.fixtures)..where((f) => f.matchId.equals(match.id))).getSingleOrNull();
-
+        final fixtureRow = await (db.select(
+          db.fixtures,
+        )..where((f) => f.matchId.equals(match.id))).getSingleOrNull();
         final matchPayload = {
           "match_id": match.id,
           "fixture_id": fixtureRow?.id,
@@ -1103,13 +1090,10 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
           "status": match.status,
           "events": eventsList,
         };
-
-        // ENVIAMOS EL ARCHIVO PDF LEÍDO DEL DISCO
         final success = await api.syncMatchDataMultipart(
           matchData: matchPayload,
           pdfBytes: savedPdfBytes,
         );
-
         if (success) {
           await (db.update(db.matches)..where((tbl) => tbl.id.equals(match.id)))
               .write(const MatchesCompanion(isSynced: drift.Value(true)));

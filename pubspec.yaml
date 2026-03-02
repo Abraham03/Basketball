@@ -42,6 +42,12 @@ dependencies:
   http: ^1.2.0
   signature: ^5.4.0
   intl: ^0.20.0
+  # --- NUEVAS DEPENDENCIAS PARA RED LOCAL Y PANTALLAS ---
+  shelf: ^1.4.1                 # Para levantar el servidor HTTP local
+  shelf_web_socket: ^1.0.4      # Para el canal de comunicación en tiempo real
+  web_socket_channel: ^2.4.0    # Para que la tablet reciba los datos
+  network_info_plus: ^5.0.0     # Para obtener la IP de tu Zona Wi-Fi
+  flutter_presentation_display: ^2.0.6 # Para detectar pantallas por cable o AnyCast.
 
 
 dev_dependencies:

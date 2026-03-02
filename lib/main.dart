@@ -1,12 +1,25 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'ui/home_menu_screen.dart'; // Importamos tu nuevo menú principal
+import 'package:web_socket_channel/web_socket_channel.dart';
+
+import 'ui/home_menu_screen.dart'; 
+import 'logic/match_game_controller.dart';
+import 'ui/widgets/scoreboard_widget.dart';
 
 void main() {
-  // 1. OBLIGATORIO: Asegura que los canales nativos (plugins) estén listos
   WidgetsFlutterBinding.ensureInitialized();
-  // Inicializamos el ProviderScope para que Riverpod funcione en toda la app
   runApp(const ProviderScope(child: MyApp()));
+}
+
+// ---> PUNTO DE ENTRADA PARA EL ANYCAST (HDMI) <---
+@pragma('vm:entry-point')
+void secondaryDisplayMain() {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const MaterialApp(
+    debugShowCheckedModeBanner: false,
+    home: AnycastDisplayScreen(),
+  ));
 }
 
 class MyApp extends StatelessWidget {
@@ -15,18 +28,14 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Basket Arbitraje',
-      debugShowCheckedModeBanner: false, // Quitamos la etiqueta 'Debug'
-      
-      // Definimos un tema visual consistente y moderno
+      title: 'Basket Pro',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepOrange, // Color principal (Naranja Basket)
+          seedColor: Colors.deepOrange, 
           brightness: Brightness.light,
         ),
         useMaterial3: true,
-        
-        // Estilo global para las Cards
         cardTheme: CardThemeData(
           elevation: 2,
           margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
@@ -34,15 +43,11 @@ class MyApp extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
           ),
         ),
-        
-        // Estilo global para los Inputs (TextFormField)
         inputDecorationTheme: InputDecorationTheme(
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           filled: true,
           fillColor: Colors.grey.shade50,
         ),
-        
-        // Estilo global para botones elevados
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
@@ -52,10 +57,101 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      
-      // 🚀 AQUÍ ESTÁ EL CAMBIO CLAVE:
-      // En lugar de ir a la lista de pruebas, vamos al Menú Principal que creamos
       home: const HomeMenuScreen(), 
+    );
+  }
+}
+
+// ---> PANTALLA INVISIBLE DEL MONITOR CON RECONEXIÓN AUTOMÁTICA <---
+class AnycastDisplayScreen extends StatefulWidget {
+  const AnycastDisplayScreen({super.key});
+
+  @override
+  State<AnycastDisplayScreen> createState() => _AnycastDisplayScreenState();
+}
+
+class _AnycastDisplayScreenState extends State<AnycastDisplayScreen> {
+  WebSocketChannel? _channel;
+  MatchState? _currentState;
+  String _teamAName = "Equipo A";
+  String _teamBName = "Equipo B";
+  int _teamAFouls = 0;
+  int _teamBFouls = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _connectToLocalhost();
+  }
+
+  // Se conecta a sí mismo y si se cae, vuelve a intentar
+  void _connectToLocalhost() {
+    try {
+      _channel = WebSocketChannel.connect(Uri.parse('ws://127.0.0.1:8080'));
+      _channel!.stream.listen(
+        (message) {
+          if (mounted) {
+            final Map<String, dynamic> data = jsonDecode(message);
+            setState(() {
+               if (data.containsKey("state")) {
+                 _currentState = MatchState.fromJson(data["state"]);
+                 _teamAName = data["teamAName"] ?? "Equipo A";
+                 _teamBName = data["teamBName"] ?? "Equipo B";
+                 _teamAFouls = data["teamAFouls"] ?? 0;
+                 _teamBFouls = data["teamBFouls"] ?? 0;
+               } else {
+                 _currentState = MatchState.fromJson(data);
+               }
+            });
+          }
+        },
+        onDone: () => _retryConnection(),
+        onError: (e) => _retryConnection(),
+      );
+    } catch (e) {
+      _retryConnection();
+    }
+  }
+
+  // Función mágica que reconecta la pantalla cuando sales de un partido a otro
+  void _retryConnection() {
+    if (mounted) {
+      Future.delayed(const Duration(seconds: 1), () {
+        _connectToLocalhost();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _channel?.sink.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_currentState == null) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(child: CircularProgressIndicator(color: Colors.orangeAccent)),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Center(
+        child: ScoreboardWidget(
+          state: _currentState!,
+          teamAName: _teamAName,
+          teamBName: _teamBName,
+          teamAFouls: _teamAFouls,
+          teamBFouls: _teamBFouls,
+          isWideScreen: true,
+          isLandscape: true,
+          isReadOnly: true, 
+          isFullScreen: true, 
+        ),
+      ),
     );
   }
 }
