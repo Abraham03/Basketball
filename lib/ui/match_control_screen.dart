@@ -343,10 +343,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
               teamBName: widget.teamBName,
               teamAFouls: controller.getTeamFouls('A'),
               teamBFouls: controller.getTeamFouls('B'),
-              isWideScreen: isWideScreen,
-              isLandscape: isLandscape,
               isFinished: _isFinished,
-              isReadOnly: false,
               onPeriodTap: () => _showPeriodSelector(context, controller),
               onTimeLongPress: () => _showTimePicker(context, controller, gameState.timeLeft),
             );
@@ -447,8 +444,8 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                                     overflow: TextOverflow.ellipsis,
                                     text: TextSpan(
                                       children: [
-                                        TextSpan(text: playerName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: isWideScreen ? 16 : 10, color: Colors.white, fontFamily: 'Roboto')),
-                                        if (isCaptain) TextSpan(text: " (Capitán)", style: TextStyle(fontWeight: FontWeight.w900, fontSize: isWideScreen ? 12 : 10, color: Colors.amberAccent, fontFamily: 'Roboto')),
+                                        TextSpan(text: playerName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: isWideScreen ? 16 : 12, color: Colors.white, fontFamily: 'Roboto')),
+                                        if (isCaptain) TextSpan(text: " (C)", style: TextStyle(fontWeight: FontWeight.w900, fontSize: isWideScreen ? 12 : 10, color: Colors.amberAccent, fontFamily: 'Roboto')),
                                       ]
                                     ),
                                   ),

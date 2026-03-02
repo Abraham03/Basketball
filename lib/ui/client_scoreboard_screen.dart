@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../logic/match_game_controller.dart';
-import 'widgets/scoreboard_widget.dart';
+import 'widgets/tv_scoreboard_widget.dart'; 
 import 'widgets/app_background.dart';
 
 class ClientScoreboardScreen extends StatefulWidget {
@@ -25,49 +25,69 @@ class _ClientScoreboardScreenState extends State<ClientScoreboardScreen> {
   int _teamBFouls = 0;
 
   void _connectToServer() {
-    final ip = _ipController.text.trim();
+    String ip = _ipController.text.trim();
     if (ip.isEmpty) return;
+
+    // Si el usuario puso el puerto manualmente, lo dejamos, si no, lo agregamos nosotros
+    if (!ip.contains(':')) {
+      ip = '$ip:8080';
+    }
 
     setState(() => _isConnecting = true); 
 
     try {
-      final uri = Uri.parse('ws://$ip:8080');
+      // Construimos la URL completa: ws://192.168.1.5:8080
+      final uri = Uri.parse('ws://$ip');
       _channel = WebSocketChannel.connect(uri);
       
       _channel!.stream.listen((message) {
         final Map<String, dynamic> data = jsonDecode(message);
-        setState(() {
-          if (data.containsKey("state")) {
-             _currentState = MatchState.fromJson(data["state"]);
-             _teamAName = data["teamAName"] ?? "Equipo A";
-             _teamBName = data["teamBName"] ?? "Equipo B";
-             _teamAFouls = data["teamAFouls"] ?? 0;
-             _teamBFouls = data["teamBFouls"] ?? 0;
-          } else {
-             _currentState = MatchState.fromJson(data);
-          }
-          _isConnected = true;
-          _isConnecting = false; 
-        });
+        if (mounted) {
+          setState(() {
+            if (data.containsKey("state")) {
+               _currentState = MatchState.fromJson(data["state"]);
+               _teamAName = data["teamAName"] ?? "Equipo A";
+               _teamBName = data["teamBName"] ?? "Equipo B";
+               _teamAFouls = data["teamAFouls"] ?? 0;
+               _teamBFouls = data["teamBFouls"] ?? 0;
+            } else {
+               _currentState = MatchState.fromJson(data);
+            }
+            _isConnected = true;
+            _isConnecting = false; 
+          });
+        }
       },
       onError: (e) {
-        setState(() { _isConnected = false; _isConnecting = false; });
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se pudo conectar. Verifica la IP y el Wi-Fi.'), backgroundColor: Colors.redAccent));
+        _resetConnection();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error: No se pudo encontrar el tablero. Revisa la IP.'), backgroundColor: Colors.redAccent));
       },
       onDone: () {
-        setState(() { _isConnected = false; _isConnecting = false; });
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Desconectado del celular árbitro'), backgroundColor: Colors.orangeAccent));
+        _resetConnection();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Conexión cerrada.'), backgroundColor: Colors.orangeAccent));
       });
 
     } catch (e) {
-      setState(() => _isConnecting = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('IP inválida: $e')));
+      _resetConnection();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('IP o formato inválido'), backgroundColor: Colors.red));
     }
+  }
+
+  void _resetConnection() {
+    if (mounted) {
+      setState(() {
+        _isConnected = false;
+        _isConnecting = false;
+        _currentState = null;
+      });
+    }
+    _channel?.sink.close();
   }
 
   @override
   void dispose() {
     _channel?.sink.close();
+    _ipController.dispose();
     super.dispose();
   }
 
@@ -75,41 +95,74 @@ class _ClientScoreboardScreenState extends State<ClientScoreboardScreen> {
   Widget build(BuildContext context) {
     if (!_isConnected || _currentState == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text("Conectar a Pizarra")),
+        appBar: AppBar(
+          title: const Text("CONECTAR PIZARRA GIGANTE"),
+          centerTitle: true,
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.white,
+        ),
         body: AppBackground(
           child: Center(
-            child: Container(
-              padding: const EdgeInsets.all(24),
-              constraints: const BoxConstraints(maxWidth: 400),
-              decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(16)),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.wifi, size: 60, color: Colors.white),
-                  const SizedBox(height: 20),
-                  const Text("Ingresa la IP que aparece en el celular del árbitro:", style: TextStyle(color: Colors.white, fontSize: 16), textAlign: TextAlign.center,),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: _ipController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: "Ej: 192.168.43.1",
-                      filled: true,
-                      fillColor: Colors.white24,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))
+            child: SingleChildScrollView(
+              child: Container(
+                padding: const EdgeInsets.all(32),
+                margin: const EdgeInsets.symmetric(horizontal: 24),
+                constraints: const BoxConstraints(maxWidth: 450),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.8),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.settings_remote, size: 80, color: Colors.orangeAccent),
+                    const SizedBox(height: 24),
+                    const Text(
+                      "CONFIGURACIÓN DE RED",
+                      style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.5),
                     ),
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 20),
-                  
-                  _isConnecting 
-                    ? const CircularProgressIndicator(color: Colors.orangeAccent)
-                    : ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.orangeAccent, foregroundColor: Colors.black),
-                        onPressed: _connectToServer,
-                        child: const Text("Conectar al Tablero", style: TextStyle(fontWeight: FontWeight.bold)),
-                      )
-                ],
+                    const SizedBox(height: 12),
+                    const Text(
+                      "Ingresa la IP del dispositivo Árbitro",
+                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 32),
+                    TextField(
+                      controller: _ipController,
+                      autofocus: true,
+                      style: const TextStyle(color: Colors.white, fontSize: 20, letterSpacing: 2, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                      decoration: InputDecoration(
+                        hintText: "0.0.0.0",
+                        hintStyle: const TextStyle(color: Colors.white24),
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.05),
+                        suffixIcon: IconButton(icon: const Icon(Icons.clear, color: Colors.white54), onPressed: () => _ipController.clear()),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.orangeAccent, width: 2)),
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 32),
+                    _isConnecting 
+                      ? const CircularProgressIndicator(color: Colors.orangeAccent)
+                      : SizedBox(
+                          width: double.infinity,
+                          height: 55,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orangeAccent, 
+                              foregroundColor: Colors.black,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                            ),
+                            onPressed: _connectToServer,
+                            child: const Text("ENLAZAR TABLERO", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                          ),
+                        )
+                  ],
+                ),
               ),
             ),
           ),
@@ -117,22 +170,32 @@ class _ClientScoreboardScreenState extends State<ClientScoreboardScreen> {
       );
     }
 
+    // --- VISTA DEL TABLERO GIGANTE CON BOTÓN DE SALIDA ---
     return Scaffold(
       backgroundColor: Colors.black, 
-      body: Center(
-        child: SafeArea(
-          child: ScoreboardWidget(
-            state: _currentState!,
-            teamAName: _teamAName, 
-            teamBName: _teamBName,
-            teamAFouls: _teamAFouls,
-            teamBFouls: _teamBFouls,
-            isWideScreen: true,
-            isLandscape: true,
-            isReadOnly: true, 
-            isFullScreen: true, // <--- LA MAGIA OCURRE AQUÍ PARA LA TABLET
+      body: Stack(
+        children: [
+          Center(
+            child: SafeArea(
+              child: TvScoreboardWidget(
+                state: _currentState!,
+                teamAName: _teamAName, 
+                teamBName: _teamBName,
+                teamAFouls: _teamAFouls,
+                teamBFouls: _teamBFouls,
+              ),
+            ),
           ),
-        ),
+          // Botón discreto para desconectarse en la esquina
+          Positioned(
+            top: 10,
+            left: 10,
+            child: IconButton(
+              icon: const Icon(Icons.cancel_outlined, color: Colors.white24),
+              onPressed: _resetConnection,
+            ),
+          ),
+        ],
       ),
     );
   }

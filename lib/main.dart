@@ -5,7 +5,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'ui/home_menu_screen.dart'; 
 import 'logic/match_game_controller.dart';
-import 'ui/widgets/scoreboard_widget.dart';
+import 'ui/widgets/tv_scoreboard_widget.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -140,16 +140,12 @@ class _AnycastDisplayScreenState extends State<AnycastDisplayScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       body: Center(
-        child: ScoreboardWidget(
+        child: TvScoreboardWidget(
           state: _currentState!,
           teamAName: _teamAName,
           teamBName: _teamBName,
           teamAFouls: _teamAFouls,
           teamBFouls: _teamBFouls,
-          isWideScreen: true,
-          isLandscape: true,
-          isReadOnly: true, 
-          isFullScreen: true, 
         ),
       ),
     );
