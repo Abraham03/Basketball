@@ -1,6 +1,6 @@
 // ignore_for_file: deprecated_member_use
 
-import 'dart:ui' hide Display;
+import 'dart:ui' hide Display; 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_presentation_display/display.dart';
@@ -17,7 +17,7 @@ import '../logic/match_game_controller.dart';
 import '../ui/protest_signature_screen.dart';
 import '../ui/pdf_preview_screen.dart';
 import '../core/database/app_database.dart' as db;
-import '../core/network/websocket_server.dart';
+import '../core/network/websocket_server.dart'; 
 
 import '../ui/widgets/app_background.dart';
 import '../ui/widgets/scoreboard_widget.dart';
@@ -80,24 +80,35 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
   Uint8List? _capturedSignature;
   bool _isFinished = false;
   String _localIp = "Buscando IP...";
-  final FlutterPresentationDisplay _displayManager =
-      FlutterPresentationDisplay();
+  final FlutterPresentationDisplay _displayManager = FlutterPresentationDisplay();
+
+  // --- VARIABLES PARA ALMACENAR EL NOMBRE DEL CAPITÁN RÁPIDAMENTE ---
+  String? _captainAName;
+  String? _captainBName;
 
   @override
   void initState() {
     super.initState();
+    
+    // Identificamos el nombre de los capitanes al iniciar
+    if (widget.captainAId != null) {
+      final capA = widget.fullRosterA.where((p) => p.id == widget.captainAId).firstOrNull;
+      _captainAName = capA?.name;
+    }
+    if (widget.captainBId != null) {
+      final capB = widget.fullRosterB.where((p) => p.id == widget.captainBId).firstOrNull;
+      _captainBName = capB?.name;
+    }
 
     LocalWebSocketServer.instance.startServer();
-    _checkExternalDisplays();
+    _checkExternalDisplays(); 
     _fetchLocalIp();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final oldState = ref.read(matchGameProvider);
 
       if (oldState.matchId != widget.matchId) {
-        ref
-            .read(matchGameProvider.notifier)
-            .initializeNewMatch(
+        ref.read(matchGameProvider.notifier).initializeNewMatch(
               matchId: widget.matchId,
               fixtureId: widget.fixtureId,
               rosterA: widget.fullRosterA,
@@ -113,7 +124,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
               scorekeeper: widget.scorekeeper,
             );
       }
-
+      
       final newState = ref.read(matchGameProvider);
       _broadcastFastUpdate(newState, ref.read(matchGameProvider.notifier));
     });
@@ -136,7 +147,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
 
   @override
   void dispose() {
-    _closeExternalDisplay();
+    _closeExternalDisplay(); 
     super.dispose();
   }
 
@@ -157,15 +168,15 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
   Future<void> _checkExternalDisplays() async {
     try {
       List<Display>? displays = await _displayManager.getDisplays();
-
+      
       if (displays != null && displays.length > 1) {
         final displayId = displays[1].displayId;
-
+        
         if (displayId != null) {
           debugPrint("Pantalla secundaria detectada: $displayId");
           await _displayManager.showSecondaryDisplay(
             displayId: displayId,
-            routerName: "presentation_scoreboard",
+            routerName: "presentation_scoreboard", 
           );
         }
       }
@@ -188,14 +199,10 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     }
   }
 
-  bool _isNumberTaken(
-    String teamSide,
-    String newNumber,
-    String currentPlayerName,
-  ) {
+  bool _isNumberTaken(String teamSide, String newNumber, String currentPlayerName) {
     final state = ref.read(matchGameProvider);
     List<String> teammates = [];
-
+    
     if (teamSide == 'A') {
       teammates = [...state.teamAOnCourt, ...state.teamABench];
     } else {
@@ -203,14 +210,25 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     }
 
     for (var player in teammates) {
-      if (player == currentPlayerName) continue;
-
+      if (player == currentPlayerName) continue; 
+      
       final pStats = state.playerStats[player];
       if (pStats?.playerNumber == newNumber) {
-        return true;
+        return true; 
       }
     }
-    return false;
+    return false; 
+  }
+
+  // --- LÓGICA PARA ORDENAR LISTA DE JUGADORES POR DORSAL DE MAYOR A MENOR ---
+  List<String> _sortPlayersByNumberDesc(List<String> playerNames, MatchState state) {
+    List<String> sortedList = List.from(playerNames);
+    sortedList.sort((a, b) {
+      final numA = int.tryParse(state.playerStats[a]?.playerNumber ?? "0") ?? 0;
+      final numB = int.tryParse(state.playerStats[b]?.playerNumber ?? "0") ?? 0;
+      return numB.compareTo(numA); // B vs A = Descendente (Mayor a Menor)
+    });
+    return sortedList;
   }
 
   @override
@@ -228,55 +246,31 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
             context: context,
             builder: (_) => AlertDialog(
               backgroundColor: const Color(0xFF1A1F2B),
-              title: const Text(
-                "⚠️ Límite de Faltas",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              content: Text(
-                "El jugador $playerId ha llegado a 5 faltas.",
-                style: const TextStyle(color: Colors.white70),
-              ),
+              title: const Text("⚠️ Límite de Faltas", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+              content: Text("El jugador $playerId ha llegado a 5 faltas.", style: const TextStyle(color: Colors.white70)),
               actions: [
                 FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.redAccent,
-                  ),
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    "Entendido",
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
+                  style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+                  onPressed: () => Navigator.pop(context), 
+                  child: const Text("Entendido", style: TextStyle(color: Colors.white))
+                )
               ],
             ),
           );
         }
       });
 
-      if ((previous?.timeLeft.inSeconds ?? 1) > 0 &&
-          next.timeLeft.inSeconds == 0) {
+      if ((previous?.timeLeft.inSeconds ?? 1) > 0 && next.timeLeft.inSeconds == 0) {
         bool isRegularTimeOver = next.currentPeriod >= 4;
-        String title = !isRegularTimeOver
-            ? "Fin del Periodo ${next.currentPeriod}"
-            : (next.scoreA == next.scoreB ? "¡EMPATE!" : "Fin del Partido");
-        String content = !isRegularTimeOver
-            ? "¿Iniciar Periodo ${next.currentPeriod + 1}?"
-            : (next.scoreA == next.scoreB
-                  ? "¿Iniciar Tiempo Extra?"
-                  : "Marcador Final: ${next.scoreA} - ${next.scoreB}");
-        String btnText = !isRegularTimeOver
-            ? "Siguiente"
-            : (next.scoreA == next.scoreB ? "Tiempo Extra" : "Finalizar");
-
-        VoidCallback action = !isRegularTimeOver || next.scoreA == next.scoreB
+        String title = !isRegularTimeOver ? "Fin del Periodo ${next.currentPeriod}" : (next.scoreA == next.scoreB ? "¡EMPATE!" : "Fin del Partido");
+        String content = !isRegularTimeOver ? "¿Iniciar Periodo ${next.currentPeriod + 1}?" : (next.scoreA == next.scoreB ? "¿Iniciar Tiempo Extra?" : "Marcador Final: ${next.scoreA} - ${next.scoreB}");
+        String btnText = !isRegularTimeOver ? "Siguiente" : (next.scoreA == next.scoreB ? "Tiempo Extra" : "Finalizar");
+        
+        VoidCallback action = !isRegularTimeOver || next.scoreA == next.scoreB 
             ? () => controller.nextPeriod()
             : () {
                 Future.delayed(const Duration(milliseconds: 100), () {
-                  if (context.mounted && !_isFinished)
-                    _showFinalOptionsDialog(context, next);
+                  if (context.mounted && !_isFinished) _showFinalOptionsDialog(context, next);
                 });
               };
 
@@ -285,40 +279,14 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
           barrierDismissible: false,
           builder: (_) => AlertDialog(
             backgroundColor: const Color(0xFF1A1F2B),
-            title: Text(
-              title,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            content: Text(
-              content,
-              style: const TextStyle(color: Colors.white70),
-            ),
+            title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+            content: Text(content, style: const TextStyle(color: Colors.white70)),
             actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text(
-                  "Revisar",
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ),
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text("Revisar", style: TextStyle(color: Colors.grey))),
               FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.orangeAccent,
-                ),
-                onPressed: () {
-                  action();
-                  Navigator.pop(context);
-                },
-                child: Text(
-                  btnText,
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                style: FilledButton.styleFrom(backgroundColor: Colors.orangeAccent),
+                onPressed: () { action(); Navigator.pop(context); }, 
+                child: Text(btnText, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold))
               ),
             ],
           ),
@@ -326,36 +294,23 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
       }
     });
 
-    final bool isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    final bool isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Scaffold(
-      extendBodyBehindAppBar: true,
-      backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true, 
+      backgroundColor: Colors.transparent, 
       appBar: AppBar(
         title: Column(
           children: [
             Text(
-              _isFinished ? "PARTIDO FINALIZADO" : "CONTROL DE JUEGO",
-              style: TextStyle(
-                fontWeight: FontWeight.w900,
-                letterSpacing: 2.0,
-                fontSize: 16,
-                color: _isFinished ? Colors.redAccent : Colors.white,
-              ),
+              _isFinished ? "PARTIDO FINALIZADO" : "CONTROL DE JUEGO", 
+              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2.0, fontSize: 16, color: _isFinished ? Colors.redAccent : Colors.white)
             ),
-            Text(
-              "IP Tablero: $_localIp",
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.greenAccent,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            Text("IP Tablero: $_localIp", style: const TextStyle(fontSize: 12, color: Colors.greenAccent, fontWeight: FontWeight.bold)),
           ],
         ),
         centerTitle: true,
-        backgroundColor: Colors.black.withOpacity(0.5),
+        backgroundColor: Colors.black.withOpacity(0.5), 
         foregroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
@@ -363,58 +318,23 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
           onPressed: () => _confirmExit(context),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.undo),
-            tooltip: "Deshacer",
-            onPressed: _isFinished ? null : controller.undo,
-          ),
-          IconButton(
-            icon: const Icon(Icons.visibility_outlined),
-            tooltip: "Ver Acta",
-            onPressed: () =>
-                _goToPdfPreview(context, gameState, _capturedSignature),
-          ),
-          IconButton(
-            icon: const Icon(Icons.save_alt),
-            tooltip: "Finalizar Partido",
-            onPressed: _isFinished
-                ? null
-                : () => _showFinalOptionsDialog(context, gameState),
-          ),
+          IconButton(icon: const Icon(Icons.undo), tooltip: "Deshacer", onPressed: _isFinished ? null : controller.undo),
+          IconButton(icon: const Icon(Icons.visibility_outlined), tooltip: "Ver Acta", onPressed: () => _goToPdfPreview(context, gameState, _capturedSignature)),
+          IconButton(icon: const Icon(Icons.save_alt), tooltip: "Finalizar Partido", onPressed: _isFinished ? null : () => _showFinalOptionsDialog(context, gameState)),
         ],
       ),
       body: AppBackground(
-        opacity: 0.6,
+        opacity: 0.6, 
         child: LayoutBuilder(
           builder: (context, constraints) {
             final isWideScreen = constraints.maxWidth > 750;
+            
+            // ORDENAMOS LAS LISTAS DE CANCHA DE MAYOR A MENOR DORSAL ANTES DE RENDERIZAR
+            final sortedCourtA = _sortPlayersByNumberDesc(gameState.teamAOnCourt, gameState);
+            final sortedCourtB = _sortPlayersByNumberDesc(gameState.teamBOnCourt, gameState);
 
-            Widget teamAWidget = Expanded(
-              child: _buildTeamList(
-                context,
-                widget.teamAName,
-                Colors.orangeAccent,
-                'A',
-                gameState.teamAOnCourt,
-                gameState.teamABench,
-                controller,
-                gameState,
-                isWideScreen,
-              ),
-            );
-            Widget teamBWidget = Expanded(
-              child: _buildTeamList(
-                context,
-                widget.teamBName,
-                Colors.lightBlueAccent,
-                'B',
-                gameState.teamBOnCourt,
-                gameState.teamBBench,
-                controller,
-                gameState,
-                isWideScreen,
-              ),
-            );
+            Widget teamAWidget = Expanded(child: _buildTeamList(context, widget.teamAName, Colors.orangeAccent, 'A', sortedCourtA, gameState.teamABench, controller, gameState, isWideScreen));
+            Widget teamBWidget = Expanded(child: _buildTeamList(context, widget.teamBName, Colors.lightBlueAccent, 'B', sortedCourtB, gameState.teamBBench, controller, gameState, isWideScreen));
 
             Widget scoreboardView = ScoreboardWidget(
               state: gameState,
@@ -428,296 +348,118 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
               isFinished: _isFinished,
               isReadOnly: false,
               onPeriodTap: () => _showPeriodSelector(context, controller),
-              onTimeLongPress: () =>
-                  _showTimePicker(context, controller, gameState.timeLeft),
+              onTimeLongPress: () => _showTimePicker(context, controller, gameState.timeLeft),
             );
 
             return SafeArea(
               child: Center(
                 child: Container(
                   constraints: const BoxConstraints(maxWidth: 1200),
-                  child: isLandscape
-                      ? Row(
-                          children: [
-                            Expanded(
-                              flex: 4,
-                              child: SingleChildScrollView(
-                                child: scoreboardView,
-                              ),
+                  child: isLandscape 
+                    ? Row(
+                        children: [
+                          Expanded(flex: 4, child: SingleChildScrollView(child: scoreboardView)),
+                          Expanded(
+                            flex: 6,
+                            child: Container(
+                              margin: EdgeInsets.all(isWideScreen ? 12.0 : 6.0),
+                              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [teamAWidget, SizedBox(width: isWideScreen ? 12 : 6), teamBWidget]),
                             ),
-                            Expanded(
-                              flex: 6,
-                              child: Container(
-                                margin: EdgeInsets.all(
-                                  isWideScreen ? 12.0 : 6.0,
-                                ),
-                                child: Row(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    teamAWidget,
-                                    SizedBox(width: isWideScreen ? 12 : 6),
-                                    teamBWidget,
-                                  ],
-                                ),
-                              ),
+                          ),
+                        ],
+                      )
+                    : Column(
+                        children: [
+                          scoreboardView,
+                          Expanded(
+                            child: Container(
+                              margin: EdgeInsets.all(isWideScreen ? 12.0 : 6.0),
+                              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [teamAWidget, SizedBox(width: isWideScreen ? 12 : 6), teamBWidget]),
                             ),
-                          ],
-                        )
-                      : Column(
-                          children: [
-                            scoreboardView,
-                            Expanded(
-                              child: Container(
-                                margin: EdgeInsets.all(
-                                  isWideScreen ? 12.0 : 6.0,
-                                ),
-                                child: Row(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    teamAWidget,
-                                    SizedBox(width: isWideScreen ? 12 : 6),
-                                    teamBWidget,
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
+                      ),
                 ),
               ),
             );
-          },
+          }
         ),
       ),
     );
   }
 
-  Widget _buildTeamList(
-    BuildContext context,
-    String teamName,
-    Color primaryColor,
-    String teamId,
-    List<String> onCourt,
-    List<String> bench,
-    MatchGameController controller,
-    MatchState state,
-    bool isWideScreen,
-  ) {
+  Widget _buildTeamList(BuildContext context, String teamName, Color primaryColor, String teamId, List<String> onCourt, List<String> bench, MatchGameController controller, MatchState state, bool isWideScreen) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), 
         child: Container(
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.4),
-            border: Border.all(color: Colors.white10),
-            borderRadius: BorderRadius.circular(20),
-          ),
+          decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), border: Border.all(color: Colors.white10), borderRadius: BorderRadius.circular(20)),
           child: Column(
             children: [
               Container(
-                padding: EdgeInsets.symmetric(
-                  vertical: isWideScreen ? 12 : 8,
-                  horizontal: isWideScreen ? 16 : 8,
-                ),
-                decoration: BoxDecoration(
-                  color: primaryColor.withOpacity(0.15),
-                  border: const Border(
-                    bottom: BorderSide(color: Colors.white24, width: 1),
-                  ),
-                ),
+                padding: EdgeInsets.symmetric(vertical: isWideScreen ? 12 : 8, horizontal: isWideScreen ? 16 : 8),
+                decoration: BoxDecoration(color: primaryColor.withOpacity(0.15), border: const Border(bottom: BorderSide(color: Colors.white24, width: 1))),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
-                      child: Text(
-                        "EN CANCHA",
-                        style: TextStyle(
-                          color: primaryColor,
-                          fontWeight: FontWeight.w900,
-                          fontSize: isWideScreen ? 13 : 11,
-                          letterSpacing: 1.0,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          onPressed: _isFinished
-                              ? null
-                              : () => _showTeamOptions(
-                                  context,
-                                  controller,
-                                  teamId,
-                                  teamName,
-                                ),
-                          icon: Icon(
-                            Icons.more_vert,
-                            color: _isFinished ? Colors.white24 : primaryColor,
-                            size: isWideScreen ? 28 : 24,
-                          ),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                        SizedBox(width: isWideScreen ? 16 : 8),
-                        InkWell(
-                          onTap: _isFinished
-                              ? null
-                              : () => _showSubstitutionDialog(
-                                  context,
-                                  teamId,
-                                  onCourt,
-                                  bench,
-                                  controller,
-                                  state,
-                                ),
-                          borderRadius: BorderRadius.circular(20),
-                          child: Icon(
-                            Icons.swap_horizontal_circle,
-                            color: _isFinished ? Colors.white24 : primaryColor,
-                            size: isWideScreen ? 34 : 28,
-                          ),
-                        ),
-                      ],
-                    ),
+                     Expanded(child: Text("EN CANCHA", style: TextStyle(color: primaryColor, fontWeight: FontWeight.w900, fontSize: isWideScreen ? 13 : 11, letterSpacing: 1.0), overflow: TextOverflow.ellipsis)),
+                     Row(
+                       mainAxisSize: MainAxisSize.min,
+                       children: [
+                         IconButton(onPressed: _isFinished ? null : () => _showTeamOptions(context, controller, teamId, teamName), icon: Icon(Icons.more_vert, color: _isFinished ? Colors.white24 : primaryColor, size: isWideScreen ? 28 : 24), padding: EdgeInsets.zero, constraints: const BoxConstraints()),
+                         SizedBox(width: isWideScreen ? 16 : 8),
+                         InkWell(onTap: _isFinished ? null : () => _showSubstitutionDialog(context, teamId, onCourt, bench, controller, state), borderRadius: BorderRadius.circular(20), child: Icon(Icons.swap_horizontal_circle, color: _isFinished ? Colors.white24 : primaryColor, size: isWideScreen ? 34 : 28))
+                       ],
+                     )
                   ],
                 ),
               ),
               Expanded(
                 child: ListView.separated(
-                  padding: EdgeInsets.all(isWideScreen ? 12 : 8),
-                  physics: const BouncingScrollPhysics(),
-                  itemCount: onCourt.length,
-                  separatorBuilder: (_, __) =>
-                      SizedBox(height: isWideScreen ? 8 : 6),
+                  padding: EdgeInsets.all(isWideScreen ? 12 : 8), physics: const BouncingScrollPhysics(), itemCount: onCourt.length, separatorBuilder: (_, __) => SizedBox(height: isWideScreen ? 8 : 6),
                   itemBuilder: (context, index) {
                     final playerName = onCourt[index];
-                    final stats =
-                        state.playerStats[playerName] ?? const PlayerStats();
+                    final stats = state.playerStats[playerName] ?? const PlayerStats();
                     bool isDisqualified = stats.fouls >= 5;
+                    
+                    // Verificación de Capitán
+                    bool isCaptain = (teamId == 'A' && playerName == _captainAName) || (teamId == 'B' && playerName == _captainBName);
+
                     return InkWell(
-                      onTap: _isFinished
-                          ? null
-                          : () => _showActionMenu(
-                              context,
-                              teamId,
-                              playerName,
-                              controller,
-                              stats.fouls,
-                              isWideScreen,
-                            ),
-                      onLongPress: _isFinished
-                          ? null
-                          : () => _showEditPlayerDialog(
-                              context,
-                              controller,
-                              playerName,
-                              stats.playerNumber,
-                              teamId,
-                            ),
+                      onTap: _isFinished ? null : () => _showActionMenu(context, teamId, playerName, controller, stats.fouls, isWideScreen, state),
+                      onLongPress: _isFinished ? null : () => _showEditPlayerDialog(context, controller, playerName, stats.playerNumber, teamId),
                       borderRadius: BorderRadius.circular(15),
                       child: Container(
-                        padding: EdgeInsets.symmetric(
-                          vertical: isWideScreen ? 14 : 10,
-                          horizontal: isWideScreen ? 12 : 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isDisqualified
-                              ? Colors.redAccent.withOpacity(0.2)
-                              : Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(15),
-                          border: Border.all(
-                            color: isDisqualified
-                                ? Colors.redAccent.withOpacity(0.5)
-                                : Colors.white12,
-                          ),
-                        ),
+                        padding: EdgeInsets.symmetric(vertical: isWideScreen ? 14 : 10, horizontal: isWideScreen ? 12 : 8),
+                        decoration: BoxDecoration(color: isDisqualified ? Colors.redAccent.withOpacity(0.2) : Colors.white.withOpacity(0.08), borderRadius: BorderRadius.circular(15), border: Border.all(color: isDisqualified ? Colors.redAccent.withOpacity(0.5) : Colors.white12)),
                         child: Row(
                           children: [
-                            CircleAvatar(
-                              radius: isWideScreen ? 24 : 20,
-                              backgroundColor: isDisqualified
-                                  ? Colors.redAccent.withOpacity(0.3)
-                                  : primaryColor.withOpacity(0.2),
-                              child: Text(
-                                stats.playerNumber.isNotEmpty
-                                    ? stats.playerNumber
-                                    : "#",
-                                style: TextStyle(
-                                  color: isDisqualified
-                                      ? Colors.redAccent
-                                      : primaryColor,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: isWideScreen ? 18 : 14,
-                                ),
-                              ),
-                            ),
+                            CircleAvatar(radius: isWideScreen ? 24 : 20, backgroundColor: isDisqualified ? Colors.redAccent.withOpacity(0.3) : primaryColor.withOpacity(0.2), child: Text(stats.playerNumber.isNotEmpty ? stats.playerNumber : "#", style: TextStyle(color: isDisqualified ? Colors.redAccent : primaryColor, fontWeight: FontWeight.w900, fontSize: isWideScreen ? 18 : 14))),
                             SizedBox(width: isWideScreen ? 16 : 10),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    playerName,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: isWideScreen ? 16 : 14,
-                                      color: Colors.white,
-                                    ),
+                                  // --- TEXTO DEL NOMBRE + CAPITÁN ---
+                                  RichText(
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
+                                    text: TextSpan(
+                                      children: [
+                                        TextSpan(text: playerName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: isWideScreen ? 16 : 10, color: Colors.white, fontFamily: 'Roboto')),
+                                        if (isCaptain) TextSpan(text: " (Capitán)", style: TextStyle(fontWeight: FontWeight.w900, fontSize: isWideScreen ? 12 : 10, color: Colors.amberAccent, fontFamily: 'Roboto')),
+                                      ]
+                                    ),
                                   ),
                                   SizedBox(height: isWideScreen ? 6 : 4),
                                   Wrap(
-                                    crossAxisAlignment:
-                                        WrapCrossAlignment.center,
-                                    spacing: 8,
-                                    runSpacing: 4,
+                                    crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 4,
                                     children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 6,
-                                          vertical: 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white12,
-                                          borderRadius: BorderRadius.circular(
-                                            6,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          "${stats.points} PTS",
-                                          style: TextStyle(
-                                            fontSize: isWideScreen ? 11 : 9,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white70,
-                                          ),
-                                        ),
-                                      ),
-                                      Wrap(
-                                        spacing: 4,
-                                        children: List.generate(5, (i) {
-                                          Color dotColor = Colors.white24;
-                                          if (i < stats.fouls)
-                                            dotColor = (i == 4)
-                                                ? Colors.redAccent
-                                                : Colors.orangeAccent;
-                                          return Container(
-                                            width: isWideScreen ? 10 : 8,
-                                            height: isWideScreen ? 10 : 8,
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              color: dotColor,
-                                            ),
-                                          );
-                                        }),
-                                      ),
+                                      Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(6)), child: Text("${stats.points} PTS", style: TextStyle(fontSize: isWideScreen ? 11 : 9, fontWeight: FontWeight.bold, color: Colors.white70))),
+                                      Wrap(spacing: 4, children: List.generate(5, (i) { Color dotColor = Colors.white24; if (i < stats.fouls) dotColor = (i == 4) ? Colors.redAccent : Colors.orangeAccent; return Container(width: isWideScreen ? 10 : 8, height: isWideScreen ? 10 : 8, decoration: BoxDecoration(shape: BoxShape.circle, color: dotColor)); }))
                                     ],
-                                  ),
+                                  )
                                 ],
                               ),
                             ),
@@ -735,326 +477,105 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     );
   }
 
-  void _showEditPlayerDialog(
-    BuildContext context,
-    MatchGameController controller,
-    String playerName,
-    String currentNumber,
-    String teamSide,
-  ) {
+  void _showEditPlayerDialog(BuildContext context, MatchGameController controller, String playerName, String currentNumber, String teamSide) {
     final numberController = TextEditingController(text: currentNumber);
     final errorNotifier = ValueNotifier<String?>(null);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1F2B),
-        title: Text(
-          "Editar: $playerName",
-          style: const TextStyle(color: Colors.white),
-        ),
+        backgroundColor: const Color(0xFF1A1F2B), title: Text("Editar: $playerName", style: const TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              "Este cambio solo aplicará para el partido actual.",
-              style: TextStyle(fontSize: 12, color: Colors.white54),
-            ),
+            const Text("Este cambio solo aplicará para el partido actual.", style: TextStyle(fontSize: 12, color: Colors.white54)),
             const SizedBox(height: 16),
             ValueListenableBuilder<String?>(
               valueListenable: errorNotifier,
               builder: (context, errorText, child) {
                 return TextField(
-                  controller: numberController,
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: "Número",
-                    labelStyle: const TextStyle(color: Colors.white54),
-                    filled: true,
-                    fillColor: Colors.black26,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    prefixIcon: const Icon(
-                      Icons.format_list_numbered,
-                      color: Colors.white54,
-                    ),
-                    errorText: errorText,
-                  ),
+                  controller: numberController, keyboardType: TextInputType.number, style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(labelText: "Número", labelStyle: const TextStyle(color: Colors.white54), filled: true, fillColor: Colors.black26, border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)), prefixIcon: const Icon(Icons.format_list_numbered, color: Colors.white54), errorText: errorText),
                   onChanged: (_) => errorNotifier.value = null,
                 );
-              },
+              }
             ),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar", style: TextStyle(color: Colors.grey))),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.orangeAccent),
             onPressed: () {
               final newNum = numberController.text.trim();
-              if (newNum.isEmpty) {
-                errorNotifier.value = "El número no puede estar vacío";
-                return;
-              }
-              if (_isNumberTaken(teamSide, newNum, playerName)) {
-                errorNotifier.value = "El número $newNum ya está en uso";
-                return;
-              }
+              if (newNum.isEmpty) { errorNotifier.value = "El número no puede estar vacío"; return; }
+              if (_isNumberTaken(teamSide, newNum, playerName)) { errorNotifier.value = "El número $newNum ya está en uso"; return; }
               controller.updateMatchPlayerInfo(playerName, newNumber: newNum);
               Navigator.pop(ctx);
             },
-            child: const Text(
-              "Guardar",
-              style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            child: const Text("Guardar", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     );
   }
 
-  void _showFoulOptionsDialog(
-    BuildContext context,
-    MatchGameController controller,
-    String teamId,
-    String playerName,
-  ) {
+  void _showFoulOptionsDialog(BuildContext context, MatchGameController controller, String teamId, String playerName) {
     showDialog(
       context: context,
       barrierDismissible: true,
       builder: (ctx) => Dialog(
         backgroundColor: const Color(0xFF1A1F2B),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Colors.white12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Colors.white12)),
         child: Container(
-          padding: const EdgeInsets.all(20),
-          constraints: const BoxConstraints(maxWidth: 400),
-          child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20), constraints: const BoxConstraints(maxWidth: 400),
+          child: SingleChildScrollView( 
             child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            "REGISTRAR FALTA",
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.white54,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                          Text(
-                            playerName,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white54),
-                      onPressed: () => Navigator.pop(ctx),
-                    ),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text("REGISTRAR FALTA", style: TextStyle(fontSize: 10, color: Colors.white54, fontWeight: FontWeight.bold, letterSpacing: 1.2)), Text(playerName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white), overflow: TextOverflow.ellipsis)])),
+                    IconButton(icon: const Icon(Icons.close, color: Colors.white54), onPressed: () => Navigator.pop(ctx))
                   ],
                 ),
                 const Divider(height: 24, color: Colors.white12),
-                _buildFoulSectionHeader(
-                  "PERSONAL (P)",
-                  Icons.person,
-                  Colors.blueGrey.shade200,
-                ),
+                _buildFoulSectionHeader("PERSONAL (P)", Icons.person, Colors.blueGrey.shade200),
                 const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _buildFoulChip(
-                      ctx,
-                      controller,
-                      teamId,
-                      playerName,
-                      "Lateral",
-                      "P",
-                      Colors.white10,
-                      Colors.white,
-                    ),
-                    _buildFoulChip(
-                      ctx,
-                      controller,
-                      teamId,
-                      playerName,
-                      "1 Tiro",
-                      "P1",
-                      Colors.white10,
-                      Colors.white,
-                    ),
-                    _buildFoulChip(
-                      ctx,
-                      controller,
-                      teamId,
-                      playerName,
-                      "2 Tiros",
-                      "P2",
-                      Colors.white10,
-                      Colors.white,
-                    ),
-                    _buildFoulChip(
-                      ctx,
-                      controller,
-                      teamId,
-                      playerName,
-                      "3 Tiros",
-                      "P3",
-                      Colors.white10,
-                      Colors.white,
-                    ),
+                Wrap(spacing: 8, runSpacing: 8, children: [
+                    _buildFoulChip(ctx, controller, teamId, playerName, "Lateral", "P", Colors.white10, Colors.white),
+                    _buildFoulChip(ctx, controller, teamId, playerName, "1 Tiro", "P1", Colors.white10, Colors.white),
+                    _buildFoulChip(ctx, controller, teamId, playerName, "2 Tiros", "P2", Colors.white10, Colors.white),
+                    _buildFoulChip(ctx, controller, teamId, playerName, "3 Tiros", "P3", Colors.white10, Colors.white),
                   ],
                 ),
                 const SizedBox(height: 20),
-                _buildFoulSectionHeader(
-                  "CONDUCTA / GRAVES",
-                  Icons.warning_amber_rounded,
-                  Colors.orangeAccent,
-                ),
+                _buildFoulSectionHeader("CONDUCTA / GRAVES", Icons.warning_amber_rounded, Colors.orangeAccent),
                 const SizedBox(height: 8),
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
+                Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 8, children: [
                     _buildCompactCategoryLabel("TÉCNICA", Colors.orangeAccent),
-                    _buildFoulChip(
-                      ctx,
-                      controller,
-                      teamId,
-                      playerName,
-                      "Simple",
-                      "T",
-                      Colors.orangeAccent.withOpacity(0.1),
-                      Colors.orangeAccent,
-                      isCompact: true,
-                    ),
-                    _buildFoulChip(
-                      ctx,
-                      controller,
-                      teamId,
-                      playerName,
-                      "1 Tiro",
-                      "T1",
-                      Colors.orangeAccent.withOpacity(0.1),
-                      Colors.orangeAccent,
-                      isCompact: true,
-                    ),
-                    _buildFoulChip(
-                      ctx,
-                      controller,
-                      teamId,
-                      playerName,
-                      "2 Tiros",
-                      "T2",
-                      Colors.orangeAccent.withOpacity(0.1),
-                      Colors.orangeAccent,
-                      isCompact: true,
-                    ),
+                    _buildFoulChip(ctx, controller, teamId, playerName, "Simple", "T", Colors.orangeAccent.withOpacity(0.1), Colors.orangeAccent, isCompact: true),
+                    _buildFoulChip(ctx, controller, teamId, playerName, "1 Tiro", "T1", Colors.orangeAccent.withOpacity(0.1), Colors.orangeAccent, isCompact: true),
+                    _buildFoulChip(ctx, controller, teamId, playerName, "2 Tiros", "T2", Colors.orangeAccent.withOpacity(0.1), Colors.orangeAccent, isCompact: true),
                   ],
                 ),
                 const SizedBox(height: 12),
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _buildCompactCategoryLabel(
-                      "ANTIDEP.",
-                      Colors.deepOrangeAccent,
-                    ),
-                    _buildFoulChip(
-                      ctx,
-                      controller,
-                      teamId,
-                      playerName,
-                      "Simple",
-                      "U",
-                      Colors.deepOrangeAccent.withOpacity(0.1),
-                      Colors.deepOrangeAccent,
-                      isCompact: true,
-                    ),
-                    _buildFoulChip(
-                      ctx,
-                      controller,
-                      teamId,
-                      playerName,
-                      "1 Tiro",
-                      "U1",
-                      Colors.deepOrangeAccent.withOpacity(0.1),
-                      Colors.deepOrangeAccent,
-                      isCompact: true,
-                    ),
-                    _buildFoulChip(
-                      ctx,
-                      controller,
-                      teamId,
-                      playerName,
-                      "2 Tiros",
-                      "U2",
-                      Colors.deepOrangeAccent.withOpacity(0.1),
-                      Colors.deepOrangeAccent,
-                      isCompact: true,
-                    ),
+                Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 8, children: [
+                    _buildCompactCategoryLabel("ANTIDEP.", Colors.deepOrangeAccent),
+                    _buildFoulChip(ctx, controller, teamId, playerName, "Simple", "U", Colors.deepOrangeAccent.withOpacity(0.1), Colors.deepOrangeAccent, isCompact: true),
+                    _buildFoulChip(ctx, controller, teamId, playerName, "1 Tiro", "U1", Colors.deepOrangeAccent.withOpacity(0.1), Colors.deepOrangeAccent, isCompact: true),
+                    _buildFoulChip(ctx, controller, teamId, playerName, "2 Tiros", "U2", Colors.deepOrangeAccent.withOpacity(0.1), Colors.deepOrangeAccent, isCompact: true),
                   ],
                 ),
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent.withOpacity(0.2),
-                      foregroundColor: Colors.redAccent,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        side: const BorderSide(color: Colors.redAccent),
-                      ),
-                    ),
-                    icon: const Icon(Icons.gavel_rounded, size: 18),
-                    label: const FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        "DESCALIFICANTE (D)",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    onPressed: () {
-                      controller.updateStats(
-                        teamId,
-                        playerName,
-                        fouls: 5,
-                        foulType: "D",
-                      );
-                      Navigator.pop(ctx);
-                    },
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent.withOpacity(0.2), foregroundColor: Colors.redAccent, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: const BorderSide(color: Colors.redAccent))),
+                    icon: const Icon(Icons.gavel_rounded, size: 18), label: const FittedBox(fit: BoxFit.scaleDown, child: Text("DESCALIFICANTE (D)", style: TextStyle(fontWeight: FontWeight.bold))),
+                    onPressed: () { controller.updateStats(teamId, playerName, fouls: 5, foulType: "D"); Navigator.pop(ctx); },
                   ),
-                ),
+                )
               ],
             ),
           ),
@@ -1064,228 +585,50 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
   }
 
   Widget _buildFoulSectionHeader(String title, IconData icon, Color color) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: color),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-        ),
-      ],
-    );
+    return Row(children: [Icon(icon, size: 16, color: color), const SizedBox(width: 6), Expanded(child: Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)))]);
   }
 
   Widget _buildCompactCategoryLabel(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-          color: color,
-        ),
-      ),
-    );
+    return Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4), decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(4), border: Border.all(color: color.withOpacity(0.3))), child: Text(text, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color)));
   }
 
-  Widget _buildFoulChip(
-    BuildContext ctx,
-    MatchGameController controller,
-    String teamId,
-    String playerName,
-    String label,
-    String typeCode,
-    Color bgColor,
-    Color textColor, {
-    bool isCompact = false,
-  }) {
+  Widget _buildFoulChip(BuildContext ctx, MatchGameController controller, String teamId, String playerName, String label, String typeCode, Color bgColor, Color textColor, {bool isCompact = false}) {
     return InkWell(
-      onTap: () {
-        controller.updateStats(
-          teamId,
-          playerName,
-          fouls: 1,
-          foulType: typeCode,
-        );
-        Navigator.pop(ctx);
-      },
+      onTap: () { controller.updateStats(teamId, playerName, fouls: 1, foulType: typeCode); Navigator.pop(ctx); },
       borderRadius: BorderRadius.circular(8),
       child: Container(
-        width: isCompact ? null : 70,
-        padding: EdgeInsets.symmetric(
-          horizontal: isCompact ? 10 : 6,
-          vertical: 10,
-        ),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: textColor.withOpacity(0.3)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              typeCode,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w900,
-                color: textColor,
-              ),
-            ),
-            if (!isCompact) ...[
-              const SizedBox(height: 2),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: textColor.withOpacity(0.8),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
-          ],
-        ),
+        width: isCompact ? null : 70, padding: EdgeInsets.symmetric(horizontal: isCompact ? 10 : 6, vertical: 10), decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8), border: Border.all(color: textColor.withOpacity(0.3))),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [Text(typeCode, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: textColor)), if (!isCompact) ...[const SizedBox(height: 2), FittedBox(fit: BoxFit.scaleDown, child: Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: textColor.withOpacity(0.8)), textAlign: TextAlign.center))]]),
       ),
     );
   }
 
-  void _showActionMenu(
-    BuildContext context,
-    String teamId,
-    String playerName,
-    MatchGameController controller,
-    int currentFouls,
-    bool isWideScreen,
-  ) {
+  void _showActionMenu(BuildContext context, String teamId, String playerName, MatchGameController controller, int currentFouls, bool isWideScreen, MatchState state) {
     bool isDisqualified = currentFouls >= 5;
     showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
+      context: context, backgroundColor: Colors.transparent, isScrollControlled: true,
       builder: (_) => SafeArea(
         child: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
             child: Container(
-              color: const Color(0xFF0D1117).withOpacity(0.8),
-              padding: const EdgeInsets.all(24),
+              color: const Color(0xFF0D1117).withOpacity(0.8), padding: const EdgeInsets.all(24),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    playerName,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    isDisqualified
-                        ? "JUGADOR DESCALIFICADO"
-                        : "Selecciona una acción",
-                    style: TextStyle(
-                      color: isDisqualified ? Colors.redAccent : Colors.white54,
-                      fontWeight: isDisqualified
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
+                  Text(playerName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white), textAlign: TextAlign.center), const SizedBox(height: 4), Text(isDisqualified ? "JUGADOR DESCALIFICADO" : "Selecciona una acción", style: TextStyle(color: isDisqualified ? Colors.redAccent : Colors.white54, fontWeight: isDisqualified ? FontWeight.bold : FontWeight.normal), textAlign: TextAlign.center), const SizedBox(height: 24),
                   if (isDisqualified) ...[
-                    const Icon(Icons.block, size: 50, color: Colors.redAccent),
-                    const SizedBox(height: 10),
-                    const Text(
-                      "No se pueden agregar más eventos a este jugador.",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.white54),
-                    ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                        ),
-                        icon: const Icon(Icons.swap_horiz),
-                        label: const Text("REALIZAR SUSTITUCIÓN AHORA"),
-                        onPressed: () {
-                          Navigator.pop(context);
-                          final currentState = ref.read(matchGameProvider);
-                          final onCourt = teamId == 'A'
-                              ? currentState.teamAOnCourt
-                              : currentState.teamBOnCourt;
-                          final bench = teamId == 'A'
-                              ? currentState.teamABench
-                              : currentState.teamBBench;
-                          _showSubstitutionDialog(
-                            context,
-                            teamId,
-                            onCourt,
-                            bench,
-                            controller,
-                            currentState,
-                            preSelectedOut: playerName,
-                          );
-                        },
-                      ),
-                    ),
+                    const Icon(Icons.block, size: 50, color: Colors.redAccent), const SizedBox(height: 10), const Text("No se pueden agregar más eventos a este jugador.", textAlign: TextAlign.center, style: TextStyle(color: Colors.white54)), const SizedBox(height: 20),
+                    SizedBox(width: double.infinity, child: ElevatedButton.icon(style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 15)), icon: const Icon(Icons.swap_horiz), label: const Text("REALIZAR SUSTITUCIÓN AHORA"), onPressed: () { Navigator.pop(context); final onCourt = teamId == 'A' ? state.teamAOnCourt : state.teamBOnCourt; final bench = teamId == 'A' ? state.teamABench : state.teamBBench; _showSubstitutionDialog(context, teamId, onCourt, bench, controller, state, preSelectedOut: playerName); }))
                   ] else
                     Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      alignment: WrapAlignment.center,
+                      spacing: 12, runSpacing: 12, alignment: WrapAlignment.center,
                       children: [
-                        _buildStatButton("+1", Colors.lightBlueAccent, () {
-                          controller.updateStats(teamId, playerName, points: 1);
-                          Navigator.pop(context);
-                        }, isWideScreen),
-                        _buildStatButton("+2", Colors.greenAccent, () {
-                          controller.updateStats(teamId, playerName, points: 2);
-                          Navigator.pop(context);
-                        }, isWideScreen),
-                        _buildStatButton("+3", Colors.orangeAccent, () {
-                          controller.updateStats(teamId, playerName, points: 3);
-                          Navigator.pop(context);
-                        }, isWideScreen),
-                        _buildStatButton(
-                          "Falta",
-                          Colors.redAccent,
-                          () {
-                            Navigator.pop(context);
-                            _showFoulOptionsDialog(
-                              context,
-                              controller,
-                              teamId,
-                              playerName,
-                            );
-                          },
-                          isWideScreen,
-                          icon: Icons.error_outline,
-                        ),
+                        _buildStatButton("+1", Colors.lightBlueAccent, () { controller.updateStats(teamId, playerName, points: 1); Navigator.pop(context); }, isWideScreen),
+                        _buildStatButton("+2", Colors.greenAccent, () { controller.updateStats(teamId, playerName, points: 2); Navigator.pop(context); }, isWideScreen),
+                        _buildStatButton("+3", Colors.orangeAccent, () { controller.updateStats(teamId, playerName, points: 3); Navigator.pop(context); }, isWideScreen),
+                        _buildStatButton("Falta", Colors.redAccent, () { Navigator.pop(context); _showFoulOptionsDialog(context, controller, teamId, playerName); }, isWideScreen, icon: Icons.error_outline),
                       ],
                     ),
                 ],
@@ -1296,166 +639,34 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
       ),
     );
   }
-
-  Widget _buildStatButton(
-    String label,
-    Color color,
-    VoidCallback onTap,
-    bool isWideScreen, {
-    IconData? icon,
-  }) {
-    double btnSize = isWideScreen ? 80 : 70;
+  
+  Widget _buildStatButton(String label, Color color, VoidCallback onTap, bool isWideScreen, {IconData? icon}) {
+    double btnSize = isWideScreen ? 80 : 70; 
     return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      onTap: onTap, borderRadius: BorderRadius.circular(16),
       child: Container(
-        width: btnSize,
-        height: btnSize,
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.5), width: 2),
-          boxShadow: [BoxShadow(color: color.withOpacity(0.1), blurRadius: 10)],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (icon != null)
-              Icon(icon, color: color, size: isWideScreen ? 28 : 24)
-            else
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: isWideScreen ? 24 : 20,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
-              ),
-            if (icon != null)
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
-              ),
-          ],
-        ),
+        width: btnSize, height: btnSize, decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(16), border: Border.all(color: color.withOpacity(0.5), width: 2), boxShadow: [BoxShadow(color: color.withOpacity(0.1), blurRadius: 10)]),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [if (icon != null) Icon(icon, color: color, size: isWideScreen ? 28 : 24) else Text(label, style: TextStyle(fontSize: isWideScreen ? 24 : 20, fontWeight: FontWeight.bold, color: color)), if (icon != null) Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color))]),
       ),
     );
   }
 
-  void _showTeamOptions(
-    BuildContext context,
-    MatchGameController controller,
-    String teamId,
-    String teamName,
-  ) {
+  void _showTeamOptions(BuildContext context, MatchGameController controller, String teamId, String teamName) {
     showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
+      context: context, backgroundColor: Colors.transparent,
       builder: (_) => ClipRRect(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
           child: Container(
-            color: const Color(0xFF0D1117).withOpacity(0.8),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            color: const Color(0xFF0D1117).withOpacity(0.8), padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  "Opciones: $teamName",
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 10),
-                const Divider(color: Colors.white24),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.blueGrey.withOpacity(0.3),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.timer_outlined,
-                      color: Colors.white,
-                    ),
-                  ),
-                  title: const Text(
-                    "Solicitar Tiempo Fuera",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  onTap: () {
-                    controller.addTimeout(teamId);
-                    Navigator.pop(context);
-                  },
-                ),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.3),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.sports, color: Colors.orangeAccent),
-                  ),
-                  title: const Text(
-                    "Falta Técnica al Entrenador (C)",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  onTap: () {
-                    controller.addTeamFoul(teamId, 'C');
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Falta al Coach (C) registrada"),
-                      ),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.3),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.chair,
-                      color: Colors.lightBlueAccent,
-                    ),
-                  ),
-                  title: const Text(
-                    "Falta Técnica a la Banca (B)",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  onTap: () {
-                    controller.addTeamFoul(teamId, 'B');
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Falta a la Banca (B) registrada"),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 10),
+                Text("Opciones: $teamName", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white), textAlign: TextAlign.center), const SizedBox(height: 10), const Divider(color: Colors.white24),
+                ListTile(leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.blueGrey.withOpacity(0.3), shape: BoxShape.circle), child: const Icon(Icons.timer_outlined, color: Colors.white)), title: const Text("Solicitar Tiempo Fuera", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)), onTap: () { controller.addTimeout(teamId); Navigator.pop(context); }),
+                ListTile(leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.orange.withOpacity(0.3), shape: BoxShape.circle), child: const Icon(Icons.sports, color: Colors.orangeAccent)), title: const Text("Falta Técnica al Entrenador (C)", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)), onTap: () { controller.addTeamFoul(teamId, 'C'); Navigator.pop(context); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Falta al Coach (C) registrada"))); }),
+                ListTile(leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.blue.withOpacity(0.3), shape: BoxShape.circle), child: const Icon(Icons.chair, color: Colors.lightBlueAccent)), title: const Text("Falta Técnica a la Banca (B)", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)), onTap: () { controller.addTeamFoul(teamId, 'B'); Navigator.pop(context); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Falta a la Banca (B) registrada"))); }), const SizedBox(height: 10),
               ],
             ),
           ),
@@ -1464,532 +675,130 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     );
   }
 
-  // ACEPTAMOS EL STATE AQUÍ PARA EXTRAER LOS NÚMEROS DE LOS JUGADORES
-  void _showSubstitutionDialog(
-    BuildContext context,
-    String teamId,
-    List<String> onCourt,
-    List<String> bench,
-    MatchGameController controller,
-    MatchState state, {
-    String? preSelectedOut,
-  }) {
-    String? selectedOut = preSelectedOut;
+  void _showSubstitutionDialog(BuildContext context, String teamId, List<String> onCourt, List<String> bench, MatchGameController controller, MatchState state, {String? preSelectedOut}) {
+    String? selectedOut = preSelectedOut; 
     String? selectedIn;
+    
+    // ORDENAR TAMBIÉN LAS LISTAS DE REEMPLAZO DE MAYOR A MENOR PARA QUE EL ÁRBITRO LOS ENCUENTRE FÁCIL
+    final sortedOnCourt = _sortPlayersByNumberDesc(onCourt, state);
+    final sortedBench = _sortPlayersByNumberDesc(bench, state);
+
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          backgroundColor: const Color(0xFF1A1F2B),
-          title: const Text(
-            "Sustitución",
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _dropdown(
-                "Sale (Cancha)",
-                onCourt,
-                selectedOut,
-                (v) => setState(() => selectedOut = v),
-                state,
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8.0),
-                child: Icon(Icons.arrow_downward, color: Colors.orangeAccent),
-              ),
-              _dropdown(
-                "Entra (Banca)",
-                bench,
-                selectedIn,
-                (v) => setState(() => selectedIn = v),
-                state,
-              ),
-            ],
-          ),
+          backgroundColor: const Color(0xFF1A1F2B), title: const Text("Sustitución", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [_dropdown("Sale (Cancha)", sortedOnCourt, selectedOut, (v) => setState(() => selectedOut = v), state), const Padding(padding: EdgeInsets.symmetric(vertical: 8.0), child: Icon(Icons.arrow_downward, color: Colors.orangeAccent)), _dropdown("Entra (Banca)", sortedBench, selectedIn, (v) => setState(() => selectedIn = v), state)]),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                "Cancelar",
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.orangeAccent,
-              ),
-              onPressed: (selectedOut != null && selectedIn != null)
-                  ? () {
-                      controller.substitutePlayer(
-                        teamId,
-                        selectedOut!,
-                        selectedIn!,
-                      );
-                      Navigator.pop(context);
-                    }
-                  : null,
-              child: const Text(
-                "Confirmar",
-                style: TextStyle(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar", style: TextStyle(color: Colors.grey))),
+            FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.orangeAccent), onPressed: (selectedOut != null && selectedIn != null) ? () { controller.substitutePlayer(teamId, selectedOut!, selectedIn!); Navigator.pop(context); } : null, child: const Text("Confirmar", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)))
           ],
         ),
       ),
     );
   }
 
-  // MODIFICAMOS EL DROPDOWN PARA LEER EL STATE Y MOSTRAR EL NÚMERO JUNTO AL NOMBRE
-  Widget _dropdown(
-    String label,
-    List<String> items,
-    String? val,
-    Function(String?) changed,
-    MatchState state,
-  ) {
+  Widget _dropdown(String label, List<String> items, String? val, Function(String?) changed, MatchState state) {
     return Theme(
       data: ThemeData.dark(),
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(color: Colors.white70),
-          border: const OutlineInputBorder(),
-          enabledBorder: const OutlineInputBorder(
-            borderSide: BorderSide(color: Colors.white24),
-          ),
-        ),
-        child: DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            value: val,
-            isDense: true,
-            isExpanded: true,
-            dropdownColor: const Color(0xFF2C323F),
-            style: const TextStyle(color: Colors.white, fontSize: 16),
-            items: items.map((e) {
-              final numDorsal = state.playerStats[e]?.playerNumber ?? "#";
-              return DropdownMenuItem(value: e, child: Text("$numDorsal - $e"));
-            }).toList(),
-            onChanged: changed,
-          ),
-        ),
-      ),
+      child: InputDecorator(decoration: InputDecoration(labelText: label, labelStyle: const TextStyle(color: Colors.white70), border: const OutlineInputBorder(), enabledBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.white24))), 
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: val, isDense: true, isExpanded: true, dropdownColor: const Color(0xFF2C323F), style: const TextStyle(color: Colors.white, fontSize: 16), 
+          items: items.map((e) {
+            final numDorsal = state.playerStats[e]?.playerNumber ?? "#";
+            return DropdownMenuItem(value: e, child: Text("$numDorsal - $e"));
+          }).toList(), 
+          onChanged: changed))),
     );
   }
 
-  void _showTimePicker(
-    BuildContext context,
-    MatchGameController controller,
-    Duration currentTime,
-  ) {
-    int selectedMinute = currentTime.inMinutes;
-    int selectedSecond = currentTime.inSeconds % 60;
+  void _showTimePicker(BuildContext context, MatchGameController controller, Duration currentTime) {
+    int selectedMinute = currentTime.inMinutes; int selectedSecond = currentTime.inSeconds % 60;
     showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF1A1F2B),
+      context: context, backgroundColor: const Color(0xFF1A1F2B),
       builder: (_) => Container(
-        height: 300,
-        padding: const EdgeInsets.all(16),
+        height: 300, padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    "Cancelar",
-                    style: TextStyle(color: Colors.redAccent),
-                  ),
-                ),
-                const Text(
-                  "Ajustar Reloj",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: Colors.white,
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    controller.setTime(
-                      Duration(
-                        minutes: selectedMinute,
-                        seconds: selectedSecond,
-                      ),
-                    );
-                    Navigator.pop(context);
-                  },
-                  child: const Text(
-                    "Guardar",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.greenAccent,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 70,
-                    child: ListWheelScrollView.useDelegate(
-                      itemExtent: 50,
-                      controller: FixedExtentScrollController(
-                        initialItem: selectedMinute,
-                      ),
-                      physics: const FixedExtentScrollPhysics(),
-                      onSelectedItemChanged: (v) => selectedMinute = v,
-                      childDelegate: ListWheelChildBuilderDelegate(
-                        childCount: 100,
-                        builder: (c, i) => Center(
-                          child: Text(
-                            i.toString().padLeft(2, '0'),
-                            style: const TextStyle(
-                              fontSize: 30,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const Text(
-                    ":",
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  SizedBox(
-                    width: 70,
-                    child: ListWheelScrollView.useDelegate(
-                      itemExtent: 50,
-                      controller: FixedExtentScrollController(
-                        initialItem: selectedSecond,
-                      ),
-                      physics: const FixedExtentScrollPhysics(),
-                      onSelectedItemChanged: (v) => selectedSecond = v,
-                      childDelegate: ListWheelChildBuilderDelegate(
-                        childCount: 60,
-                        builder: (c, i) => Center(
-                          child: Text(
-                            i.toString().padLeft(2, '0'),
-                            style: const TextStyle(
-                              fontSize: 30,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar", style: TextStyle(color: Colors.redAccent))), const Text("Ajustar Reloj", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)), TextButton(onPressed: () { controller.setTime(Duration(minutes: selectedMinute, seconds: selectedSecond)); Navigator.pop(context); }, child: const Text("Guardar", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.greenAccent)))]),
+             const SizedBox(height: 20),
+             Expanded(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [SizedBox(width: 70, child: ListWheelScrollView.useDelegate(itemExtent: 50, controller: FixedExtentScrollController(initialItem: selectedMinute), physics: const FixedExtentScrollPhysics(), onSelectedItemChanged: (v) => selectedMinute = v, childDelegate: ListWheelChildBuilderDelegate(childCount: 100, builder: (c,i) => Center(child: Text(i.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 30, color: Colors.white)))))), const Text(":", style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white)), SizedBox(width: 70, child: ListWheelScrollView.useDelegate(itemExtent: 50, controller: FixedExtentScrollController(initialItem: selectedSecond), physics: const FixedExtentScrollPhysics(), onSelectedItemChanged: (v) => selectedSecond = v, childDelegate: ListWheelChildBuilderDelegate(childCount: 60, builder: (c,i) => Center(child: Text(i.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 30, color: Colors.white))))))]))
           ],
         ),
-      ),
+      )
     );
   }
-
+  
   void _confirmExit(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1F2B),
-        title: const Text("¿Salir?", style: TextStyle(color: Colors.white)),
-        content: const Text(
-          "El partido continuará guardado localmente.",
-          style: TextStyle(color: Colors.white70),
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1F2B), title: const Text("¿Salir?", style: TextStyle(color: Colors.white)), content: const Text("El partido continuará guardado localmente.", style: TextStyle(color: Colors.white70)),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar", style: TextStyle(color: Colors.grey))),
+            FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.redAccent), onPressed: () { Navigator.pop(ctx); Navigator.of(context).popUntil((r) => r.isFirst); }, child: const Text("Salir", style: TextStyle(color: Colors.white))),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () {
-              Navigator.pop(ctx);
-              Navigator.of(context).popUntil((r) => r.isFirst);
-            },
-            child: const Text("Salir", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
+      );
   }
 
-  void _finishMatchProcess(
-    BuildContext context,
-    MatchState state,
-    Uint8List? signature, {
-    bool autoShow = true,
-  }) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (c) => const Center(
-        child: CircularProgressIndicator(color: Colors.orangeAccent),
-      ),
-    );
+  void _finishMatchProcess(BuildContext context, MatchState state, Uint8List? signature, {bool autoShow = true}) async {
+    showDialog(context: context, barrierDismissible: false, builder: (c) => const Center(child: CircularProgressIndicator(color: Colors.orangeAccent)));
     try {
-      final api = ref.read(apiServiceProvider);
-      final controller = ref.read(matchGameProvider.notifier);
-      final dbBase = ref.read(databaseProvider);
-      final pdfBytes = await PdfGenerator.generateBytes(
-        state,
-        widget.teamAName,
-        widget.teamBName,
-        tournamentName: widget.tournamentName,
-        venueName: widget.venueName,
-        mainReferee: widget.mainReferee,
-        auxReferee: widget.auxReferee,
-        scorekeeper: widget.scorekeeper,
-        coachA: widget.coachA,
-        coachB: widget.coachB,
-        captainAId: widget.captainAId,
-        captainBId: widget.captainBId,
-        protestSignature: signature,
-        matchDate: widget.matchDate ?? DateTime.now(),
-      );
-      bool synced = await controller.finalizeAndSync(
-        api,
-        signature,
-        pdfBytes,
-        widget.teamAName,
-        widget.teamBName,
-      );
+      final api = ref.read(apiServiceProvider); final controller = ref.read(matchGameProvider.notifier); final dbBase = ref.read(databaseProvider);
+      final pdfBytes = await PdfGenerator.generateBytes(state, widget.teamAName, widget.teamBName, tournamentName: widget.tournamentName, venueName: widget.venueName, mainReferee: widget.mainReferee, auxReferee: widget.auxReferee, scorekeeper: widget.scorekeeper, coachA: widget.coachA, coachB: widget.coachB, captainAId: widget.captainAId, captainBId: widget.captainBId, protestSignature: signature, matchDate: widget.matchDate ?? DateTime.now());
+      bool synced = await controller.finalizeAndSync(api, signature, pdfBytes, widget.teamAName, widget.teamBName);
 
-      await (dbBase.update(dbBase.matches)
-            ..where((tbl) => tbl.id.equals(state.matchId)))
-          .write(const db.MatchesCompanion(status: drift.Value('FINISHED')));
-      if (state.fixtureId != null)
-        await (dbBase.update(
-          dbBase.fixtures,
-        )..where((tbl) => tbl.id.equals(state.fixtureId!))).write(
-          db.FixturesCompanion(
-            status: const drift.Value('FINISHED'),
-            scoreA: drift.Value(state.scoreA),
-            scoreB: drift.Value(state.scoreB),
-          ),
-        );
+      await (dbBase.update(dbBase.matches)..where((tbl) => tbl.id.equals(state.matchId))).write(const db.MatchesCompanion(status: drift.Value('FINISHED')));
+      if (state.fixtureId != null) await (dbBase.update(dbBase.fixtures)..where((tbl) => tbl.id.equals(state.fixtureId!))).write(db.FixturesCompanion(status: const drift.Value('FINISHED'), scoreA: drift.Value(state.scoreA), scoreB: drift.Value(state.scoreB)));
 
       if (context.mounted) {
         setState(() => _isFinished = true);
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              synced
-                  ? "Sincronizado correctamente"
-                  : "Guardado localmente (Sin conexión)",
-            ),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: synced
-                ? Colors.green.shade700
-                : Colors.orange.shade700,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(synced ? "Sincronizado correctamente" : "Guardado localmente (Sin conexión)"), behavior: SnackBarBehavior.floating, backgroundColor: synced ? Colors.green.shade700 : Colors.orange.shade700));
         if (autoShow) _goToPdfPreview(context, state, signature);
       }
     } catch (e) {
       if (context.mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Error: $e"),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e"), backgroundColor: Colors.redAccent));
         if (autoShow) _goToPdfPreview(context, state, signature);
       }
     }
   }
-
-  void _goToPdfPreview(
-    BuildContext context,
-    MatchState state,
-    Uint8List? signature,
-  ) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => PdfPreviewScreen(
-          state: state,
-          teamAName: widget.teamAName,
-          teamBName: widget.teamBName,
-          tournamentName: widget.tournamentName,
-          venueName: widget.venueName,
-          mainReferee: widget.mainReferee,
-          auxReferee: widget.auxReferee,
-          scorekeeper: widget.scorekeeper,
-          coachA: widget.coachA,
-          coachB: widget.coachB,
-          captainAId: widget.captainAId,
-          captainBId: widget.captainBId,
-          matchDate: widget.matchDate,
-          protestSignature: signature,
-        ),
-      ),
-    );
+  
+  void _goToPdfPreview(BuildContext context, MatchState state, Uint8List? signature) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => PdfPreviewScreen(state: state, teamAName: widget.teamAName, teamBName: widget.teamBName, tournamentName: widget.tournamentName, venueName: widget.venueName, mainReferee: widget.mainReferee, auxReferee: widget.auxReferee, scorekeeper: widget.scorekeeper, coachA: widget.coachA, coachB: widget.coachB, captainAId: widget.captainAId, captainBId: widget.captainBId, matchDate: widget.matchDate, protestSignature: signature)));
   }
-
+  
   void _showFinalOptionsDialog(BuildContext context, MatchState currentState) {
     if (_isFinished) return;
     showDialog(
-      context: context,
-      barrierDismissible: false,
+      context: context, barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1F2B),
-        title: const Text(
-          "Finalizar Partido",
-          style: TextStyle(color: Colors.white),
-        ),
-        content: const Text(
-          "¿Cómo deseas proceder con el acta?",
-          style: TextStyle(color: Colors.white70),
-        ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        backgroundColor: const Color(0xFF1A1F2B), title: const Text("Finalizar Partido", style: TextStyle(color: Colors.white)), content: const Text("¿Cómo deseas proceder con el acta?", style: TextStyle(color: Colors.white70)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         actions: [
-          OutlinedButton.icon(
-            icon: const Icon(Icons.edit_document, color: Colors.redAccent),
-            label: const Text(
-              "Firmar Bajo Protesta",
-              style: TextStyle(color: Colors.redAccent),
-            ),
-            onPressed: () {
-              Navigator.pop(ctx);
-              _handleProtestFlow(context, currentState);
-            },
-          ),
-          const SizedBox(height: 10),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(backgroundColor: Colors.greenAccent),
-            icon: const Icon(Icons.check_circle, color: Colors.black),
-            label: const Text(
-              "Finalizar y Sincronizar",
-              style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            onPressed: () {
-              Navigator.pop(ctx);
-              _finishMatchProcess(context, currentState, null);
-            },
-          ),
+          OutlinedButton.icon(icon: const Icon(Icons.edit_document, color: Colors.redAccent), label: const Text("Firmar Bajo Protesta", style: TextStyle(color: Colors.redAccent)), onPressed: () { Navigator.pop(ctx); _handleProtestFlow(context, currentState); }), const SizedBox(height: 10),
+          FilledButton.icon(style: FilledButton.styleFrom(backgroundColor: Colors.greenAccent), icon: const Icon(Icons.check_circle, color: Colors.black), label: const Text("Finalizar y Sincronizar", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)), onPressed: () { Navigator.pop(ctx); _finishMatchProcess(context, currentState, null); }),
         ],
       ),
     );
   }
 
-  void _showPeriodSelector(
-    BuildContext context,
-    MatchGameController controller,
-  ) {
-    showDialog(
-      context: context,
-      builder: (_) => SimpleDialog(
-        backgroundColor: const Color(0xFF1A1F2B),
-        title: const Text(
-          "Seleccionar Periodo",
-          style: TextStyle(color: Colors.white),
-        ),
-        children: [
-          _periodOption(context, controller, 1, "Periodo 1"),
-          _periodOption(context, controller, 2, "Periodo 2"),
-          _periodOption(context, controller, 3, "Periodo 3"),
-          _periodOption(context, controller, 4, "Periodo 4"),
-          const Divider(color: Colors.white24),
-          _periodOption(context, controller, 5, "Tiempo Extra 1"),
-          _periodOption(context, controller, 6, "Tiempo Extra 2"),
-        ],
-      ),
-    );
+  void _showPeriodSelector(BuildContext context, MatchGameController controller) {
+    showDialog(context: context, builder: (_) => SimpleDialog(backgroundColor: const Color(0xFF1A1F2B), title: const Text("Seleccionar Periodo", style: TextStyle(color: Colors.white)), children: [_periodOption(context, controller, 1, "Periodo 1"), _periodOption(context, controller, 2, "Periodo 2"), _periodOption(context, controller, 3, "Periodo 3"), _periodOption(context, controller, 4, "Periodo 4"), const Divider(color: Colors.white24), _periodOption(context, controller, 5, "Tiempo Extra 1"), _periodOption(context, controller, 6, "Tiempo Extra 2")]));
   }
 
-  Widget _periodOption(
-    BuildContext context,
-    MatchGameController controller,
-    int period,
-    String label,
-  ) {
-    return SimpleDialogOption(
-      onPressed: () {
-        controller.setPeriod(period);
-        Navigator.pop(context);
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
-        child: Text(label, style: const TextStyle(color: Colors.white70)),
-      ),
-    );
+  Widget _periodOption(BuildContext context, MatchGameController controller, int period, String label) {
+    return SimpleDialogOption(onPressed: () { controller.setPeriod(period); Navigator.pop(context); }, child: Padding(padding: const EdgeInsets.symmetric(vertical: 8.0), child: Text(label, style: const TextStyle(color: Colors.white70))));
   }
 
-  Future<void> _handleProtestFlow(
-    BuildContext context,
-    MatchState state,
-  ) async {
-    final String? protestingTeam = await showDialog<String>(
-      context: context,
-      builder: (ctx) => SimpleDialog(
-        backgroundColor: const Color(0xFF1A1F2B),
-        title: const Text(
-          "¿Quién protesta?",
-          style: TextStyle(color: Colors.white),
-        ),
-        children: [
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(ctx, widget.teamAName),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Text(
-                widget.teamAName,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.orangeAccent,
-                ),
-              ),
-            ),
-          ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(ctx, widget.teamBName),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Text(
-                widget.teamBName,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.lightBlueAccent,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  Future<void> _handleProtestFlow(BuildContext context, MatchState state) async {
+    final String? protestingTeam = await showDialog<String>(context: context, builder: (ctx) => SimpleDialog(backgroundColor: const Color(0xFF1A1F2B), title: const Text("¿Quién protesta?", style: TextStyle(color: Colors.white)), children: [SimpleDialogOption(onPressed: () => Navigator.pop(ctx, widget.teamAName), child: Padding(padding: const EdgeInsets.all(12), child: Text(widget.teamAName, style: const TextStyle(fontSize: 16, color: Colors.orangeAccent)))), SimpleDialogOption(onPressed: () => Navigator.pop(ctx, widget.teamBName), child: Padding(padding: const EdgeInsets.all(12), child: Text(widget.teamBName, style: const TextStyle(fontSize: 16, color: Colors.lightBlueAccent))))]));
     if (protestingTeam != null && context.mounted) {
-      final Uint8List? signature = await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ProtestSignatureScreen(teamName: protestingTeam),
-        ),
-      );
-      if (signature != null && context.mounted) {
-        setState(() => _capturedSignature = signature);
-        _finishMatchProcess(context, state, signature, autoShow: true);
-      }
+      final Uint8List? signature = await Navigator.push(context, MaterialPageRoute(builder: (_) => ProtestSignatureScreen(teamName: protestingTeam)));
+      if (signature != null && context.mounted) { setState(() => _capturedSignature = signature); _finishMatchProcess(context, state, signature, autoShow: true); }
     }
   }
 }
