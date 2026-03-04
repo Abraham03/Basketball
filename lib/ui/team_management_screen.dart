@@ -241,10 +241,11 @@ class TeamManagementScreen extends ConsumerWidget {
                   tournamentId.length > 10 || tournamentId.startsWith('-');
 
               try {
-                if (isTournamentLocal)
+                if (isTournamentLocal) {
                   throw Exception(
                     "Torneo local. Guardando offline en cascada.",
                   );
+                }
 
                 final newTeamId = await api.createTeam(
                   nameCtrl.text,

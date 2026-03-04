@@ -397,7 +397,7 @@ class TeamDetailScreen extends ConsumerWidget {
                       isSynced: drift.Value(syncSuccess),
                     ),
                   );
-                  if (context.mounted)
+                  if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
@@ -410,13 +410,15 @@ class TeamDetailScreen extends ConsumerWidget {
                             : Colors.orange,
                       ),
                     );
+                  }
                 } else {
                   try {
                     // REGLA DE ORO: Si el equipo es local, forzar offline al jugador. MySQL no aceptará un team_id negativo.
-                    if (isTeamLocal)
+                    if (isTeamLocal) {
                       throw Exception(
                         "Equipo padre es local. Forzando cascada offline.",
                       );
+                    }
 
                     final newId = await api.addPlayer(
                       teamIdInt,
@@ -436,13 +438,14 @@ class TeamDetailScreen extends ConsumerWidget {
                           ),
                           mode: drift.InsertMode.insertOrReplace,
                         );
-                    if (context.mounted)
+                    if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text("✅ Jugador agregado"),
                           backgroundColor: Colors.green,
                         ),
                       );
+                    }
                   } catch (e) {
                     final tempId = (-DateTime.now().millisecondsSinceEpoch)
                         .toString();
@@ -458,7 +461,7 @@ class TeamDetailScreen extends ConsumerWidget {
                             isSynced: const drift.Value(false),
                           ),
                         );
-                    if (context.mounted)
+                    if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text(
@@ -467,6 +470,7 @@ class TeamDetailScreen extends ConsumerWidget {
                           backgroundColor: Colors.orange,
                         ),
                       );
+                    }
                   }
                 }
                 if (context.mounted) Navigator.pop(ctx);
