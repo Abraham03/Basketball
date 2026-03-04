@@ -340,8 +340,8 @@ class MatchGameController extends StateNotifier<MatchState> {
 
     int minutesLeft = (state.timeLeft.inSeconds / 60).floor(); 
     if (state.timeLeft.inSeconds % 60 > 0 && minutesLeft == 10) minutesLeft = 9; 
-    if (minutesLeft == 0 && state.timeLeft.inSeconds > 0) minutesLeft = 1;
-    else if (state.timeLeft.inSeconds == 0) minutesLeft = 0; 
+    if (minutesLeft == 0 && state.timeLeft.inSeconds > 0) {minutesLeft = 1;}
+    else if (state.timeLeft.inSeconds == 0) {minutesLeft = 0;} 
 
     String minStr = minutesLeft.toString();
     bool isClutchTime = state.currentPeriod == 4 && state.timeLeft.inSeconds <= 120;
@@ -404,13 +404,13 @@ class MatchGameController extends StateNotifier<MatchState> {
 
   void _updateTimeoutList(String teamId, int section, List<String> newList) {
     if (teamId == 'A') {
-      if (section == 1) state = state.copyWith(teamATimeouts1: newList);
-      else if (section == 2) state = state.copyWith(teamATimeouts2: newList);
-      else state = state.copyWith(teamAOTTimeouts: newList);
+      if (section == 1) {state = state.copyWith(teamATimeouts1: newList);}
+      else if (section == 2) {state = state.copyWith(teamATimeouts2: newList);}
+      else {state = state.copyWith(teamAOTTimeouts: newList);}
     } else {
-      if (section == 1) state = state.copyWith(teamBTimeouts1: newList);
-      else if (section == 2) state = state.copyWith(teamBTimeouts2: newList);
-      else state = state.copyWith(teamBOTTimeouts: newList);
+      if (section == 1) {state = state.copyWith(teamBTimeouts1: newList);}
+      else if (section == 2) {state = state.copyWith(teamBTimeouts2: newList);}
+      else {state = state.copyWith(teamBOTTimeouts: newList);}
     }
     _saveToDatabase();
   }
@@ -495,8 +495,8 @@ class MatchGameController extends StateNotifier<MatchState> {
 
   void setPossession(String team) {
     _saveToHistory();
-    if (state.possession == team) state = state.copyWith(possession: '');
-    else state = state.copyWith(possession: team);
+    if (state.possession == team) {state = state.copyWith(possession: '');}
+    else {state = state.copyWith(possession: team);}
   }
 
   void initMatch(String matchId) {}
@@ -548,8 +548,8 @@ class MatchGameController extends StateNotifier<MatchState> {
   }
 
   void toggleTimer() {
-    if (state.isRunning) _pause();
-    else _start();
+    if (state.isRunning) {_pause();}
+    else {_start();}
   }
 
   void _pause() {
@@ -576,8 +576,8 @@ class MatchGameController extends StateNotifier<MatchState> {
     final newPeriodScores = Map<int, List<int>>.from(state.periodScores);
     List<int> currentPeriodScore = List.from(newPeriodScores[state.currentPeriod] ?? [0, 0]);
     if (points > 0) {
-      if (teamId == 'A') currentPeriodScore[0] += points;
-      else currentPeriodScore[1] += points;
+      if (teamId == 'A') {currentPeriodScore[0] += points;}
+      else {currentPeriodScore[1] += points;}
     }
     newPeriodScores[state.currentPeriod] = currentPeriodScore;
 
@@ -627,11 +627,11 @@ class MatchGameController extends StateNotifier<MatchState> {
   Future<void> _logEventToDb(String? playeridDb, int points, int fouls, String? customType) async {
     if (state.matchId.isEmpty) return;
     String type = "UNKNOWN";
-    if (points == 1) type = "POINT_1";
-    else if (points == 2) type = "POINT_2";
-    else if (points == 3) type = "POINT_3";
-    else if (customType != null) type = customType; 
-    else if (fouls > 0) type = "FOUL"; 
+    if (points == 1) {type = "POINT_1";}
+    else if (points == 2) {type = "POINT_2";}
+    else if (points == 3) {type = "POINT_3";}
+    else if (customType != null) {type = customType;} 
+    else if (fouls > 0) {type = "FOUL"; }
 
     final timeStr = "${state.timeLeft.inMinutes}:${(state.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}";
 
