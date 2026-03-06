@@ -57,6 +57,25 @@ class _StartersSelectionScreenState
   int? _captainBId;
   bool _isCreating = false;
 
+  // 1. Declaramos listas locales para manejar el roster ordenado
+  late List<catalog.Player> _orderedRosterA;
+  late List<catalog.Player> _orderedRosterB;
+
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // 2. Inicializamos y ordenamos las listas al cargar la pantalla
+    // Usamos List.from para crear una copia y no afectar la lista original
+    _orderedRosterA = List.from(widget.rosterA);
+    _orderedRosterB = List.from(widget.rosterB);
+
+    // Lógica de ordenamiento: de Mayor a Menor basado en defaultNumber
+    _orderedRosterA.sort((a, b) => b.defaultNumber.compareTo(a.defaultNumber));
+    _orderedRosterB.sort((a, b) => b.defaultNumber.compareTo(a.defaultNumber));
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -98,13 +117,13 @@ class _StartersSelectionScreenState
                   child: TabBarView(
                     children: [
                       _buildSelectionList(
-                        widget.rosterA,
+                        _orderedRosterA,
                         _startersA,
                         Colors.orangeAccent,
                         true,
                       ),
                       _buildSelectionList(
-                        widget.rosterB,
+                        _orderedRosterB,
                         _startersB,
                         Colors.lightBlueAccent,
                         false,
@@ -444,7 +463,7 @@ class _StartersSelectionScreenState
       )..where((t) => t.id.equals(widget.matchId))).getSingleOrNull();
 
       if (existingMatch == null) {
-        // SI ES NUEVO: Insertamos todo
+        // Insertamos todo
         final newMatch = db.MatchesCompanion.insert(
           id: drift.Value(widget.matchId),
           tournamentId: drift.Value(widget.tournamentId.toString()),

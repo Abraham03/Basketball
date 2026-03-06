@@ -434,32 +434,89 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                           children: [
                             CircleAvatar(radius: isWideScreen ? 24 : 20, backgroundColor: isDisqualified ? Colors.redAccent.withOpacity(0.3) : primaryColor.withOpacity(0.2), child: Text(stats.playerNumber.isNotEmpty ? stats.playerNumber : "#", style: TextStyle(color: isDisqualified ? Colors.redAccent : primaryColor, fontWeight: FontWeight.w900, fontSize: isWideScreen ? 18 : 14))),
                             SizedBox(width: isWideScreen ? 16 : 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // --- TEXTO DEL NOMBRE + CAPITÁN ---
-                                  RichText(
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    text: TextSpan(
-                                      children: [
-                                        TextSpan(text: playerName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: isWideScreen ? 16 : 12, color: Colors.white, fontFamily: 'Roboto')),
-                                        if (isCaptain) TextSpan(text: " (C)", style: TextStyle(fontWeight: FontWeight.w900, fontSize: isWideScreen ? 12 : 10, color: Colors.amberAccent, fontFamily: 'Roboto')),
-                                      ]
-                                    ),
-                                  ),
-                                  SizedBox(height: isWideScreen ? 6 : 4),
-                                  Wrap(
-                                    crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 4,
-                                    children: [
-                                      Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(6)), child: Text("${stats.points} PTS", style: TextStyle(fontSize: isWideScreen ? 11 : 9, fontWeight: FontWeight.bold, color: Colors.white70))),
-                                      Wrap(spacing: 4, children: List.generate(5, (i) { Color dotColor = Colors.white24; if (i < stats.fouls) dotColor = (i == 4) ? Colors.redAccent : Colors.orangeAccent; return Container(width: isWideScreen ? 10 : 8, height: isWideScreen ? 10 : 8, decoration: BoxDecoration(shape: BoxShape.circle, color: dotColor)); }))
-                                    ],
-                                  )
-                                ],
-                              ),
-                            ),
+                            // ... dentro de ListView.separated en _buildTeamList ...
+
+Expanded(
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      // --- DISEÑO MEJORADO PARA NOMBRE Y CAPITÁN ---
+      Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(
+              playerName,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: isWideScreen ? 16 : 12,
+                color: Colors.white,
+                fontFamily: 'Roboto',
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis, // Trunca el nombre si es muy largo
+            ),
+          ),
+          if (isCaptain)
+            Padding(
+              padding: const EdgeInsets.only(left: 4.0),
+              child: Text(
+                " (C)",
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: isWideScreen ? 14 : 11, // Un poco más grande para visibilidad
+                  color: Colors.amberAccent,
+                  fontFamily: 'Roboto',
+                ),
+              ),
+            ),
+        ],
+      ),
+      SizedBox(height: isWideScreen ? 6 : 4),
+      Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
+        runSpacing: 4,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.white12,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              "${stats.points} PTS",
+              style: TextStyle(
+                fontSize: isWideScreen ? 11 : 9,
+                fontWeight: FontWeight.bold,
+                color: Colors.white70,
+              ),
+            ),
+          ),
+          Wrap(
+            spacing: 4,
+            children: List.generate(5, (i) {
+              Color dotColor = Colors.white24;
+              if (i < stats.fouls) {
+                dotColor = (i == 4) ? Colors.redAccent : Colors.orangeAccent;
+              }
+              return Container(
+                width: isWideScreen ? 10 : 8,
+                height: isWideScreen ? 10 : 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: dotColor,
+                ),
+              );
+            }),
+          )
+        ],
+      )
+    ],
+  ),
+),
+
+// ... resto del código ...
                           ],
                         ),
                       ),
