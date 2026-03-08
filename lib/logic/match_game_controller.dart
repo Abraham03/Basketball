@@ -296,6 +296,19 @@ class MatchGameController extends StateNotifier<MatchState> {
       };
     }).toList();
 
+    // 1. Buscamos los rosters en la DB local usando _dao.db y el state
+    final rosterRows = await (_dao.db.select(_dao.db.matchRosters)
+          ..where((r) => r.matchId.equals(state.matchId)))
+        .get();
+
+    // 2. Mapeamos esos datos a una lista de JSON
+    final rostersList = rosterRows.map((r) => {
+          "player_id": int.tryParse(r.playerId) ?? 0,
+          "team_side": r.teamSide,
+          "jersey_number": r.jerseyNumber,
+          "is_captain": r.isCaptain ? 1 : 0
+        }).toList();
+
     final now = DateTime.now();
     final formattedDate = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
       
@@ -318,6 +331,7 @@ class MatchGameController extends StateNotifier<MatchState> {
       "match_date": formattedDate, 
       "signature_base64": signatureBase64,
       "events": eventsList,
+      "rosters": rostersList,
     };
 
     try {

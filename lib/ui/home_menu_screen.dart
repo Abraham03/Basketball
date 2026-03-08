@@ -1067,6 +1067,17 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
           }
         }
 
+        // 1. Justo antes de construir matchPayload, busca los rosters en la DB local
+        final rosterRows = await (db.select(db.matchRosters)..where((r) => r.matchId.equals(match.id))).get();
+
+        // 2. Mapea esos datos a una lista de JSON
+        final rostersList = rosterRows.map((r) => {
+          "player_id": int.tryParse(r.playerId) ?? 0,
+          "team_side": r.teamSide,
+          "jersey_number": r.jerseyNumber,
+          "is_captain": r.isCaptain ? 1 : 0
+        }).toList();
+
         final fixtureRow = await (db.select(
           db.fixtures,
         )..where((f) => f.matchId.equals(match.id))).getSingleOrNull();
@@ -1089,6 +1100,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
           "signature_base64": match.signatureData,
           "status": match.status,
           "events": eventsList,
+          "rosters": rostersList,
         };
         final success = await api.syncMatchDataMultipart(
           matchData: matchPayload,
