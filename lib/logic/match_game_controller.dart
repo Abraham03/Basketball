@@ -301,13 +301,27 @@ class MatchGameController extends StateNotifier<MatchState> {
           ..where((r) => r.matchId.equals(state.matchId)))
         .get();
 
-    // 2. Mapeamos esos datos a una lista de JSON
-    final rostersList = rosterRows.map((r) => {
-          "player_id": int.tryParse(r.playerId) ?? 0,
-          "team_side": r.teamSide,
-          "jersey_number": r.jerseyNumber,
-          "is_captain": r.isCaptain ? 1 : 0
-        }).toList();
+    // 2. Mapeamos esos datos a una lista de JSON, agregando la lógica de "played"
+    final rostersList = rosterRows.map((r) {
+      // Buscar las estadísticas de este jugador en el state usando su ID de DB
+      final pStats = state.playerStats.values.where((p) => p.dbId.toString() == r.playerId).firstOrNull;
+      
+      // Consideramos que jugó si fue titular, si está en cancha ahora, o si tiene puntos/faltas.
+      bool hasPlayed = false;
+      if (pStats != null) {
+        if (pStats.isStarter || pStats.isOnCourt || pStats.points > 0 || pStats.fouls > 0) {
+          hasPlayed = true;
+        }
+      }
+
+      return {
+        "player_id": int.tryParse(r.playerId) ?? 0,
+        "team_side": r.teamSide,
+        "jersey_number": r.jerseyNumber,
+        "is_captain": r.isCaptain ? 1 : 0,
+        "played": hasPlayed ? 1 : 0 // <--- NUEVO CAMPO
+      };
+    }).toList();
 
     final now = DateTime.now();
     final formattedDate = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";

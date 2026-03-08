@@ -1070,12 +1070,21 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         // 1. Justo antes de construir matchPayload, busca los rosters en la DB local
         final rosterRows = await (db.select(db.matchRosters)..where((r) => r.matchId.equals(match.id))).get();
 
-        // 2. Mapea esos datos a una lista de JSON
-        final rostersList = rosterRows.map((r) => {
-          "player_id": int.tryParse(r.playerId) ?? 0,
-          "team_side": r.teamSide,
-          "jersey_number": r.jerseyNumber,
-          "is_captain": r.isCaptain ? 1 : 0
+        // 2. Mapea esos datos a una lista de JSON, calculando el campo "played"
+        final rostersList = rosterRows.map((r) {
+          final pIdInt = int.tryParse(r.playerId) ?? 0;
+          
+          // Como no tenemos el "state" de RAM aquí, verificamos si el jugador 
+          // generó al menos 1 evento (punto o falta) en el partido guardado.
+          bool hasPlayed = eventsList.any((event) => event["player_id"] == pIdInt);
+
+          return {
+            "player_id": pIdInt,
+            "team_side": r.teamSide,
+            "jersey_number": r.jerseyNumber,
+            "is_captain": r.isCaptain ? 1 : 0,
+            "played": hasPlayed ? 1 : 0 // <--- NUEVO CAMPO
+          };
         }).toList();
 
         final fixtureRow = await (db.select(
