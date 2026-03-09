@@ -885,7 +885,8 @@ class PdfGenerator {
   static int _countTeamFouls(MatchState state, String teamId, int period) {
     return state.scoreLog.where((event) {
       bool isMatch = event.teamId == teamId && event.period == period;
-      bool isFoul = event.points == 0;
+      // Asegurarnos de que tenga 0 puntos, pero que NO sea falta de Coach (C) ni Banca (B)
+      bool isFoul = event.points == 0 && event.type != 'C' && event.type != 'B';
       return isMatch && isFoul;
     }).length;
   }

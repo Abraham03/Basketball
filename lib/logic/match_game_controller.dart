@@ -250,9 +250,12 @@ class MatchGameController extends StateNotifier<MatchState> {
 
   int getTeamFouls(String teamId) {
     return state.scoreLog.where((e) {
+      // Retorna true solo si es del equipo actual, en este periodo, no tiene puntos,
       return e.teamId == teamId && 
              e.period == state.currentPeriod && 
-             e.points == 0;
+             e.points == 0 &&
+             !e.type.startsWith('C') && 
+             !e.type.startsWith('B');
     }).length;
   }
 
@@ -325,7 +328,7 @@ class MatchGameController extends StateNotifier<MatchState> {
         "team_side": r.teamSide,
         "jersey_number": r.jerseyNumber,
         "is_captain": r.isCaptain ? 1 : 0,
-        "played": hasPlayed ? 1 : 0 // <--- NUEVO CAMPO
+        "played": hasPlayed ? 1 : 0 
       };
     }).toList();
 
