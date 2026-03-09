@@ -91,6 +91,7 @@ class MatchState {
   final String mainReferee;
   final String auxReferee;
   final String scorekeeper;
+  final String forfeitStatus;
 
   final List<String> teamAOnCourt;
   final List<String> teamABench;
@@ -130,6 +131,7 @@ class MatchState {
     this.mainReferee = '',
     this.auxReferee = '',
     this.scorekeeper = '',
+    this.forfeitStatus = 'NONE',
     this.teamATimeouts1 = const [],
     this.teamATimeouts2 = const [],
     this.teamAOTTimeouts = const [],
@@ -161,6 +163,7 @@ class MatchState {
     String? mainReferee,
     String? auxReferee,
     String? scorekeeper,
+    String? forfeitStatus,
     List<String>? teamATimeouts1,
     List<String>? teamATimeouts2,
     List<String>? teamAOTTimeouts,
@@ -191,6 +194,7 @@ class MatchState {
       mainReferee: mainReferee ?? this.mainReferee,
       auxReferee: auxReferee ?? this.auxReferee,
       scorekeeper: scorekeeper ?? this.scorekeeper,
+      forfeitStatus: forfeitStatus ?? this.forfeitStatus,
       teamATimeouts1: teamATimeouts1 ?? this.teamATimeouts1,
       teamATimeouts2: teamATimeouts2 ?? this.teamATimeouts2,
       teamAOTTimeouts: teamAOTTimeouts ?? this.teamAOTTimeouts,
@@ -214,6 +218,7 @@ class MatchState {
       'teamBTimeouts1': teamBTimeouts1,
       'teamBTimeouts2': teamBTimeouts2,
       'teamBOTTimeouts': teamBOTTimeouts,
+      'forfeitStatus': forfeitStatus,
     };
   }
 
@@ -231,6 +236,7 @@ class MatchState {
       teamBTimeouts1: List<String>.from(json['teamBTimeouts1'] ?? []),
       teamBTimeouts2: List<String>.from(json['teamBTimeouts2'] ?? []),
       teamBOTTimeouts: List<String>.from(json['teamBOTTimeouts'] ?? []),
+      forfeitStatus: json['forfeitStatus'] ?? 'NONE',
     );
   }
 }
@@ -342,6 +348,7 @@ class MatchGameController extends StateNotifier<MatchState> {
       "main_referee": state.mainReferee,
       "aux_referee": state.auxReferee,
       "scorekeeper": state.scorekeeper,
+      "forfeit_status": state.forfeitStatus,
       "match_date": formattedDate, 
       "signature_base64": signatureBase64,
       "events": eventsList,
@@ -361,6 +368,29 @@ class MatchGameController extends StateNotifier<MatchState> {
     } catch (e) {
         return false; 
     }
+  }
+
+  // función para el Default
+  void declareForfeit(String defaultingTeam) {
+    // defaultingTeam puede ser 'A', 'B' o 'BOTH'
+    int newScoreA = 0;
+    int newScoreB = 0;
+    
+    if (defaultingTeam == 'A') {
+      newScoreB = 20; // Pierde A por default 0-20
+    } else if (defaultingTeam == 'B') {
+      newScoreA = 20; // Pierde B por default 20-0
+    }
+
+    state = state.copyWith(
+      scoreA: newScoreA,
+      scoreB: newScoreB,
+      forfeitStatus: defaultingTeam == 'A' ? 'TEAM_A' : (defaultingTeam == 'B' ? 'TEAM_B' : 'BOTH'),
+      timeLeft: const Duration(seconds: 0),
+    );
+    
+    _pause();
+    _saveToDatabase();
   }
 
   void addTimeout(String teamId) {

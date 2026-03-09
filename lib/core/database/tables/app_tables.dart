@@ -23,13 +23,11 @@ class Matches extends Table with BaseTable {
   DateTimeColumn get matchDate => dateTime().nullable()();
   TextColumn get signatureData => text().nullable()();
   TextColumn get matchReportPath => text().nullable()();
+  // Dentro de la clase Matches
+  TextColumn get forfeitStatus => text().withDefault(const Constant('NONE'))();
   // ignore: annotate_overrides
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 }
-
-
-// lib/core/database/tables/app_tables.dart
-// (Mantén tus otras tablas igual y agrega esto al final)
 
 @DataClassName('Fixture')
 class Fixtures extends Table with BaseTable {

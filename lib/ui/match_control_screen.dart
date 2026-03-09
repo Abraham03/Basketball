@@ -516,7 +516,7 @@ Expanded(
   ),
 ),
 
-// ... resto del código ...
+
                           ],
                         ),
                       ),
@@ -659,19 +659,28 @@ Expanded(
 
   void _showActionMenu(BuildContext context, String teamId, String playerName, MatchGameController controller, int currentFouls, bool isWideScreen, MatchState state) {
     bool isDisqualified = currentFouls >= 5;
-    showModalBottomSheet(
-      context: context, backgroundColor: Colors.transparent, isScrollControlled: true,
-      builder: (_) => SafeArea(
+    
+    // Cambiado de showModalBottomSheet a showDialog para centrarlo
+    showDialog(
+      context: context, 
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(20),
         child: ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: BorderRadius.circular(20),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
             child: Container(
-              color: const Color(0xFF0D1117).withOpacity(0.8), padding: const EdgeInsets.all(24),
+              color: const Color(0xFF0D1117).withOpacity(0.8), 
+              padding: const EdgeInsets.all(24),
+              constraints: const BoxConstraints(maxWidth: 400),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(playerName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white), textAlign: TextAlign.center), const SizedBox(height: 4), Text(isDisqualified ? "JUGADOR DESCALIFICADO" : "Selecciona una acción", style: TextStyle(color: isDisqualified ? Colors.redAccent : Colors.white54, fontWeight: isDisqualified ? FontWeight.bold : FontWeight.normal), textAlign: TextAlign.center), const SizedBox(height: 24),
+                  Text(playerName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white), textAlign: TextAlign.center), 
+                  const SizedBox(height: 4), 
+                  Text(isDisqualified ? "JUGADOR DESCALIFICADO" : "Selecciona una acción", style: TextStyle(color: isDisqualified ? Colors.redAccent : Colors.white54, fontWeight: isDisqualified ? FontWeight.bold : FontWeight.normal), textAlign: TextAlign.center), 
+                  const SizedBox(height: 24),
                   if (isDisqualified) ...[
                     const Icon(Icons.block, size: 50, color: Colors.redAccent), const SizedBox(height: 10), const Text("No se pueden agregar más eventos a este jugador.", textAlign: TextAlign.center, style: TextStyle(color: Colors.white54)), const SizedBox(height: 20),
                     SizedBox(width: double.infinity, child: ElevatedButton.icon(style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 15)), icon: const Icon(Icons.swap_horiz), label: const Text("REALIZAR SUSTITUCIÓN AHORA"), onPressed: () { Navigator.pop(context); final onCourt = teamId == 'A' ? state.teamAOnCourt : state.teamBOnCourt; final bench = teamId == 'A' ? state.teamABench : state.teamBBench; _showSubstitutionDialog(context, teamId, onCourt, bench, controller, state, preSelectedOut: playerName); }))
@@ -685,6 +694,11 @@ Expanded(
                         _buildStatButton("Falta", Colors.redAccent, () { Navigator.pop(context); _showFoulOptionsDialog(context, controller, teamId, playerName); }, isWideScreen, icon: Icons.error_outline),
                       ],
                     ),
+                  const SizedBox(height: 24),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context), 
+                    child: const Text("Cancelar", style: TextStyle(color: Colors.grey, fontSize: 16))
+                  )
                 ],
               ),
             ),
@@ -826,18 +840,91 @@ Expanded(
       Navigator.push(context, MaterialPageRoute(builder: (_) => PdfPreviewScreen(state: state, teamAName: widget.teamAName, teamBName: widget.teamBName, tournamentName: widget.tournamentName, venueName: widget.venueName, mainReferee: widget.mainReferee, auxReferee: widget.auxReferee, scorekeeper: widget.scorekeeper, coachA: widget.coachA, coachB: widget.coachB, captainAId: widget.captainAId, captainBId: widget.captainBId, matchDate: widget.matchDate, protestSignature: signature)));
   }
   
-  void _showFinalOptionsDialog(BuildContext context, MatchState currentState) {
+void _showFinalOptionsDialog(BuildContext context, MatchState currentState) {
     if (_isFinished) return;
     showDialog(
       context: context, barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1F2B), title: const Text("Finalizar Partido", style: TextStyle(color: Colors.white)), content: const Text("¿Cómo deseas proceder con el acta?", style: TextStyle(color: Colors.white70)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        backgroundColor: const Color(0xFF1A1F2B), 
+        title: const Text("Finalizar Partido", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center), 
+        content: const Text("¿Cómo concluyó el encuentro?", style: TextStyle(color: Colors.white70), textAlign: TextAlign.center), 
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        contentPadding: const EdgeInsets.only(top: 15, bottom: 20, left: 24, right: 24),
+        actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         actions: [
-          OutlinedButton.icon(icon: const Icon(Icons.edit_document, color: Colors.redAccent), label: const Text("Firmar Bajo Protesta", style: TextStyle(color: Colors.redAccent)), onPressed: () { Navigator.pop(ctx); _handleProtestFlow(context, currentState); }), const SizedBox(height: 10),
-          FilledButton.icon(style: FilledButton.styleFrom(backgroundColor: Colors.greenAccent), icon: const Icon(Icons.check_circle, color: Colors.black), label: const Text("Finalizar y Sincronizar", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)), onPressed: () { Navigator.pop(ctx); _finishMatchProcess(context, currentState, null); }),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              FilledButton.icon(
+                style: FilledButton.styleFrom(backgroundColor: Colors.greenAccent, foregroundColor: Colors.black, padding: const EdgeInsets.symmetric(vertical: 12)), 
+                icon: const Icon(Icons.check_circle), 
+                label: const Text("Finalizar Normal", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)), 
+                onPressed: () { Navigator.pop(ctx); _finishMatchProcess(context, currentState, null); }
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(foregroundColor: Colors.orangeAccent, side: const BorderSide(color: Colors.orangeAccent), padding: const EdgeInsets.symmetric(vertical: 12)),
+                icon: const Icon(Icons.warning_amber_rounded), 
+                label: const Text("Inasistencia / Default", style: TextStyle(fontWeight: FontWeight.bold)), 
+                onPressed: () { Navigator.pop(ctx); _handleForfeitFlow(context, currentState); }
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(foregroundColor: Colors.redAccent, side: const BorderSide(color: Colors.redAccent), padding: const EdgeInsets.symmetric(vertical: 12)),
+                icon: const Icon(Icons.edit_document), 
+                label: const Text("Firmar Bajo Protesta"), 
+                onPressed: () { Navigator.pop(ctx); _handleProtestFlow(context, currentState); }
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx), 
+                child: const Text("Cancelar", style: TextStyle(color: Colors.grey))
+              )
+            ],
+          )
         ],
       ),
     );
+  }
+
+  Future<void> _handleForfeitFlow(BuildContext context, MatchState state) async {
+    final controller = ref.read(matchGameProvider.notifier);
+    
+    final String? defaultingTeam = await showDialog<String>(
+      context: context, 
+      builder: (ctx) => SimpleDialog(
+        backgroundColor: const Color(0xFF1A1F2B), 
+        title: const Text("¿Quién no se presentó?", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), 
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(ctx, 'A'), 
+            child: Padding(padding: const EdgeInsets.all(12), child: Text("Faltó Local: ${widget.teamAName}", style: const TextStyle(fontSize: 16, color: Colors.orangeAccent)))
+          ), 
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(ctx, 'B'), 
+            child: Padding(padding: const EdgeInsets.all(12), child: Text("Faltó Visita: ${widget.teamBName}", style: const TextStyle(fontSize: 16, color: Colors.lightBlueAccent)))
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(ctx, 'BOTH'), 
+            child: const Padding(padding: EdgeInsets.all(12), child: Text("Ambos Equipos (Doble Default)", style: TextStyle(fontSize: 16, color: Colors.redAccent)))
+          ),
+          const Divider(color: Colors.white24),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(ctx, null), 
+            child: const Padding(padding: EdgeInsets.all(12), child: Text("Cancelar", style: TextStyle(fontSize: 16, color: Colors.grey)))
+          ),
+        ]
+      )
+    );
+    
+    if (defaultingTeam != null && context.mounted) {
+      // 1. Aplicamos el 20-0 en el estado (requiere que el método declareForfeit exista en MatchGameController)
+      controller.declareForfeit(defaultingTeam);
+      
+      // 2. Leemos el estado actualizado y finalizamos
+      final newState = ref.read(matchGameProvider);
+      _finishMatchProcess(context, newState, null, autoShow: true);
+    }
   }
 
   void _showPeriodSelector(BuildContext context, MatchGameController controller) {
