@@ -753,7 +753,8 @@ class PdfGenerator {
         final stat = stats[playerName] ?? const PlayerStats();
         final dorsal = stat.playerNumber.isNotEmpty ? stat.playerNumber : "";
 
-        widgets.add(_drawText(dorsal, x: startXNum, y: currentY, fontSize: 10));
+        // Dorsal en color azul
+        widgets.add(_drawText(dorsal, x: startXNum, y: currentY, fontSize: 10, color: PdfColors.blue900));
 
         if (captainId != null && stat.dbId == captainId) {
           widgets.add(
@@ -763,6 +764,7 @@ class PdfGenerator {
               y: currentY,
               fontSize: 9,
               isBold: true,
+              color: PdfColors.blue900,
             ),
           );
         }
@@ -774,14 +776,16 @@ class PdfGenerator {
         displayName = playerName.length > 18
             ? "${playerName.substring(0, 16)}..."
             : playerName;
+        // Nombre en color azul
         widgets.add(
-          _drawText(displayName, x: startXName, y: currentY, fontSize: 10),
+          _drawText(displayName, x: startXName, y: currentY, fontSize: 10, color: PdfColors.blue900),
         );
 
         if (stat.isStarter) {
           widgets.add(_drawStarterMark(x: entryX, y: currentY));
         } else if (stat.points > 0 || stat.fouls > 0 || stat.isOnCourt) {
-          widgets.add(_drawText("X", x: entryX, y: currentY, fontSize: 10));
+          // X de entrada a cancha en color azul
+          widgets.add(_drawText("X", x: entryX, y: currentY, fontSize: 10, color: PdfColors.blue900));
         }
 
         for (int f = 0; f < 5; f++) {
@@ -790,7 +794,7 @@ class PdfGenerator {
             String foulCode = stat.foulDetails[f];
             PdfColor color = (f == 4 || foulCode == 'D')
                 ? PdfColors.red
-                : PdfColors.black;
+                : PdfColors.blue900;
             widgets.add(
               _drawText(
                 foulCode,
@@ -960,7 +964,7 @@ class PdfGenerator {
             width: 11,
             height: 11,
             decoration: pw.BoxDecoration(
-              border: pw.Border.all(color: PdfColors.black, width: 1),
+              border: pw.Border.all(color: PdfColors.blue900, width: 1),
               shape: pw.BoxShape.circle,
             ),
           ),
@@ -969,6 +973,7 @@ class PdfGenerator {
       ),
     );
   }
+
 
   static List<pw.Widget> _drawRunningScore(
     List<ScoreEvent> log,
@@ -995,15 +1000,17 @@ class PdfGenerator {
           ? blockX
           : blockX + PdfCoords.runScoreTeamSpacing;
       double finalY = PdfCoords.runScoreStartY + (rowInBlock * stepY);
+      // Ajuste exacto para centrar el número en su propia "celda"
       double playerNumX = (event.teamId == 'A')
-          ? finalX + PdfCoords.playerNumOffsetX
-          : finalX - PdfCoords.playerNumOffsetX + 5;
+          ? finalX - 24.0  // Mueve el número del Equipo A a la izquierda
+          : finalX + 18.0; // Mueve el número del Equipo B a la derecha
       widgets.add(
         _drawText(
           event.playerNumber,
           x: playerNumX,
           y: finalY,
-          fontSize: 7,
+          fontSize: 9.5, 
+          isBold: true,  
           color: inkColor,
         ),
       );
@@ -1020,6 +1027,9 @@ class PdfGenerator {
     int runningA = 0;
     int runningB = 0;
     final sortedPeriods = periodScores.keys.toList()..sort();
+    
+    int lastPeriod = sortedPeriods.isNotEmpty ? sortedPeriods.last : 1;
+
     for (int p in sortedPeriods) {
       final scores = periodScores[p];
       if (scores == null) continue;
@@ -1030,11 +1040,23 @@ class PdfGenerator {
       final PdfColor periodColor = (p % 2 != 0)
           ? PdfColors.red
           : PdfColors.blue900;
-      if (runningA > 0 && runningA <= 160) {
-        widgets.add(_drawPeriodEndLine(runningA, 'A', stepY, periodColor));
-      }
-      if (runningB > 0 && runningB <= 160) {
-        widgets.add(_drawPeriodEndLine(runningB, 'B', stepY, periodColor));
+          
+      if (p == lastPeriod) {
+        // En el último periodo dibujamos el cierre doble y la diagonal
+        if (runningA > 0 && runningA <= 160) {
+          widgets.addAll(_drawFinalClosingLine(runningA, 'A', stepY, periodColor));
+        }
+        if (runningB > 0 && runningB <= 160) {
+          widgets.addAll(_drawFinalClosingLine(runningB, 'B', stepY, periodColor));
+        }
+      } else {
+        // Cuartos intermedios normales
+        if (runningA > 0 && runningA <= 160) {
+          widgets.add(_drawPeriodEndLine(runningA, 'A', stepY, periodColor));
+        }
+        if (runningB > 0 && runningB <= 160) {
+          widgets.add(_drawPeriodEndLine(runningB, 'B', stepY, periodColor));
+        }
       }
     }
     return widgets;
@@ -1050,25 +1072,104 @@ class PdfGenerator {
     int rowInBlock = (score - 1) % 40;
     double blockX =
         PdfCoords.runScoreCol1X + (blockIndex * PdfCoords.runScoreBlockSpacing);
-    double finalX = (teamId == 'A')
-        ? blockX
-        : blockX + PdfCoords.runScoreTeamSpacing;
+    
     double y = PdfCoords.runScoreStartY + (rowInBlock * stepY) + 10;
-    double lineX = (teamId == 'A') ? finalX - 25 : finalX - 5;
+    // CORRECCIÓN CLAVE: Ajuste manual exacto igual que en el cierre final
+    double lineX = (teamId == 'A') ? blockX - 27 : blockX + 10;
+    
     return pw.Positioned(
       left: lineX,
       top: y,
-      child: pw.Container(width: 35, height: 3.0, color: color),
+      child: pw.Stack(
+        children: [
+          pw.Container(width: 35, height: 3.0, color: color),
+          if (rowInBlock < 39) 
+             pw.Positioned(
+               left: 0,
+               top: 3,
+               child: pw.CustomPaint(
+                 size: const PdfPoint(35, 12),
+                 painter: (canvas, size) {
+                   canvas.setColor(color);
+                   canvas.setLineWidth(2.0);
+                   canvas.drawLine(0, 12, 35, 0);
+                   canvas.strokePath();
+                 },
+               )
+             )
+        ]
+      )
     );
+  }
+
+  static List<pw.Widget> _drawFinalClosingLine(
+    int score,
+    String teamId,
+    double stepY,
+    PdfColor color,
+  ) {
+    int blockIndex = (score - 1) ~/ 40;
+    int rowInBlock = (score - 1) % 40;
+    double blockX =
+        PdfCoords.runScoreCol1X + (blockIndex * PdfCoords.runScoreBlockSpacing);
+    
+    // Posición Y de la raya debajo del último punto
+    double y = PdfCoords.runScoreStartY + (rowInBlock * stepY) + 10;
+    
+    // CORRECCIÓN CLAVE: Ajuste manual exacto para las líneas de cierre 
+    // sin importar el teamSpacing o el playerOffset.
+    double lineX = (teamId == 'A') ? blockX - 27 : blockX + 10;
+    
+    List<pw.Widget> closingWidgets = [];
+    
+    // 1. Doble línea horizontal
+    closingWidgets.add(
+      pw.Positioned(
+        left: lineX,
+        top: y,
+        child: pw.Container(width: 35, height: 1.5, color: color),
+      ),
+    );
+    closingWidgets.add(
+      pw.Positioned(
+        left: lineX,
+        top: y + 3,
+        child: pw.Container(width: 35, height: 1.5, color: color),
+      ),
+    );
+
+    // 2. Línea diagonal inteligente hasta el final
+    int remainingRows = 39 - rowInBlock;
+    if (remainingRows > 0) {
+      double endY = PdfCoords.runScoreStartY + (39 * stepY) + 12; 
+      
+      closingWidgets.add(
+        pw.Positioned(
+          left: lineX,
+          top: y + 6,
+          child: pw.CustomPaint(
+            size: PdfPoint(35, endY - (y + 6)),
+            painter: (canvas, size) {
+              canvas.setColor(color);
+              canvas.setLineWidth(2.5); 
+              canvas.drawLine(0, size.y, 35, 0);
+              canvas.strokePath();
+            },
+          ),
+        ),
+      );
+    }
+
+    return closingWidgets;
   }
 
   static pw.Widget _drawFilledDot(double x, double y, PdfColor color) {
     return pw.Positioned(
-      left: x + 3,
-      top: y + 4,
+      left: x + 2, // Ajustado para mantener el centro
+      top: y + 3,  // Ajustado para mantener el centro
       child: pw.Container(
-        width: 4,
-        height: 4,
+        width: 6, // <--- Punto más grande (antes era 4)
+        height: 6, // <--- Punto más grande (antes era 4)
         decoration: pw.BoxDecoration(color: color, shape: pw.BoxShape.circle),
       ),
     );
@@ -1122,10 +1223,14 @@ class PdfGenerator {
             state.periodScores[period]!.length > 1)
         ? state.periodScores[period]![1]
         : 0;
+
+    // LÓGICA DE COLOR FIBA: Periodos 1 y 3 en Rojo. Periodos 2 y 4 en Azul Oscuro.
+    final PdfColor periodColor = (period % 2 != 0) ? PdfColors.red : PdfColors.blue900;
+
     return pw.Stack(
       children: [
-        _drawText("$scoreA", x: xA, y: y, fontSize: 10, isBold: true),
-        _drawText("$scoreB", x: xB, y: y, fontSize: 10, isBold: true),
+        _drawText("$scoreA", x: xA, y: y, fontSize: 10, isBold: true, color: periodColor),
+        _drawText("$scoreB", x: xB, y: y, fontSize: 10, isBold: true, color: periodColor),
       ],
     );
   }
@@ -1138,10 +1243,14 @@ class PdfGenerator {
   ) {
     int totalA = _calculateOvertimeTotal(state, 0);
     int totalB = _calculateOvertimeTotal(state, 1);
+
+    // REGLA FIBA: Los tiempos extra se anotan con el mismo color que el 4to cuarto (Azul Oscuro/Negro).
+    const PdfColor otColor = PdfColors.blue900;
+
     return pw.Stack(
       children: [
-        _drawText("$totalA", x: xA, y: y, fontSize: 10, isBold: true),
-        _drawText("$totalB", x: xB, y: y, fontSize: 10, isBold: true),
+        _drawText("$totalA", x: xA, y: y, fontSize: 10, isBold: true, color: otColor),
+        _drawText("$totalB", x: xB, y: y, fontSize: 10, isBold: true, color: otColor),
       ],
     );
   }
