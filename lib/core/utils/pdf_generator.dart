@@ -649,7 +649,7 @@ class PdfGenerator {
     List<pw.Widget> widgets = [];
 
     final coachEvents = state.scoreLog.where((e) {
-      return e.teamId == teamId && (e.type == 'C' || e.type == 'B');
+      return e.teamId == teamId && (e.type == 'C');
     }).toList();
 
     for (int i = 0; i < 3; i++) {
