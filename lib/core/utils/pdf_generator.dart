@@ -57,9 +57,19 @@ class PdfCoords {
   static const double coachAY = 380.0;
   static const double coachAFoulsX = 232.5;
 
+  //(Asistente/Banca)
+  static const double benchAX = 50.0;
+  static const double benchAY = 394.0; // 380 + 14 de separación
+  static const double benchAFoulsX = 232.5;
+
   static const double coachBX = 50.0;
   static const double coachBY = 664.0;
   static const double coachBFoulsX = 232.5;
+
+  //(Asistente/Banca)
+  static const double benchBX = 50.0;
+  static const double benchBY = 678.0; // 664 + 14 de separación
+  static const double benchBFoulsX = 232.5;
 
   static const double teamATimeoutsX = 28.0;
   static const double teamATimeoutsY1 = 153.0;
@@ -440,6 +450,13 @@ class PdfGenerator {
                   PdfCoords.coachAY,
                 ),
 
+                ..._drawBenchFoulsMarks(
+                  state,
+                  'A',
+                  PdfCoords.benchAFoulsX,
+                  PdfCoords.benchAY,
+                ),
+
                 if (coachB.isNotEmpty)
                   _drawText(
                     coachB,
@@ -461,6 +478,13 @@ class PdfGenerator {
                   'B',
                   PdfCoords.coachBFoulsX,
                   PdfCoords.coachBY,
+                ),
+
+                ..._drawBenchFoulsMarks(
+                  state,
+                  'B',
+                  PdfCoords.benchBFoulsX,
+                  PdfCoords.benchBY,
                 ),
 
                 ..._drawTeamFoulsSection(state),
@@ -638,6 +662,40 @@ class PdfGenerator {
       }
     }
     return rowWidgets;
+  }
+
+  static List<pw.Widget> _drawBenchFoulsMarks(
+    MatchState state,
+    String teamId,
+    double startX,
+    double y,
+  ) {
+    List<pw.Widget> widgets = [];
+
+    // Filtra solo las faltas tipo 'B' (Banca)
+    final benchEvents = state.scoreLog.where((e) {
+      return e.teamId == teamId && e.type == 'B';
+    }).toList();
+
+    for (int i = 0; i < 3; i++) {
+      double x = startX + (i * PdfCoords.foulBoxWidth);
+
+      if (i < benchEvents.length) {
+        widgets.add(
+          _drawText(
+            "X", 
+            x: x,
+            y: y,
+            fontSize: 10,
+            isBold: true,
+            color: PdfColors.blue900,
+          ),
+        );
+      } else {
+        widgets.add(_drawBlueHorizontalMark(x, y));
+      }
+    }
+    return widgets;
   }
 
   static List<pw.Widget> _drawCoachFoulsMarks(
