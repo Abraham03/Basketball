@@ -92,6 +92,7 @@ class MatchState {
   final String auxReferee;
   final String scorekeeper;
   final String forfeitStatus;
+  final String observaciones;
 
   final List<String> teamAOnCourt;
   final List<String> teamABench;
@@ -132,6 +133,7 @@ class MatchState {
     this.auxReferee = '',
     this.scorekeeper = '',
     this.forfeitStatus = 'NONE',
+    this.observaciones = 'Sin novedad',
     this.teamATimeouts1 = const [],
     this.teamATimeouts2 = const [],
     this.teamAOTTimeouts = const [],
@@ -164,6 +166,7 @@ class MatchState {
     String? auxReferee,
     String? scorekeeper,
     String? forfeitStatus,
+    String? observaciones,
     List<String>? teamATimeouts1,
     List<String>? teamATimeouts2,
     List<String>? teamAOTTimeouts,
@@ -195,6 +198,7 @@ class MatchState {
       auxReferee: auxReferee ?? this.auxReferee,
       scorekeeper: scorekeeper ?? this.scorekeeper,
       forfeitStatus: forfeitStatus ?? this.forfeitStatus,
+      observaciones: observaciones ?? this.observaciones,
       teamATimeouts1: teamATimeouts1 ?? this.teamATimeouts1,
       teamATimeouts2: teamATimeouts2 ?? this.teamATimeouts2,
       teamAOTTimeouts: teamAOTTimeouts ?? this.teamAOTTimeouts,
@@ -219,6 +223,7 @@ class MatchState {
       'teamBTimeouts2': teamBTimeouts2,
       'teamBOTTimeouts': teamBOTTimeouts,
       'forfeitStatus': forfeitStatus,
+      'observaciones': observaciones,
     };
   }
 
@@ -237,6 +242,7 @@ class MatchState {
       teamBTimeouts2: List<String>.from(json['teamBTimeouts2'] ?? []),
       teamBOTTimeouts: List<String>.from(json['teamBOTTimeouts'] ?? []),
       forfeitStatus: json['forfeitStatus'] ?? 'NONE',
+      observaciones: json['observaciones'] ?? 'Sin novedad',
     );
   }
 }
@@ -257,6 +263,11 @@ class MatchGameController extends StateNotifier<MatchState> {
              !e.type.startsWith('C') && 
              !e.type.startsWith('B');
     }).length;
+  }
+
+  void setObservaciones(String text) {
+    state = state.copyWith(observaciones: text);
+    _saveToDatabase();
   }
 
   Future<bool> finalizeAndSync(
@@ -352,6 +363,7 @@ class MatchGameController extends StateNotifier<MatchState> {
       "aux_referee": state.auxReferee,
       "scorekeeper": state.scorekeeper,
       "forfeit_status": state.forfeitStatus,
+      "observaciones": state.observaciones,
       "match_date": formattedDate, 
       "signature_base64": signatureBase64,
       "events": eventsList,

@@ -90,7 +90,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
   void initState() {
     super.initState();
     
-    // Identificamos el nombre de los capitanes al iniciar
     if (widget.captainAId != null) {
       final capA = widget.fullRosterA.where((p) => p.id == widget.captainAId).firstOrNull;
       _captainAName = capA?.name;
@@ -220,13 +219,12 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     return false; 
   }
 
-  // --- LÓGICA PARA ORDENAR LISTA DE JUGADORES POR DORSAL DE MAYOR A MENOR ---
   List<String> _sortPlayersByNumberDesc(List<String> playerNames, MatchState state) {
     List<String> sortedList = List.from(playerNames);
     sortedList.sort((a, b) {
       final numA = int.tryParse(state.playerStats[a]?.playerNumber ?? "0") ?? 0;
       final numB = int.tryParse(state.playerStats[b]?.playerNumber ?? "0") ?? 0;
-      return numB.compareTo(numA); // B vs A = Descendente (Mayor a Menor)
+      return numB.compareTo(numA); 
     });
     return sortedList;
   }
@@ -329,7 +327,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
           builder: (context, constraints) {
             final isWideScreen = constraints.maxWidth > 750;
             
-            // ORDENAMOS LAS LISTAS DE CANCHA DE MAYOR A MENOR DORSAL ANTES DE RENDERIZAR
             final sortedCourtA = _sortPlayersByNumberDesc(gameState.teamAOnCourt, gameState);
             final sortedCourtB = _sortPlayersByNumberDesc(gameState.teamBOnCourt, gameState);
 
@@ -420,7 +417,6 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                     final stats = state.playerStats[playerName] ?? const PlayerStats();
                     bool isDisqualified = stats.fouls >= 5;
                     
-                    // Verificación de Capitán
                     bool isCaptain = (teamId == 'A' && playerName == _captainAName) || (teamId == 'B' && playerName == _captainBName);
 
                     return InkWell(
@@ -434,89 +430,84 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
                           children: [
                             CircleAvatar(radius: isWideScreen ? 24 : 20, backgroundColor: isDisqualified ? Colors.redAccent.withOpacity(0.3) : primaryColor.withOpacity(0.2), child: Text(stats.playerNumber.isNotEmpty ? stats.playerNumber : "#", style: TextStyle(color: isDisqualified ? Colors.redAccent : primaryColor, fontWeight: FontWeight.w900, fontSize: isWideScreen ? 18 : 14))),
                             SizedBox(width: isWideScreen ? 16 : 10),
-                            // ... dentro de ListView.separated en _buildTeamList ...
-
-Expanded(
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      // --- DISEÑO MEJORADO PARA NOMBRE Y CAPITÁN ---
-      Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Flexible(
-            child: Text(
-              playerName,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: isWideScreen ? 16 : 12,
-                color: Colors.white,
-                fontFamily: 'Roboto',
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis, // Trunca el nombre si es muy largo
-            ),
-          ),
-          if (isCaptain)
-            Padding(
-              padding: const EdgeInsets.only(left: 4.0),
-              child: Text(
-                " (C)",
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: isWideScreen ? 14 : 11, // Un poco más grande para visibilidad
-                  color: Colors.amberAccent,
-                  fontFamily: 'Roboto',
-                ),
-              ),
-            ),
-        ],
-      ),
-      SizedBox(height: isWideScreen ? 6 : 4),
-      Wrap(
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 8,
-        runSpacing: 4,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.white12,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              "${stats.points} PTS",
-              style: TextStyle(
-                fontSize: isWideScreen ? 11 : 9,
-                fontWeight: FontWeight.bold,
-                color: Colors.white70,
-              ),
-            ),
-          ),
-          Wrap(
-            spacing: 4,
-            children: List.generate(5, (i) {
-              Color dotColor = Colors.white24;
-              if (i < stats.fouls) {
-                dotColor = (i == 4) ? Colors.redAccent : Colors.orangeAccent;
-              }
-              return Container(
-                width: isWideScreen ? 10 : 8,
-                height: isWideScreen ? 10 : 8,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: dotColor,
-                ),
-              );
-            }),
-          )
-        ],
-      )
-    ],
-  ),
-),
-
-
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          playerName,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: isWideScreen ? 16 : 12,
+                                            color: Colors.white,
+                                            fontFamily: 'Roboto',
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis, 
+                                        ),
+                                      ),
+                                      if (isCaptain)
+                                        Padding(
+                                          padding: const EdgeInsets.only(left: 4.0),
+                                          child: Text(
+                                            " (C)",
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: isWideScreen ? 14 : 11, 
+                                              color: Colors.amberAccent,
+                                              fontFamily: 'Roboto',
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  SizedBox(height: isWideScreen ? 6 : 4),
+                                  Wrap(
+                                    crossAxisAlignment: WrapCrossAlignment.center,
+                                    spacing: 8,
+                                    runSpacing: 4,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white12,
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          "${stats.points} PTS",
+                                          style: TextStyle(
+                                            fontSize: isWideScreen ? 11 : 9,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white70,
+                                          ),
+                                        ),
+                                      ),
+                                      Wrap(
+                                        spacing: 4,
+                                        children: List.generate(5, (i) {
+                                          Color dotColor = Colors.white24;
+                                          if (i < stats.fouls) {
+                                            dotColor = (i == 4) ? Colors.redAccent : Colors.orangeAccent;
+                                          }
+                                          return Container(
+                                            width: isWideScreen ? 10 : 8,
+                                            height: isWideScreen ? 10 : 8,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: dotColor,
+                                            ),
+                                          );
+                                        }),
+                                      )
+                                    ],
+                                  )
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -660,7 +651,6 @@ Expanded(
   void _showActionMenu(BuildContext context, String teamId, String playerName, MatchGameController controller, int currentFouls, bool isWideScreen, MatchState state) {
     bool isDisqualified = currentFouls >= 5;
     
-    // Cambiado de showModalBottomSheet a showDialog para centrarlo
     showDialog(
       context: context, 
       builder: (_) => Dialog(
@@ -747,7 +737,6 @@ Expanded(
     String? selectedOut = preSelectedOut; 
     String? selectedIn;
     
-    // ORDENAR TAMBIÉN LAS LISTAS DE REEMPLAZO DE MAYOR A MENOR PARA QUE EL ÁRBITRO LOS ENCUENTRE FÁCIL
     final sortedOnCourt = _sortPlayersByNumberDesc(onCourt, state);
     final sortedBench = _sortPlayersByNumberDesc(bench, state);
 
@@ -840,7 +829,7 @@ Expanded(
       Navigator.push(context, MaterialPageRoute(builder: (_) => PdfPreviewScreen(state: state, teamAName: widget.teamAName, teamBName: widget.teamBName, tournamentName: widget.tournamentName, venueName: widget.venueName, mainReferee: widget.mainReferee, auxReferee: widget.auxReferee, scorekeeper: widget.scorekeeper, coachA: widget.coachA, coachB: widget.coachB, captainAId: widget.captainAId, captainBId: widget.captainBId, matchDate: widget.matchDate, protestSignature: signature)));
   }
   
-void _showFinalOptionsDialog(BuildContext context, MatchState currentState) {
+  void _showFinalOptionsDialog(BuildContext context, MatchState currentState) {
     if (_isFinished) return;
     showDialog(
       context: context, barrierDismissible: false,
@@ -859,7 +848,10 @@ void _showFinalOptionsDialog(BuildContext context, MatchState currentState) {
                 style: FilledButton.styleFrom(backgroundColor: Colors.greenAccent, foregroundColor: Colors.black, padding: const EdgeInsets.symmetric(vertical: 12)), 
                 icon: const Icon(Icons.check_circle), 
                 label: const Text("Finalizar Normal", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)), 
-                onPressed: () { Navigator.pop(ctx); _finishMatchProcess(context, currentState, null); }
+                onPressed: () { 
+                  Navigator.pop(ctx); 
+                  _handleIncidentsFlow(context, currentState); // <--- Llama al nuevo diálogo
+                }
               ),
               const SizedBox(height: 10),
               OutlinedButton.icon(
@@ -885,6 +877,62 @@ void _showFinalOptionsDialog(BuildContext context, MatchState currentState) {
         ],
       ),
     );
+  }
+
+  // --- NUEVO FLUJO PARA NOVEDADES ---
+  Future<void> _handleIncidentsFlow(BuildContext context, MatchState state) async {
+    final textController = TextEditingController(text: "Sin novedad");
+    
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1F2B),
+        title: const Text("Reporte de Novedades", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("¿Hubo algún incidente o problema durante el partido?", style: TextStyle(color: Colors.white70)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: textController,
+              maxLines: 3,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: "Observaciones",
+                labelStyle: const TextStyle(color: Colors.white54),
+                filled: true,
+                fillColor: Colors.black26,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("Cancelar", style: TextStyle(color: Colors.grey))
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.greenAccent),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text("Finalizar", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold))
+          ),
+        ],
+      )
+    );
+
+    if (confirm == true && context.mounted) {
+      String novedades = textController.text.trim();
+      if (novedades.isEmpty) novedades = "Sin novedad";
+      
+      final controller = ref.read(matchGameProvider.notifier);
+      controller.setObservaciones(novedades);
+      
+      final newState = ref.read(matchGameProvider);
+      _finishMatchProcess(context, newState, null, autoShow: true);
+    }
   }
 
   Future<void> _handleForfeitFlow(BuildContext context, MatchState state) async {
@@ -918,10 +966,9 @@ void _showFinalOptionsDialog(BuildContext context, MatchState currentState) {
     );
     
     if (defaultingTeam != null && context.mounted) {
-      // 1. Aplicamos el 20-0 en el estado (requiere que el método declareForfeit exista en MatchGameController)
       controller.declareForfeit(defaultingTeam);
+      controller.setObservaciones("Partido finalizado por inasistencia (Default)."); // <--- AÑADIDO PARA AUTOMATIZAR
       
-      // 2. Leemos el estado actualizado y finalizamos
       final newState = ref.read(matchGameProvider);
       _finishMatchProcess(context, newState, null, autoShow: true);
     }
@@ -939,7 +986,10 @@ void _showFinalOptionsDialog(BuildContext context, MatchState currentState) {
     final String? protestingTeam = await showDialog<String>(context: context, builder: (ctx) => SimpleDialog(backgroundColor: const Color(0xFF1A1F2B), title: const Text("¿Quién protesta?", style: TextStyle(color: Colors.white)), children: [SimpleDialogOption(onPressed: () => Navigator.pop(ctx, widget.teamAName), child: Padding(padding: const EdgeInsets.all(12), child: Text(widget.teamAName, style: const TextStyle(fontSize: 16, color: Colors.orangeAccent)))), SimpleDialogOption(onPressed: () => Navigator.pop(ctx, widget.teamBName), child: Padding(padding: const EdgeInsets.all(12), child: Text(widget.teamBName, style: const TextStyle(fontSize: 16, color: Colors.lightBlueAccent))))]));
     if (protestingTeam != null && context.mounted) {
       final Uint8List? signature = await Navigator.push(context, MaterialPageRoute(builder: (_) => ProtestSignatureScreen(teamName: protestingTeam)));
-      if (signature != null && context.mounted) { setState(() => _capturedSignature = signature); _finishMatchProcess(context, state, signature, autoShow: true); }
+      if (signature != null && context.mounted) { 
+        setState(() => _capturedSignature = signature); 
+        _finishMatchProcess(context, state, signature, autoShow: true); 
+      }
     }
   }
 }

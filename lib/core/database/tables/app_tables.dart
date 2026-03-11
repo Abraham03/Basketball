@@ -25,6 +25,7 @@ class Matches extends Table with BaseTable {
   TextColumn get matchReportPath => text().nullable()();
   // Dentro de la clase Matches
   TextColumn get forfeitStatus => text().withDefault(const Constant('NONE'))();
+  TextColumn get observaciones => text().withDefault(const Constant('Sin novedad'))();
   // ignore: annotate_overrides
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 }

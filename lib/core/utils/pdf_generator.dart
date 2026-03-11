@@ -575,6 +575,16 @@ class PdfGenerator {
                     PdfCoords.overtimeY,
                   ),
 
+                  if (state.observaciones.isNotEmpty)
+                  _drawText(
+                    "OBSERVACIONES: ${state.observaciones}",
+                    x: 60.0,
+                    y: 10.0, // Posicionado al pie del PDF
+                    fontSize: 9,
+                    isBold: true,
+                    color: PdfColors.red900,
+                  ),
+
                 ..._drawRunningScore(state.scoreLog, state.periodScores),
               ],
             );
@@ -586,6 +596,8 @@ class PdfGenerator {
     }
     return pdf;
   }
+
+
 
   static List<pw.Widget> _drawTimeouts(MatchState state) {
     List<pw.Widget> widgets = [];
