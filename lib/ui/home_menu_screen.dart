@@ -839,7 +839,9 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
     int uploadedTeams = 0;
     int uploadedPlayers = 0;
     int uploadedMatches = 0;
+    int uploadedFixtures = 0;
 
+    // Subir torneos
     try {
       final pendingTournaments = await (db.select(
         db.tournaments,
@@ -888,6 +890,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         }
       }
 
+      // Subir equipos
       final pendingTeams = await (db.select(
         db.teams,
       )..where((tbl) => tbl.isSynced.equals(false))).get();
@@ -922,6 +925,13 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
             )..where((t) => t.teamId.equals(oldTeamId))).write(
               TournamentTeamsCompanion(teamId: drift.Value(newTeamIdString)),
             );
+
+            // Actualizar Fixtures Locales para que apunten al nuevo ID real del equipo
+            await (db.update(db.fixtures)..where((f) => f.teamAId.equals(oldTeamId)))
+                .write(FixturesCompanion(teamAId: drift.Value(newTeamIdString)));
+            await (db.update(db.fixtures)..where((f) => f.teamBId.equals(oldTeamId)))
+                .write(FixturesCompanion(teamBId: drift.Value(newTeamIdString)));
+
             final tempTeamIdInt = int.tryParse(oldTeamId) ?? 0;
             await (db.update(db.players)
                   ..where((p) => p.teamId.equals(tempTeamIdInt)))
@@ -936,6 +946,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         }
       }
 
+      // Subir jugadores
       final pendingPlayers = await (db.select(
         db.players,
       )..where((tbl) => tbl.isSynced.equals(false))).get();
@@ -992,6 +1003,56 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         }
       }
 
+
+      // --- 4. SUBIR FIXTURES PENDIENTES (INTELIGENTE) ---
+      final pendingFixtures = await (db.select(
+        db.fixtures,
+      )..where((tbl) => tbl.isSynced.equals(false))).get();
+      
+      for (var fixture in pendingFixtures) {
+        try {
+          // Extraemos el número de jornada
+          int roundOrder = 1;
+          final matchRoundStr = RegExp(r'\d+').firstMatch(fixture.roundName);
+          if (matchRoundStr != null) {
+            roundOrder = int.parse(matchRoundStr.group(0)!);
+          }
+
+          // LÓGICA INTELIGENTE: ¿Es nuevo (UUID) o es editado (ID numérico)?
+          int? numericId = int.tryParse(fixture.id);
+
+          bool success = false;
+
+          if (numericId != null) {
+            // ES UN PARTIDO EXISTENTE QUE FUE EDITADO: Llamamos a UPDATE
+            success = await api.updateFixtureTeams(
+              fixtureId: numericId,
+              newTeamAId: int.tryParse(fixture.teamAId) ?? 0,
+              newTeamBId: int.tryParse(fixture.teamBId) ?? 0,
+            );
+          } else {
+            // ES UN PARTIDO NUEVO CREADO OFFLINE: Llamamos a ADD
+            success = await api.addManualFixture(
+              tournamentId: fixture.tournamentId,
+              roundOrder: roundOrder,
+              teamAId: int.tryParse(fixture.teamAId) ?? 0,
+              teamBId: int.tryParse(fixture.teamBId) ?? 0,
+            );
+          }
+
+          if (success) {
+            // Si subió bien, borramos la copia desincronizada local.
+            // El `_syncData` final descargará la versión oficial.
+            await (db.delete(db.fixtures)..where((f) => f.id.equals(fixture.id))).go();
+            uploadedFixtures++;
+          }
+        } catch (e) {
+          debugPrint("Error al subir fixture: $e");
+        }
+      }
+      
+
+      // SUBIR PARTIDOS PENDIENTES
       final pendingMatches = await (db.select(
         db.matches,
       )..where((tbl) => tbl.isSynced.equals(false))).get();
@@ -1122,12 +1183,19 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         }
       }
 
+      // 6. Refrescar el estado de la UI y traer los datos más limpios de la BD
+      if (uploadedFixtures > 0 || uploadedMatches > 0) {
+        await _syncData(context, ref); // Descargar la versión oficial de MySQL
+      } else {
+        ref.invalidate(tournamentsListProvider);
+      }
+
       if (context.mounted) {
         ref.invalidate(tournamentsListProvider);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              "☁️ Sincronización exitosa.\nTorneos: $uploadedTournaments | Equipos: $uploadedTeams | Jugadores: $uploadedPlayers | Partidos: $uploadedMatches",
+              "☁️ Sincronización exitosa.\nTorneos: $uploadedTournaments | Equipos: $uploadedTeams | Prog. Manuales: $uploadedFixtures | Jugadores: $uploadedPlayers | Partidos: $uploadedMatches",
             ),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 4),

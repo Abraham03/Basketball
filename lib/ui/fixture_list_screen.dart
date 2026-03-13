@@ -3,7 +3,6 @@
 
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift; 
 
@@ -13,6 +12,8 @@ import 'match_setup_screen.dart';
 import '../logic/match_game_controller.dart';
 import 'match_control_screen.dart';
 import '../ui/widgets/app_background.dart';
+import '../ui/manual_fixture_builder_screen.dart';
+import '../ui/widgets/tournament_rules_dialog.dart';
 
 // Provider REACTIVO para leer el fixture local de un torneo específico
 final localFixtureProvider = StreamProvider.family<Map<String, List<Fixture>>, String>((ref, tournamentId) {
@@ -54,139 +55,91 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
     return path.replaceAll('../', 'https://basket.techsolutions.management/');
   }
 
-  Future<void> _generateNewFixture(BuildContext context) async {
-    int selectedVueltas = 1;
-    final txtWin = TextEditingController(text: "2");
-    final txtLoss = TextEditingController(text: "1");
-    final txtDraw = TextEditingController(text: "1");
-    // Puntos por Forfeit (Ausencia)
-    final txtForfeitWin = TextEditingController(text: "2");
-    final txtForfeitLoss = TextEditingController(text: "0");
-    final formKey = GlobalKey<FormState>();
-
-    final bool? confirm = await showDialog<bool>(
+  void _showGenerationOptions(BuildContext context) {
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          backgroundColor: const Color(0xFF1E2432),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
-            children: [
-              Icon(Icons.settings_suggest, color: Colors.orangeAccent),
-              SizedBox(width: 10),
-              Text("Configurar Calendario", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: Colors.redAccent.withOpacity(0.1), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.redAccent.withOpacity(0.3))),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 24),
-                        SizedBox(width: 10),
-                        Expanded(child: Text("Generar un nuevo calendario borrará los partidos programados actualmente.", style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.3))),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  DropdownButtonFormField<int>(
-                    dropdownColor: const Color(0xFF2C3444),
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                    decoration: InputDecoration(
-                      labelText: "Formato del Torneo", 
-                      labelStyle: const TextStyle(color: Colors.white54, fontWeight: FontWeight.normal),
-                      filled: true,
-                      fillColor: Colors.black26,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)
-                    ),
-                    initialValue: selectedVueltas,
-                    items: const [
-                      DropdownMenuItem(value: 1, child: Text("Una Vuelta (Ida)")),
-                      DropdownMenuItem(value: 2, child: Text("Dos Vueltas (Ida y Vuelta)")),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) setState(() => selectedVueltas = val);
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  const Text("PUNTOS POR PARTIDO JUGADO", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orangeAccent, fontSize: 12, letterSpacing: 1.2)),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(child: _buildNumberField("Victoria", txtWin)),
-                      const SizedBox(width: 10),
-                      Expanded(child: _buildNumberField("Derrota", txtLoss)),
-                      const SizedBox(width: 10),
-                      Expanded(child: _buildNumberField("Empate", txtDraw)),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  const Text("PUNTOS POR AUSENCIA (FORFEIT)", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orangeAccent, fontSize: 12, letterSpacing: 1.2)),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(child: _buildNumberField("Gana (W)", txtForfeitWin)),
-                      const SizedBox(width: 10),
-                      Expanded(child: _buildNumberField("Pierde (L)", txtForfeitLoss)),
-                    ],
-                  ),
-                ],
-              ),
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E2432),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          border: Border.all(color: Colors.white10),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Creación de Calendario", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+            const SizedBox(height: 8),
+            const Text("Elige cómo deseas programar los partidos de este torneo.", style: TextStyle(color: Colors.white70)),
+            const SizedBox(height: 24),
+            
+            ListTile(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              tileColor: Colors.white.withOpacity(0.05),
+              leading: const CircleAvatar(backgroundColor: Colors.blueAccent, child: Icon(Icons.auto_awesome, color: Colors.white)),
+              title: const Text("Generación Automática", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              subtitle: const Text("Crea todas las jornadas y cruza a todos los equipos usando el método de Round Robin.", style: TextStyle(color: Colors.white54, fontSize: 12)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _generateNewFixture(context); // Llama a tu función original
+              },
             ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancelar", style: TextStyle(color: Colors.grey))),
-            FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.orange.shade600,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12)
-              ),
-              icon: const Icon(Icons.auto_awesome, color: Colors.white, size: 18),
-              label: const Text("Generar", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-              onPressed: () {
-                if (formKey.currentState!.validate()) {
-                  Navigator.pop(ctx, true);
-                }
+            const SizedBox(height: 12),
+            ListTile(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              tileColor: Colors.white.withOpacity(0.05),
+              leading: const CircleAvatar(backgroundColor: Colors.orangeAccent, child: Icon(Icons.edit_calendar, color: Colors.black)),
+              title: const Text("Constructor Manual", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              subtitle: const Text("Crea jornadas y programa partidos uno por uno, ideal para torneos en progreso.", style: TextStyle(color: Colors.white54, fontSize: 12)),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => ManualFixtureBuilderScreen(tournamentId: widget.tournamentId)),
+                );
               },
             ),
           ],
         ),
       ),
     );
+  }
 
-    if (confirm != true) return;
-    if (!mounted) return; 
+  Future<void> _generateNewFixture(BuildContext context) async {
+    final rules = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (ctx) => const TournamentRulesDialog(showVueltas: true),
+    );
+
+    if (rules == null || !mounted) return;
     
     showDialog(
       context: context, 
       barrierDismissible: false, 
-      builder: (_) => const Center(
-        child: CircularProgressIndicator(color: Colors.orangeAccent),
-      )
+      builder: (_) => const Center(child: CircularProgressIndicator(color: Colors.orangeAccent))
     );
 
     try {
       final api = ref.read(apiServiceProvider);
       
+      // 1. Guardamos las reglas del torneo primero
+      final rulesSaved = await api.saveTournamentRules(
+        tournamentId: widget.tournamentId,
+        vueltas: rules['vueltas'],
+        ptsVictoria: rules['win'],
+        ptsDerrota: rules['loss'],
+        ptsEmpate: rules['draw'],
+        ptsForfeitWin: rules['forfeitWin'],
+        ptsForfeitLoss: rules['forfeitLoss'],
+      );
+
+      if (!rulesSaved) throw Exception("Error guardando las reglas del torneo");
+
+      // 2. Generamos el fixture automáticamente (el backend leerá las reglas que acabamos de guardar)
       final success = await api.generateFixture(
         tournamentId: widget.tournamentId,
-        vueltas: selectedVueltas,
-        ptsVictoria: int.parse(txtWin.text),
-        ptsDerrota: int.parse(txtLoss.text),
-        ptsEmpate: int.parse(txtDraw.text),
-        ptsForfeitWin: int.parse(txtForfeitWin.text),
-        ptsForfeitLoss: int.parse(txtForfeitLoss.text),
       );
       
       if (success) {
@@ -194,15 +147,13 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
         
         if (newFixtureData.isNotEmpty && newFixtureData['rounds'] != null) {
           final db = ref.read(databaseProvider);
-          
           await (db.delete(db.fixtures)..where((f) => f.tournamentId.equals(widget.tournamentId))).go();
 
           final roundsMap = newFixtureData['rounds'] as Map<String, dynamic>;
           await db.transaction(() async {
             for (var entry in roundsMap.entries) {
               final roundName = entry.key;
-              final matches = entry.value as List;
-              for (var m in matches) {
+              for (var m in (entry.value as List)) {
                 await db.into(db.fixtures).insert(
                   FixturesCompanion.insert(
                     id: m['id'].toString(),
@@ -230,7 +181,7 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
         Navigator.pop(context); 
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("✅ Calendario generado con éxito"), backgroundColor: Colors.green));
       } else {
-        throw Exception("El servidor rechazó la solicitud");
+        throw Exception("El servidor rechazó la solicitud de generación");
       }
     } catch (e) {
       if (!mounted) return; 
@@ -239,24 +190,7 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
     }
   }
 
-  Widget _buildNumberField(String label, TextEditingController controller) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: TextInputType.number,
-      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-      textAlign: TextAlign.center,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: Colors.white54, fontSize: 12),
-        filled: true,
-        fillColor: Colors.black26,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-        contentPadding: const EdgeInsets.symmetric(vertical: 10),
-      ),
-      validator: (val) => val == null || val.isEmpty ? 'Req.' : null,
-    );
-  }
+  
 
   @override
   Widget build(BuildContext context) {
@@ -275,9 +209,9 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
       ),
       
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _generateNewFixture(context),
-        icon: const Icon(Icons.auto_awesome),
-        label: const Text("Generar Calendario", style: TextStyle(fontWeight: FontWeight.bold)),
+        onPressed: () => _showGenerationOptions(context),
+        icon: const Icon(Icons.add_chart),
+        label: const Text("Crear Calendario", style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.orangeAccent,
         foregroundColor: Colors.black,
         elevation: 4,

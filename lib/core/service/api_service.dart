@@ -10,7 +10,7 @@ class ApiService {
   
   static const String _baseUrl = 'https://basket.techsolutions.management/api.php';
 
-  Future<bool> generateFixture({
+  Future<bool> saveTournamentRules({
     required String tournamentId,
     required int vueltas,
     required int ptsVictoria,
@@ -21,15 +21,15 @@ class ApiService {
   }) async {
     try {
       final payload = {
-        "action": "generate_fixture",
+        "action": "save_tournament_rules",
         "tournament_id": tournamentId,
         "config": {
-          "vueltas": vueltas,
-          "pts_victoria": ptsVictoria,
-          "pts_derrota": ptsDerrota,
-          "pts_empate": ptsEmpate,
-          "pts_forfeit_win": ptsForfeitWin,
-          "pts_forfeit_loss": ptsForfeitLoss
+          "matchups_per_pair": vueltas,
+          "points_win": ptsVictoria,
+          "points_draw": ptsEmpate,
+          "points_loss": ptsDerrota,
+          "points_forfeit_win": ptsForfeitWin,
+          "points_forfeit_loss": ptsForfeitLoss
         }
       };
 
@@ -39,7 +39,82 @@ class ApiService {
         body: jsonEncode(payload),
       );
 
-      // ACEPTAMOS 200 y 201
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final respData = jsonDecode(response.body);
+        return respData['status'] == 'success';
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> generateFixture({
+    required String tournamentId,
+  }) async {
+    try {
+      final payload = {
+        "action": "generate_fixture",
+        "tournament_id": tournamentId,
+        // Ya no enviamos "config" aquí porque lo enviaremos por separado
+      };
+
+      final response = await http.post(
+        Uri.parse(_baseUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(payload),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final respData = jsonDecode(response.body);
+        return respData['status'] == 'success';
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> updateFixtureTeams({
+    required int fixtureId,
+    required int newTeamAId,
+    required int newTeamBId,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl?action=update_fixture_teams'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          "fixture_id": fixtureId,
+          "new_team_a_id": newTeamAId,
+          "new_team_b_id": newTeamBId,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final respData = jsonDecode(response.body);
+        return respData['status'] == 'success';
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> syncManualFixtures({
+    required String tournamentId,
+    required List<Map<String, dynamic>> fixtures,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl?action=sync_manual_fixtures'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          "tournament_id": tournamentId,
+          "fixtures": fixtures,
+        }),
+      );
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         final respData = jsonDecode(response.body);
         return respData['status'] == 'success';
@@ -257,7 +332,53 @@ class ApiService {
     throw Exception("No se recibió el ID del torneo creado");
   }
 
-  // ---> CORRECCIÓN CLAVE AQUÍ <---
+  // Obtiene los equipos y su estatus para el constructor manual
+  Future<List<Map<String, dynamic>>> fetchTeamsSchedulingStatus(String tournamentId, int roundId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl?action=get_team_scheduling_status&tournament_id=$tournamentId&round_id=$roundId'),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final jsonResponse = json.decode(response.body);
+        if (jsonResponse['status'] == 'success') {
+          return List<Map<String, dynamic>>.from(jsonResponse['data']); 
+        }
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<bool> addManualFixture({
+    required String tournamentId,
+    required int roundOrder,
+    required int teamAId,
+    required int teamBId,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl?action=add_manual_fixture'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          "tournament_id": tournamentId,
+          "round_order": roundOrder,
+          "team_a_id": teamAId,
+          "team_b_id": teamBId,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final respData = jsonDecode(response.body);
+        return respData['status'] == 'success';
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
   // Ahora aceptamos 200 (OK) y 201 (Created) como exitosos
   void _checkResponse(http.Response response) {
     if (response.statusCode != 200 && response.statusCode != 201) {
