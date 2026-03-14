@@ -4,7 +4,10 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../logic/match_game_controller.dart';
 
+// <div class="table-actions"></div>
+
 /// MARCADOR PROFESIONAL BROADCAST - DISEÑO ESCALABLE Y MODERNO
+/// Optimizado para mantener proporciones desde tablets hasta Smart TVs.
 class TvScoreboardWidget extends StatelessWidget {
   final MatchState state;
   final String teamAName;
@@ -56,49 +59,38 @@ class TvScoreboardWidget extends StatelessWidget {
         child: Column(
           children: [
             // ================= SECCIÓN 1: RELOJ Y FLECHAS (Alto 40%) =================
-            // Usamos un Row con anchos relativos (25% - 50% - 25%) para que las flechas
-            // siempre orbiten cerca del reloj independientemente del ancho de pantalla.
+            // AJUSTE: Se eliminaron los anchos fijos (25-50-25) que causaban overflow.
+            // Ahora se usa un Row centrado con separaciones dinámicas basadas en el ancho de pantalla (w).
             SizedBox(
               height: h * 0.40,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Lado Izquierdo: Posesión A (Alineada a la derecha de su espacio)
-                  SizedBox(
-                    width: w * 0.25,
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: Padding(
-                        padding: EdgeInsets.only(right: w * 0.00),
-                        child: _buildPossessionIndicator(isActive: state.possession == 'A', h: h, isLeft: true),
-                      ),
+                  // Lado Izquierdo: Flecha de Posesión A
+                  _buildPossessionIndicator(isActive: state.possession == 'A', h: h, isLeft: true),
+
+                  // Separación proporcional entre la flecha izquierda y el reloj (4% de la pantalla)
+                  // Puedes aumentar o disminuir este valor si quieres las flechas más cerca o lejos de los números
+                  SizedBox(width: w * 0.04),
+
+                  // Centro: Cronómetro principal
+                  // Flexible permite que el reloj crezca hasta su límite natural sin empujar otros elementos
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.contain,
+                      child: Text("$minutes:$seconds",
+                          // El tamaño se ajusta ligeramente (0.35) para asegurar que la fuente no se corte
+                          style: digitalStyle(h * 0.35, 
+                              state.isRunning ? const Color(0xFFFF3131) : Colors.red.shade900)),
                     ),
                   ),
 
-                  // Centro: Cronómetro (Ancho contenido al 50% para simetría)
-                  SizedBox(
-                    width: w * 0.50,
-                    child: Center(
-                      child: FittedBox(
-                        fit: BoxFit.contain,
-                        child: Text("$minutes:$seconds",
-                            style: digitalStyle(h * 0.40, 
-                                state.isRunning ? const Color(0xFFFF3131) : Colors.red.shade900)),
-                      ),
-                    ),
-                  ),
+                  // Separación proporcional entre el reloj y la flecha derecha (4% de la pantalla)
+                  SizedBox(width: w * 0.04),
 
-                  // Lado Derecho: Posesión B (Alineada a la izquierda de su espacio)
-                  SizedBox(
-                    width: w * 0.25,
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Padding(
-                        padding: EdgeInsets.only(right: w * 0.00),
-                        child: _buildPossessionIndicator(isActive: state.possession == 'B', h: h, isLeft: false),
-                      ),
-                    ),
-                  ),
+                  // Lado Derecho: Flecha de Posesión B
+                  _buildPossessionIndicator(isActive: state.possession == 'B', h: h, isLeft: false),
                 ],
               ),
             ),
@@ -158,18 +150,23 @@ class TvScoreboardWidget extends StatelessWidget {
 
   // --- MÉTODOS DE COMPONENTES MODIFICABLES ---
 
-  /// INDICADOR DE POSESIÓN (FLECHAS)
-  /// Para cambiar el tamaño, modifica el multiplicador h * 0.55
+  
+  /// INDICADOR DE POSESIÓN (FLECHAS) MODIFICADO CON ESCALA VISUAL
   Widget _buildPossessionIndicator({required bool isActive, required double h, required bool isLeft}) {
     const Color activeColor = Color(0xFFCCFF00); // Verde Neón
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 300),
       opacity: isActive ? 1.0 : 0.05,
-      child: Icon(
-        isLeft ? Icons.arrow_left_rounded : Icons.arrow_right_rounded,
-        size: h * 0.55, 
-        color: activeColor,
-        shadows: [if (isActive) Shadow(color: activeColor.withOpacity(0.9), blurRadius: 30)],
+      // Transform.scale dibuja el icono más grande SIN afectar el espacio que ocupa en el Row
+      child: Transform.scale(
+        scale: 1.9, // <--- AUMENTA ESTE VALOR: 1.6 significa 60% más grande visualmente
+        child: Icon(
+          isLeft ? Icons.arrow_left_rounded : Icons.arrow_right_rounded,
+          // Mantenemos el tamaño base en un límite seguro para que el Row no colapse
+          size: h * 0.35, 
+          color: activeColor,
+          shadows: [if (isActive) Shadow(color: activeColor.withOpacity(0.9), blurRadius: 30)],
+        ),
       ),
     );
   }
@@ -221,10 +218,15 @@ class TvScoreboardWidget extends StatelessWidget {
 
   /// BADGE DE STATS (FALTAS Y T.O.)
   /// Agrupa las faltas en una caja y los Tiempos Fuera en círculos.
+  /// BADGE DE STATS (FALTAS Y T.O.)
+  /// Agrupa las faltas en una caja y los Tiempos Fuera en círculos.
   Widget _buildStatsBadge(int fouls, List<String> t1, List<String> t2, List<String> tOT, Color color, int period, double h) {
     final List<bool> activeStatus = (period >= 5)
         ? List.generate(3, (i) => i < tOT.length)
         : [...List.generate(2, (i) => i < t1.length), ...List.generate(3, (i) => i < t2.length)];
+
+    // Limitar visualmente las faltas mostradas a 4 (Regla de acta)
+    final int displayFouls = fouls > 4 ? 4 : fouls;
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
@@ -238,7 +240,8 @@ class TvScoreboardWidget extends StatelessWidget {
         children: [
           Text("F", style: TextStyle(color: Colors.white38, fontSize: h * 0.02, fontWeight: FontWeight.bold)),
           const SizedBox(width: 4),
-          Text("$fouls", style: TextStyle(color: fouls >= 5 ? Colors.redAccent : color, fontSize: h * 0.045, fontWeight: FontWeight.w900)),
+          // Usamos displayFouls en lugar de fouls. Si llega a 4 o más, se pinta rojo.
+          Text("$displayFouls", style: TextStyle(color: fouls >= 4 ? Colors.redAccent : color, fontSize: h * 0.045, fontWeight: FontWeight.w900)),
           SizedBox(width: h * 0.04),
           Text("T.O.", style: TextStyle(color: Colors.white38, fontSize: h * 0.02, fontWeight: FontWeight.bold)),
           const SizedBox(width: 6),

@@ -86,18 +86,17 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
               try {
                 final fix = widget.preSelectedFixture!;
                 
-                selectedTeamA = catalogData.teams.cast<db.Team?>().firstWhere(
-                  (t) => t!.id.toString() == fix.teamAId, orElse: () => null
-                ) as model.Team?;
-                
-                selectedTeamB = catalogData.teams.cast<db.Team?>().firstWhere(
-                  (t) => t!.id.toString() == fix.teamBId, orElse: () => null
-                ) as model.Team?;
+                // Se eliminaron los .cast<db.Team?>() que causaban errores de tipo.
+                // Usamos where().isNotEmpty de forma segura.
+                final matchA = catalogData.teams.where((t) => t.id.toString() == fix.teamAId.toString());
+                if (matchA.isNotEmpty) selectedTeamA = matchA.first;
+
+                final matchB = catalogData.teams.where((t) => t.id.toString() == fix.teamBId.toString());
+                if (matchB.isNotEmpty) selectedTeamB = matchB.first;
 
                 if (fix.venueId != null) {
-                  selectedVenue = catalogData.venues.cast<db.Venue?>().firstWhere(
-                    (v) => v!.id.toString() == fix.venueId, orElse: () => null
-                  ) as model.Venue?;
+                  final matchV = catalogData.venues.where((v) => v.id.toString() == fix.venueId.toString());
+                  if (matchV.isNotEmpty) selectedVenue = matchV.first;
                 }
               } catch (e) {
                 debugPrint("Error auto-seleccionando: $e");
@@ -243,6 +242,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                               value: selectedMainReferee,
                               items: mainReferees,
                               isLocked: false,
+                              isRequired: false,
                               onChanged: (val) => setState(() => selectedMainReferee = val),
                               displayText: (o) => o.name,
                             ),
@@ -254,6 +254,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                               value: selectedAuxReferee,
                               items: auxReferees,
                               isLocked: false,
+                              isRequired: false,
                               onChanged: (val) => setState(() => selectedAuxReferee = val),
                               displayText: (o) => o.name,
                             ),
@@ -265,6 +266,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                               value: selectedScorekeeper,
                               items: scorekeepers,
                               isLocked: false,
+                              isRequired: false,
                               onChanged: (val) => setState(() => selectedScorekeeper = val),
                               displayText: (o) => o.name,
                             ),
@@ -355,6 +357,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
     required Function(T?) onChanged,
     required String Function(T) displayText,
     bool Function(T)? enabledItem,
+    bool isRequired = true,
   }) {
     return IgnorePointer(
       ignoring: isLocked,
@@ -385,9 +388,11 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
         }).toList(),
         onChanged: onChanged,
         validator: (val) {
-          // Si quieres que los oficiales no sean obligatorios, quita esta validación 
-          // o hazla condicional basada en el tipo T.
-          return val == null ? 'Requerido' : null;
+          // Lógica condicional: Si es requerido y está vacío, marca error.
+          if (isRequired && val == null) {
+            return 'Requerido';
+          }
+          return null;
         },
       ),
     );
