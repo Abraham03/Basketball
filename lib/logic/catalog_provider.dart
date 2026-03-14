@@ -48,17 +48,20 @@ final tournamentDataByIdProvider = StreamProvider.family<model.CatalogData, Stri
     // 3. Jugadores
     final localPlayers = await db.select(db.players).get();
 
+    final officialsRows = await db.select(db.officials).get();
+    final localOfficials = officialsRows.map((row) => model.Official(
+      id: row.id, // Drift guarda ID como texto, lo pasamos a int
+      name: row.name,
+      role: row.role,
+    )).toList();
+
     return model.CatalogData(
       tournaments: [],
       relationships: [], 
       venues: localVenues.map((v) => model.Venue(id: int.parse(v.id), name: v.name, address: v.address ?? '')).toList(),
       teams: localTeams,
-      players: localPlayers.map((p) => model.Player(
-        id: int.parse(p.id), 
-        teamId: p.teamId, 
-        name: p.name, 
-        defaultNumber: p.defaultNumber
-      )).toList(),
+      players: localPlayers.map((p) => model.Player(id: int.parse(p.id), teamId: p.teamId, name: p.name, defaultNumber: p.defaultNumber)).toList(),
+      officials: localOfficials,
     );
   });
 });

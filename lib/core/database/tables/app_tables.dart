@@ -58,6 +58,20 @@ class Fixtures extends Table with BaseTable {
   Set<Column> get primaryKey => {id};
 }
 
+@DataClassName('Official')
+class Officials extends Table with BaseTable {
+  TextColumn get id => text()();
+  TextColumn get name => text().withLength(min: 1, max: 100)();
+  
+  // Guardamos el rol: ARBITRO_PRINCIPAL, ARBITRO_AUXILIAR, ANOTADOR
+  TextColumn get role => text().withDefault(const Constant('REFEREE'))();
+  
+  BoolColumn get active => boolean().withDefault(const Constant(true))();
+  
+  @override
+  BoolColumn get isSynced => boolean().withDefault(const Constant(true))();
+}
+
 @DataClassName('Team')
 class Teams extends Table with BaseTable {
   TextColumn get name => text().withLength(min: 1, max: 100)();

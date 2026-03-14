@@ -1,5 +1,6 @@
 // lib/core/models/catalog_models.dart
 
+
 class Tournament {
   final int id;
   final String name;
@@ -96,6 +97,26 @@ class Player {
   }
 }
 
+class Official {
+  final String id;
+  final String name;
+  final String role;
+
+  Official({
+    required this.id,
+    required this.name,
+    required this.role,
+  });
+
+  factory Official.fromJson(Map<String, dynamic> json) {
+    return Official(
+      id: json['id'].toString(),
+      name: json['name'],
+      role: json['role'] ?? 'REFEREE',
+    );
+  }
+}
+
 // Clase contenedora para recibir todo de golpe
 class CatalogData {
   final List<Tournament> tournaments;
@@ -104,6 +125,7 @@ class CatalogData {
   final List<Player> players;
   final List<TournamentTeamRelation> relationships; 
   final List<dynamic> fixturesRaw;
+  final List<Official> officials;
 
   CatalogData({
     required this.tournaments,
@@ -112,5 +134,6 @@ class CatalogData {
     required this.players,
     required this.relationships,
     this.fixturesRaw = const [],
+    required this.officials,
   });
 }

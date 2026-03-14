@@ -1,4 +1,4 @@
-// ignore_for_file: deprecated_member_use
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously
 
 import 'dart:typed_data';
 import 'dart:ui';
@@ -513,14 +513,14 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                                     title: "Descargar Datos",
                                     icon: Icons.cloud_download,
                                     color: Colors.purpleAccent,
-                                    onTap: () => _syncData(context, ref),
+                                    onTap: () => _syncData(),
                                   ),
                                   GlassDashboardCard(
                                     title: "Subir a Nube",
                                     icon: Icons.cloud_upload,
                                     color: Colors.greenAccent,
                                     onTap: () =>
-                                        _uploadPendingData(context, ref),
+                                        _uploadPendingData(),
                                   ),
                                 ],
                               ],
@@ -659,7 +659,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
     );
   }
 
-  Future<void> _syncData(BuildContext context, WidgetRef ref) async {
+  Future<void> _syncData() async {
     final selectedTournamentId = ref.read(selectedTournamentIdProvider);
     final String syncId = selectedTournamentId ?? "0";
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -701,6 +701,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         await db.delete(db.tournamentTeams).go();
         await db.delete(db.venues).go();
         await db.delete(db.fixtures).go();
+        await db.delete(db.officials).go();
 
         for (var t in catalogData.tournaments) {
           await db
@@ -813,6 +814,20 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                 mode: drift.InsertMode.insertOrReplace,
               );
         }
+
+       for (var off in catalogData.officials) { 
+          await db.into(db.officials).insert(
+            OfficialsCompanion.insert(
+              id: off.id.toString(), 
+              name: off.name,
+              role: drift.Value(off.role),
+              active: const drift.Value(true), 
+              isSynced: const drift.Value(true),
+            ),
+            mode: drift.InsertMode.insertOrReplace,
+          );
+        }
+
       });
 
       ref.invalidate(tournamentsListProvider);
@@ -883,7 +898,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
     }
   }
 
-  Future<void> _uploadPendingData(BuildContext context, WidgetRef ref) async {
+  Future<void> _uploadPendingData() async {
     final db = ref.read(databaseProvider);
     final api = ref.read(apiServiceProvider);
 
@@ -911,6 +926,8 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
     int uploadedPlayers = 0;
     int uploadedMatches = 0;
     int uploadedFixtures = 0;
+    int uploadedOfficials = 0;
+
 
     // Subir torneos
     try {
@@ -1254,10 +1271,38 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         }
       }
 
+      // Subir Oficiales
+      final pendingOfficials = await (db.select(db.officials)..where((tbl) => tbl.isSynced.equals(false))).get();
+      for (var official in pendingOfficials) {
+        try {
+          final realIdInt = await api.createOfficial(official.name, official.role);
+          final String oldId = official.id;
+
+          await db.transaction(() async {
+            // Guardamos el oficial con el ID real de la nube
+            await db.into(db.officials).insert(
+              OfficialsCompanion.insert(
+                id: realIdInt.toString(), 
+                name: official.name,
+                role: drift.Value(official.role),
+                active: const drift.Value(true),
+                isSynced: const drift.Value(true),
+              ),
+              mode: drift.InsertMode.insertOrReplace
+            );
+            // Borramos el oficial temporal
+            await (db.delete(db.officials)..where((o) => o.id.equals(oldId))).go();
+          });
+
+          uploadedOfficials++;
+        } catch (e) {
+          debugPrint("Error al subir oficial: $e");
+        }
+      }
+
       // 6. Refrescar el estado de la UI y traer los datos más limpios de la BD
       if (uploadedFixtures > 0 || uploadedMatches > 0) {
-        // ignore: use_build_context_synchronously
-        await _syncData(context, ref); // Descargar la versión oficial de MySQL
+        await _syncData(); // Descargar la versión oficial de MySQL
       } else {
         ref.invalidate(tournamentsListProvider);
       }
@@ -1267,7 +1312,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              "☁️ Sincronización exitosa.\nSubidos: $uploadedTournaments Torneos, $uploadedTeams Equipos, $uploadedMatches Partidos, $uploadedPlayers Jugadores, $uploadedFixtures Calendarios.",
+              "☁️ Sincronización exitosa.\nSubidos: $uploadedTournaments Torneos, $uploadedTeams Equipos, $uploadedMatches Partidos, $uploadedPlayers Jugadores, $uploadedFixtures Calendarios, $uploadedOfficials Oficiales.",
               style: const TextStyle(fontWeight: FontWeight.w500),
             ),
             backgroundColor: Colors.green.shade700,
@@ -1278,6 +1323,8 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
           ),
         );
       }
+
+      
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();

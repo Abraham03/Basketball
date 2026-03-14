@@ -151,6 +151,7 @@ class ApiService {
             relationships: (data['tournament_teams'] as List)
                 .map((e) => TournamentTeamRelation.fromJson(e))
                 .toList(),
+            officials: [],    
           );
         } else {
           throw Exception('API Error: ${jsonResponse['message']}');
@@ -189,7 +190,10 @@ class ApiService {
             relationships: (data['tournament_teams'] as List)
                 .map((e) => TournamentTeamRelation.fromJson(e))
                 .toList(),
-            fixturesRaw: data['fixtures'] ?? [],    
+            fixturesRaw: data['fixtures'] ?? [],
+            officials: data['officials'] != null 
+                ? (data['officials'] as List).map((e) => Official.fromJson(e)).toList() 
+                : [],    
           );
         } else {
           throw Exception('API Error: ${jsonResponse['message']}');
@@ -199,6 +203,29 @@ class ApiService {
       }
     } catch (e) {
       throw Exception('Error conectando al servidor: $e');
+    }
+  }
+
+  Future<int> createOfficial(String name, String role) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl?action=create_official'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          "name": name,
+          "role": role,
+        }),
+      );
+      
+      _checkResponse(response);
+      final jsonResponse = jsonDecode(response.body);
+      
+      if (jsonResponse['data'] != null && jsonResponse['data']['id'] != null) {
+        return int.parse(jsonResponse['data']['id'].toString()); 
+      }
+      throw Exception("ID de oficial no recibido.");
+    } catch (e) {
+      throw Exception('Error creando oficial: $e');
     }
   }
 

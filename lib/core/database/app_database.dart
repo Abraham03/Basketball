@@ -19,7 +19,8 @@ part 'app_database.g.dart'; // Archivo generado automáticamente
   Venues, 
   Teams, 
   TournamentTeams,
-  Fixtures
+  Fixtures,
+  Officials,
   ],
   daos: [MatchesDao], // Registramos el DAO
 )
