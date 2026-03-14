@@ -23,7 +23,6 @@ class LocalWebSocketServer {
     });
 
     _server = await shelf_io.serve(handler, InternetAddress.anyIPv4, 8080, shared: true);
-    print('Servidor WebSocket activo en: ${_server!.address.address}:${_server!.port}');
   }
 
   void broadcast(String message) {

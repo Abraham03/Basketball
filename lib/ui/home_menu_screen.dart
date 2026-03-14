@@ -49,6 +49,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                   _isAdminMode
                       ? "Modo Administrador: ACTIVADO"
                       : "Modo Administrador: DESACTIVADO",
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -57,6 +58,8 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                 ? Colors.green.shade800
                 : Colors.grey.shade800,
             behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
           ),
         );
       }
@@ -84,12 +87,18 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              "☁️ ¡Genial! El torneo se creó en la nube exitosamente.",
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.cloud_done, color: Colors.white),
+                SizedBox(width: 10),
+                Expanded(child: Text("Torneo creado y sincronizado con la nube.")),
+              ],
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: Colors.green.shade700,
             behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
           ),
         );
       }
@@ -109,12 +118,18 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              "💾 Sin conexión a internet. El torneo se guardó localmente.",
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.save_alt, color: Colors.white),
+                SizedBox(width: 10),
+                Expanded(child: Text("Torneo guardado localmente (Sin conexión).")),
+              ],
             ),
-            backgroundColor: Colors.orange,
+            backgroundColor: Colors.orange.shade700,
             behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
           ),
         );
       }
@@ -266,7 +281,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                                       ),
                                       const SizedBox(width: 15),
                                       const Text(
-                                        "Basket Arbitraje",
+                                        "Basket Pro",
                                         style: TextStyle(
                                           fontSize: 26,
                                           fontWeight: FontWeight.w900,
@@ -433,6 +448,22 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                               physics: const BouncingScrollPhysics(),
                               children: [
                                 GlassDashboardCard(
+                                    title: "Calendario",
+                                    icon: Icons.calendar_month,
+                                    color: Colors.tealAccent,
+                                    onTap: selectedTournamentId == null
+                                        ? () => _showNoTournamentAlert(context)
+                                        : () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => FixtureListScreen(
+                                                tournamentId:
+                                                    selectedTournamentId,
+                                              ),
+                                            ),
+                                          ),
+                                  ),
+                                GlassDashboardCard(
                                   title: "Jugar Partido",
                                   icon: Icons.sports_basketball,
                                   color: Colors.orange,
@@ -475,22 +506,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                                                     tournamentId:
                                                         selectedTournamentId,
                                                   ),
-                                            ),
-                                          ),
-                                  ),
-                                  GlassDashboardCard(
-                                    title: "Calendario",
-                                    icon: Icons.calendar_month,
-                                    color: Colors.tealAccent,
-                                    onTap: selectedTournamentId == null
-                                        ? () => _showNoTournamentAlert(context)
-                                        : () => Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) => FixtureListScreen(
-                                                tournamentId:
-                                                    selectedTournamentId,
-                                              ),
                                             ),
                                           ),
                                   ),
@@ -630,14 +645,16 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
             SizedBox(width: 10),
             Expanded(
               child: Text(
-                "Selecciona un torneo en la parte superior para continuar.",
+                "Por favor, selecciona un torneo en la parte superior para continuar.",
+                style: TextStyle(fontWeight: FontWeight.w500),
               ),
             ),
           ],
         ),
         backgroundColor: Colors.blueGrey.shade800,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
       ),
     );
   }
@@ -647,8 +664,8 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
     final String syncId = selectedTournamentId ?? "0";
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Row(
+      SnackBar(
+        content: const Row(
           children: [
             SizedBox(
               width: 20,
@@ -659,10 +676,14 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
               ),
             ),
             SizedBox(width: 15),
-            Text("Sincronizando datos..."),
+            Text("Sincronizando datos... por favor espera.", style: TextStyle(fontWeight: FontWeight.w500)),
           ],
         ),
-        duration: Duration(seconds: 25),
+        backgroundColor: Colors.blueGrey.shade800,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 25),
       ),
     );
 
@@ -799,27 +820,61 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("✅ Base de datos restaurada como espejo de la nube."),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 10),
+                Expanded(child: Text("Datos descargados y actualizados con éxito.", style: TextStyle(fontWeight: FontWeight.w500))),
+              ],
+            ),
+            backgroundColor: Colors.green.shade700,
             behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
           ),
         );
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        
+        // --- MEJORA: DIÁLOGO DE ERROR PROFESIONAL ---
         showDialog(
           context: context,
           builder: (_) => AlertDialog(
-            title: const Text("Error de Sincronización"),
-            content: SingleChildScrollView(
-              child: Text("No se pudo conectar... \n\n$e"),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            backgroundColor: Colors.white,
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.cloud_off, color: Colors.redAccent, size: 28),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text("Sin conexión al servidor", 
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87)
+                  ),
+                ),
+              ],
+            ),
+            content: const Text(
+              "No pudimos descargar los datos de la nube en este momento.\n\nPor favor, verifica tu conexión a internet o inténtalo más tarde. Tus datos locales están seguros y puedes seguir operando sin conexión.",
+              style: TextStyle(fontSize: 15, color: Colors.black54, height: 1.4),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text("Cerrar"),
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.grey.shade100,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text("Entendido", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -833,7 +888,23 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
     final api = ref.read(apiServiceProvider);
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Iniciando subida de datos a la nube...")),
+      SnackBar(
+        content: const Row(
+          children: [
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+            ),
+            SizedBox(width: 15),
+            Text("Subiendo datos a la nube...", style: TextStyle(fontWeight: FontWeight.w500)),
+          ],
+        ),
+        backgroundColor: Colors.blueGrey.shade800,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+      ),
     );
     int uploadedTournaments = 0;
     int uploadedTeams = 0;
@@ -1185,30 +1256,70 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
 
       // 6. Refrescar el estado de la UI y traer los datos más limpios de la BD
       if (uploadedFixtures > 0 || uploadedMatches > 0) {
+        // ignore: use_build_context_synchronously
         await _syncData(context, ref); // Descargar la versión oficial de MySQL
       } else {
         ref.invalidate(tournamentsListProvider);
       }
 
       if (context.mounted) {
-        ref.invalidate(tournamentsListProvider);
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              "☁️ Sincronización exitosa.\nTorneos: $uploadedTournaments | Equipos: $uploadedTeams | Prog. Manuales: $uploadedFixtures | Jugadores: $uploadedPlayers | Partidos: $uploadedMatches",
+              "☁️ Sincronización exitosa.\nSubidos: $uploadedTournaments Torneos, $uploadedTeams Equipos, $uploadedMatches Partidos, $uploadedPlayers Jugadores, $uploadedFixtures Calendarios.",
+              style: const TextStyle(fontWeight: FontWeight.w500),
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: Colors.green.shade700,
             duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
           ),
         );
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("❌ Error durante la subida: $e"),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        
+        // --- MEJORA PROFESIONAL: Diálogo en vez de texto plano ---
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            backgroundColor: Colors.white,
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.sync_problem, color: Colors.orange, size: 28),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text("Problema al Subir", 
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87)
+                  ),
+                ),
+              ],
+            ),
+            content: const Text(
+              "Tuvimos un inconveniente al intentar respaldar tus datos en la nube.\n\nPor favor, revisa tu conexión a internet e inténtalo nuevamente. No te preocupes, toda tu información sigue guardada localmente de forma segura.",
+              style: TextStyle(fontSize: 15, color: Colors.black54, height: 1.4),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.grey.shade100,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text("Entendido", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+              ),
+            ],
           ),
         );
       }

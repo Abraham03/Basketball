@@ -61,6 +61,7 @@ class _TournamentRulesDialogState extends State<TournamentRulesDialog> {
               if (widget.showVueltas) ...[
                 Container(
                   padding: const EdgeInsets.all(12),
+                  // ignore: deprecated_member_use
                   decoration: BoxDecoration(color: Colors.redAccent.withOpacity(0.1), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.redAccent.withOpacity(0.3))),
                   child: const Row(
                     children: [
