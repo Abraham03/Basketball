@@ -60,6 +60,7 @@ class Fixtures extends Table with BaseTable {
 
 @DataClassName('Official')
 class Officials extends Table with BaseTable {
+  @override
   TextColumn get id => text()();
   TextColumn get name => text().withLength(min: 1, max: 100)();
   

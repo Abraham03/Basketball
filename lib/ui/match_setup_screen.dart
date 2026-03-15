@@ -1,4 +1,3 @@
-// lib/ui/screens/match_setup_screen.dart
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously
 
 import 'dart:ui';
@@ -11,7 +10,6 @@ import '../logic/catalog_provider.dart';
 import '../logic/tournament_provider.dart';
 import 'starters_selection_screen.dart';
 
-// IMPORTAMOS EL FONDO REUTILIZABLE
 import '../ui/widgets/app_background.dart';
 
 class MatchSetupScreen extends ConsumerStatefulWidget {
@@ -29,13 +27,11 @@ class MatchSetupScreen extends ConsumerStatefulWidget {
 }
 
 class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
-  // Variables para guardar la selección del usuario
   model.Tournament? selectedTournament;
   model.Venue? selectedVenue;
   model.Team? selectedTeamA;
   model.Team? selectedTeamB;
   
-  // Variables para los oficiales seleccionados
   model.Official? selectedMainReferee;
   model.Official? selectedAuxReferee;
   model.Official? selectedScorekeeper;
@@ -68,7 +64,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
       
       appBar: AppBar(
         title: const Text("Configurar Partido", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-        backgroundColor: Colors.black.withOpacity(0.5), 
+        backgroundColor: Colors.black.withValues(alpha: 0.5), 
         elevation: 0,
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -86,29 +82,48 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
               try {
                 final fix = widget.preSelectedFixture!;
                 
-                // Se eliminaron los .cast<db.Team?>() que causaban errores de tipo.
-                // Usamos where().isNotEmpty de forma segura.
-                final matchA = catalogData.teams.where((t) => t.id.toString() == fix.teamAId.toString());
-                if (matchA.isNotEmpty) selectedTeamA = matchA.first;
-
-                final matchB = catalogData.teams.where((t) => t.id.toString() == fix.teamBId.toString());
-                if (matchB.isNotEmpty) selectedTeamB = matchB.first;
+                selectedTeamA = catalogData.teams.where((t) => t.id.toString() == fix.teamAId.toString()).firstOrNull;
+                selectedTeamB = catalogData.teams.where((t) => t.id.toString() == fix.teamBId.toString()).firstOrNull;
 
                 if (fix.venueId != null) {
-                  final matchV = catalogData.venues.where((v) => v.id.toString() == fix.venueId.toString());
-                  if (matchV.isNotEmpty) selectedVenue = matchV.first;
+                  selectedVenue = catalogData.venues.where((v) => v.id.toString() == fix.venueId.toString()).firstOrNull;
                 }
               } catch (e) {
                 debugPrint("Error auto-seleccionando: $e");
               }
             }
-            
+
             final bool isLocked = widget.preSelectedFixture != null;
 
-            // Filtrar oficiales por rol para los dropdowns
+            // Filtrar oficiales por rol
             final mainReferees = catalogData.officials.where((o) => o.role == 'ARBITRO_PRINCIPAL').toList();
             final auxReferees = catalogData.officials.where((o) => o.role == 'ARBITRO_AUXILIAR').toList();
             final scorekeepers = catalogData.officials.where((o) => o.role == 'ANOTADOR').toList();
+
+            // =========================================================
+            // CAPA DE SEGURIDAD ABSOLUTA PARA DROPDOWNS
+            // =========================================================
+            // Esto asegura que cualquier selección previa se vincule con 
+            // la nueva instancia en memoria descargada de la base de datos.
+            
+            if (selectedTeamA != null) {
+              selectedTeamA = catalogData.teams.where((t) => t.id == selectedTeamA!.id).firstOrNull;
+            }
+            if (selectedTeamB != null) {
+              selectedTeamB = catalogData.teams.where((t) => t.id == selectedTeamB!.id).firstOrNull;
+            }
+            if (selectedVenue != null) {
+              selectedVenue = catalogData.venues.where((v) => v.id == selectedVenue!.id).firstOrNull;
+            }
+            if (selectedMainReferee != null) {
+              selectedMainReferee = mainReferees.where((o) => o.id == selectedMainReferee!.id).firstOrNull;
+            }
+            if (selectedAuxReferee != null) {
+              selectedAuxReferee = auxReferees.where((o) => o.id == selectedAuxReferee!.id).firstOrNull;
+            }
+            if (selectedScorekeeper != null) {
+              selectedScorekeeper = scorekeepers.where((o) => o.id == selectedScorekeeper!.id).firstOrNull;
+            }
 
             return SafeArea(
               child: SingleChildScrollView(
@@ -132,7 +147,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                               width: double.infinity,
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.05),
+                                color: Colors.white.withValues(alpha: 0.05),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(color: Colors.white24),
                               ),
@@ -214,6 +229,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                       const SizedBox(height: 20),
 
                       // --- TARJETA DE OFICIALES CON DROPDOWNS ---
+                      // --- TARJETA DE OFICIALES CON DROPDOWNS ---
                       _buildGlassCard(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -232,43 +248,85 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                             if (mainReferees.isEmpty && auxReferees.isEmpty && scorekeepers.isEmpty)
                               const Padding(
                                 padding: EdgeInsets.only(bottom: 16),
-                                child: Text("No hay oficiales descargados. Por favor, sincroniza los datos en el menú principal.", 
+                                child: Text("No hay oficiales descargados. Por favor, sincroniza los datos o crea uno nuevo.", 
                                   style: TextStyle(color: Colors.orangeAccent, fontSize: 13, fontStyle: FontStyle.italic)),
                               ),
 
-                            _buildDropdown<model.Official>(
-                              label: "Árbitro Principal",
-                              icon: Icons.person,
-                              value: selectedMainReferee,
-                              items: mainReferees,
-                              isLocked: false,
-                              isRequired: false,
-                              onChanged: (val) => setState(() => selectedMainReferee = val),
-                              displayText: (o) => o.name,
+                            // ÁRBITRO PRINCIPAL
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: _buildDropdown<model.Official>(
+                                    label: "Árbitro Principal",
+                                    icon: Icons.person,
+                                    value: selectedMainReferee,
+                                    items: mainReferees,
+                                    isLocked: false,
+                                    isRequired: false,
+                                    onChanged: (val) => setState(() => selectedMainReferee = val),
+                                    displayText: (o) => o.name,
+                                  ),
+                                ),
+                                // AQUÍ ESTÁ EL BOTÓN DE EDITAR: Solo aparece si hay un árbitro seleccionado
+                                if (selectedMainReferee != null)
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, color: Colors.blueAccent),
+                                    onPressed: () => _showEditOfficialDialog(selectedMainReferee!),
+                                  ),
+                              ],
                             ),
                             const SizedBox(height: 16),
                             
-                            _buildDropdown<model.Official>(
-                              label: "Árbitro Auxiliar",
-                              icon: Icons.person_outline,
-                              value: selectedAuxReferee,
-                              items: auxReferees,
-                              isLocked: false,
-                              isRequired: false,
-                              onChanged: (val) => setState(() => selectedAuxReferee = val),
-                              displayText: (o) => o.name,
+                            // ÁRBITRO AUXILIAR
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: _buildDropdown<model.Official>(
+                                    label: "Árbitro Auxiliar",
+                                    icon: Icons.person_outline,
+                                    value: selectedAuxReferee,
+                                    items: auxReferees,
+                                    isLocked: false,
+                                    isRequired: false,
+                                    onChanged: (val) => setState(() => selectedAuxReferee = val),
+                                    displayText: (o) => o.name,
+                                  ),
+                                ),
+                                // BOTÓN EDITAR ÁRBITRO AUXILIAR
+                                if (selectedAuxReferee != null)
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, color: Colors.blueAccent),
+                                    onPressed: () => _showEditOfficialDialog(selectedAuxReferee!),
+                                  ),
+                              ],
                             ),
                             const SizedBox(height: 16),
                             
-                            _buildDropdown<model.Official>(
-                              label: "Anotador (Mesa)",
-                              icon: Icons.edit_note,
-                              value: selectedScorekeeper,
-                              items: scorekeepers,
-                              isLocked: false,
-                              isRequired: false,
-                              onChanged: (val) => setState(() => selectedScorekeeper = val),
-                              displayText: (o) => o.name,
+                            // ANOTADOR
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: _buildDropdown<model.Official>(
+                                    label: "Anotador (Mesa)",
+                                    icon: Icons.edit_note,
+                                    value: selectedScorekeeper,
+                                    items: scorekeepers,
+                                    isLocked: false,
+                                    isRequired: false,
+                                    onChanged: (val) => setState(() => selectedScorekeeper = val),
+                                    displayText: (o) => o.name,
+                                  ),
+                                ),
+                                // BOTÓN EDITAR ANOTADOR
+                                if (selectedScorekeeper != null)
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, color: Colors.blueAccent),
+                                    onPressed: () => _showEditOfficialDialog(selectedScorekeeper!),
+                                  ),
+                              ],
                             ),
                           ],
                         )
@@ -319,9 +377,9 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
         child: Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withOpacity(0.2)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
           ),
           child: child,
         ),
@@ -370,7 +428,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
           labelStyle: TextStyle(color: isLocked ? Colors.white30 : Colors.white54),
           prefixIcon: Icon(icon, color: isLocked ? Colors.white30 : Colors.white54),
           filled: true,
-          fillColor: isLocked ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.2),
+          fillColor: isLocked ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.2),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
           focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.orangeAccent, width: 2)),
         ),
@@ -399,10 +457,8 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
   }
 
   // ===========================================================================
-  // NAVEGACIÓN
+  // NAVEGACIÓN Y DIÁLOGOS
   // ===========================================================================
-
-
 
   void _goToStarterSelection(model.CatalogData data, String tournamentName) {
     if (selectedTeamA == null || selectedTeamB == null || selectedVenue == null) {
@@ -439,7 +495,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
           rosterB: rosterB,
           tournamentId: int.parse(widget.tournamentId),
           venueId: selectedVenue!.id,
-          mainReferee: ref1Name, // Mandamos el nombre extraído
+          mainReferee: ref1Name, 
           auxReferee: ref2Name,
           scorekeeper: scorekName,
           tournamentName: tournamentName,
@@ -572,6 +628,143 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                   }
                 },
                 child: const Text("Guardar", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          );
+        }
+      ),
+    );
+  }
+
+  // --- NUEVO: DIÁLOGO PARA EDITAR OFICIAL ---
+  void _showEditOfficialDialog(model.Official official) {
+    final nameCtrl = TextEditingController(text: official.name);
+    String selectedRole = official.role; 
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder( 
+        builder: (context, setModalState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Row(
+              children: [
+                Icon(Icons.edit, color: Colors.blueAccent),
+                SizedBox(width: 10),
+                Text("Editar Oficial", style: TextStyle(fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: nameCtrl,
+                    decoration: InputDecoration(
+                      labelText: "Nombre Completo",
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      prefixIcon: const Icon(Icons.person),
+                    ),
+                    validator: (v) => v == null || v.isEmpty ? "Requerido" : null,
+                  ),
+                  const SizedBox(height: 15),
+                  DropdownButtonFormField<String>(
+                    value: selectedRole,
+                    decoration: InputDecoration(
+                      labelText: "Puesto / Rol",
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      prefixIcon: const Icon(Icons.work),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'ARBITRO_PRINCIPAL', child: Text('Árbitro Principal')),
+                      DropdownMenuItem(value: 'ARBITRO_AUXILIAR', child: Text('Árbitro Auxiliar')),
+                      DropdownMenuItem(value: 'ANOTADOR', child: Text('Anotador (Mesa)')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        setModalState(() => selectedRole = val);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueAccent,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () async {
+                  if (formKey.currentState!.validate()) {
+                    final database = ref.read(databaseProvider);
+                    final api = ref.read(apiServiceProvider);
+                    
+                    bool isSyncedStatus = false;
+
+                    // 1. Intentar actualizar en la nube primero (Solo si el ID es oficial y no un negativo temporal)
+                    int? numericId = int.tryParse(official.id.toString());
+                    if (numericId != null && numericId > 0) {
+                      try {
+                        final success = await api.updateOfficial(
+                          id: official.id.toString(),
+                          name: nameCtrl.text,
+                          role: selectedRole
+                        );
+                        isSyncedStatus = success; 
+                      } catch (e) {
+                        isSyncedStatus = false;
+                        debugPrint("Actualizado offline: $e");
+                      }
+                    } else {
+                      // Es un oficial creado offline (ID temporal)
+                      isSyncedStatus = false;
+                    }
+
+                    // 2. Guardar actualización en base de datos local (Drift)
+                    final updateStatement = database.update(database.officials)
+                      ..where((o) => o.id.equals(official.id.toString()));
+                      
+                    await updateStatement.write(
+                      db.OfficialsCompanion(
+                        name: drift.Value(nameCtrl.text),
+                        role: drift.Value(selectedRole),
+                        isSynced: drift.Value(isSyncedStatus), 
+                      ),
+                    );
+
+                    if (mounted) {
+                      Navigator.pop(context);
+                      // Refrescamos la UI para que aparezcan los cambios
+                      ref.invalidate(tournamentDataByIdProvider(widget.tournamentId));
+                      
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              Icon(isSyncedStatus ? Icons.cloud_done : Icons.save_alt, color: Colors.white),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(isSyncedStatus 
+                                  ? "Oficial actualizado y sincronizado." 
+                                  : "Actualizado offline. Se sincronizará luego."
+                                ),
+                              ),
+                            ],
+                          ),
+                          backgroundColor: isSyncedStatus ? Colors.blue.shade700 : Colors.orange.shade700,
+                        ),
+                      );
+                    }
+                  }
+                },
+                child: const Text("Actualizar", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ],
           );
