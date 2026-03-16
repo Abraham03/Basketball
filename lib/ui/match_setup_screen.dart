@@ -140,7 +140,16 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildSectionTitle("Datos del Evento", Icons.event),
+                            _buildSectionTitle(
+                              "Datos del Evento", 
+                              Icons.event,
+                              // NUEVO: Botón para agregar Sede
+                              trailing: IconButton(
+                                icon: const Icon(Icons.add_location_alt, color: Colors.greenAccent, size: 26),
+                                onPressed: _showAddVenueDialog,
+                                tooltip: "Agregar Sede/Cancha",
+                              ),
+                            ),
                             const SizedBox(height: 16),
                             
                             Container(
@@ -165,14 +174,27 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                             ),
                             const SizedBox(height: 16),
 
-                            _buildDropdown<model.Venue>(
-                              label: "Cancha / Sede",
-                              icon: Icons.location_on,
-                              value: selectedVenue,
-                              items: catalogData.venues,
-                              isLocked: false,
-                              onChanged: (val) => setState(() => selectedVenue = val),
-                              displayText: (v) => v.name,
+                            // NUEVO: Fila del Dropdown de Sede con el botón de editar
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: _buildDropdown<model.Venue>(
+                                    label: "Cancha / Sede",
+                                    icon: Icons.location_on,
+                                    value: selectedVenue,
+                                    items: catalogData.venues,
+                                    isLocked: false,
+                                    onChanged: (val) => setState(() => selectedVenue = val),
+                                    displayText: (v) => v.name,
+                                  ),
+                                ),
+                                if (selectedVenue != null)
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, color: Colors.blueAccent),
+                                    onPressed: () => _showEditVenueDialog(selectedVenue!),
+                                  ),
+                              ],
                             ),
                           ],
                         )
@@ -632,6 +654,212 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
             ],
           );
         }
+      ),
+    );
+  }
+
+  // ===========================================================================
+  // DIÁLOGOS DE SEDE (VENUE)
+  // ===========================================================================
+  
+  void _showAddVenueDialog() {
+    final nameCtrl = TextEditingController();
+    final addressCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.add_location_alt, color: Colors.orange),
+            SizedBox(width: 10),
+            Text("Nueva Sede", style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: nameCtrl,
+                decoration: InputDecoration(
+                  labelText: "Nombre de Cancha/Sede",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  prefixIcon: const Icon(Icons.stadium),
+                ),
+                validator: (v) => v == null || v.isEmpty ? "Requerido" : null,
+              ),
+              const SizedBox(height: 15),
+              TextFormField(
+                controller: addressCtrl,
+                decoration: InputDecoration(
+                  labelText: "Dirección (Opcional)",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  prefixIcon: const Icon(Icons.map),
+                ),
+                maxLines: 2,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange.shade600,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                final database = ref.read(databaseProvider);
+                final api = ref.read(apiServiceProvider);
+                
+                String venueId;
+                bool isSyncedStatus = false;
+
+                try {
+                  final realIdInt = await api.createVenue(nameCtrl.text, addressCtrl.text);
+                  venueId = realIdInt.toString();
+                  isSyncedStatus = true; 
+                } catch (e) {
+                  venueId = "-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}";
+                  isSyncedStatus = false;
+                }
+
+                await database.into(database.venues).insert(
+                  db.VenuesCompanion.insert(
+                    id: drift.Value(venueId),
+                    name: nameCtrl.text,
+                    address: drift.Value(addressCtrl.text),
+                    isSynced: drift.Value(isSyncedStatus), 
+                  ),
+                  mode: drift.InsertMode.insertOrReplace,
+                );
+
+                if (mounted) {
+                  Navigator.pop(context);
+                  ref.invalidate(tournamentDataByIdProvider(widget.tournamentId));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(isSyncedStatus ? "Sede guardada en la nube." : "Sede guardada offline."),
+                      backgroundColor: isSyncedStatus ? Colors.green.shade700 : Colors.orange.shade700,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text("Guardar", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditVenueDialog(model.Venue venue) {
+    final nameCtrl = TextEditingController(text: venue.name);
+    final addressCtrl = TextEditingController(text: venue.address);
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.edit_location_alt, color: Colors.blueAccent),
+            SizedBox(width: 10),
+            Text("Editar Sede", style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: nameCtrl,
+                decoration: InputDecoration(
+                  labelText: "Nombre de Cancha/Sede",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  prefixIcon: const Icon(Icons.stadium),
+                ),
+                validator: (v) => v == null || v.isEmpty ? "Requerido" : null,
+              ),
+              const SizedBox(height: 15),
+              TextFormField(
+                controller: addressCtrl,
+                decoration: InputDecoration(
+                  labelText: "Dirección (Opcional)",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  prefixIcon: const Icon(Icons.map),
+                ),
+                maxLines: 2,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blueAccent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                final database = ref.read(databaseProvider);
+                final api = ref.read(apiServiceProvider);
+                
+                bool isSyncedStatus = false;
+                int? numericId = int.tryParse(venue.id.toString());
+                
+                if (numericId != null && numericId > 0) {
+                  try {
+                    isSyncedStatus = await api.updateVenue(
+                      id: venue.id.toString(),
+                      name: nameCtrl.text,
+                      address: addressCtrl.text
+                    );
+                  } catch (e) {
+                    isSyncedStatus = false;
+                  }
+                }
+
+                final updateStatement = database.update(database.venues)
+                  ..where((v) => v.id.equals(venue.id.toString()));
+                  
+                await updateStatement.write(
+                  db.VenuesCompanion(
+                    name: drift.Value(nameCtrl.text),
+                    address: drift.Value(addressCtrl.text),
+                    isSynced: drift.Value(isSyncedStatus), 
+                  ),
+                );
+
+                if (mounted) {
+                  Navigator.pop(context);
+                  ref.invalidate(tournamentDataByIdProvider(widget.tournamentId));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(isSyncedStatus ? "Sede actualizada en la nube." : "Actualizada offline."),
+                      backgroundColor: isSyncedStatus ? Colors.blue.shade700 : Colors.orange.shade700,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text("Actualizar", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }

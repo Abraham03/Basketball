@@ -16,6 +16,7 @@ import 'fixture_list_screen.dart';
 import '../ui/match_setup_screen.dart';
 import 'team_management_screen.dart';
 
+
 import '../ui/widgets/glass_dashboard_card.dart';
 import '../ui/widgets/app_background.dart';
 
@@ -922,6 +923,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
     int uploadedMatches = 0;
     int uploadedFixtures = 0;
     int uploadedOfficials = 0;
+    int uploadedVenues = 0;
 
     // Subir torneos
     try {
@@ -956,6 +958,48 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
           debugPrint("Error subiendo torneo: $e");
         }
       }
+
+      // --- NUEVO BLOQUE: Subir Sedes (Venues) ---
+      final pendingVenues = await (db.select(db.venues)..where((tbl) => tbl.isSynced.equals(false))).get();
+      for (var venue in pendingVenues) {
+        try {
+          // Intentamos crear la sede en la nube (backend)
+          final realIdInt = await api.createVenue(venue.name, venue.address ?? '');
+          final String oldId = venue.id;
+
+          await db.transaction(() async {
+            // 1. Guardamos la sede con el ID real de la nube (usando la Clase Companion directo y convirtiendo a String)
+            await db.into(db.venues).insert(
+              VenuesCompanion.insert(
+                id: drift.Value(realIdInt.toString()), 
+                name: venue.name,
+                address: drift.Value(venue.address),
+                isSynced: const drift.Value(true),
+              ),
+              mode: drift.InsertMode.insertOrReplace
+            );
+            
+            // 2. Actualizamos cualquier fixture (partido programado) que usara la sede temporal
+            await (db.update(db.fixtures)..where((f) => f.venueId.equals(oldId))).write(
+              FixturesCompanion(venueId: drift.Value(realIdInt.toString())),
+            );
+            
+            // 3. Actualizamos cualquier match (partido jugado) que usara la sede temporal
+            // Usamos oldId directo porque es String, y pasamos el nuevo ID convertido a String.
+            await (db.update(db.matches)..where((m) => m.venueId.equals(oldId))).write(
+              MatchesCompanion(venueId: drift.Value(realIdInt.toString())),
+            );
+
+            // 4. Borramos la sede temporal
+            await (db.delete(db.venues)..where((v) => v.id.equals(oldId))).go();
+          });
+
+          uploadedVenues++;
+        } catch (e) {
+          debugPrint("Error al subir sede: $e");
+        }
+      }
+      // ------------------------------------------
 
       // Subir equipos
       final pendingTeams = await (db.select(db.teams)..where((tbl) => tbl.isSynced.equals(false))).get();
@@ -1227,7 +1271,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              "☁️ Sincronización exitosa.\nSubidos: $uploadedTournaments Torneos, $uploadedTeams Equipos, $uploadedMatches Partidos, $uploadedPlayers Jugadores, $uploadedFixtures Calendarios, $uploadedOfficials Oficiales.",
+              "☁️ Sincronización exitosa.\nSubidos: $uploadedTournaments Torneos, $uploadedTeams Equipos, $uploadedMatches Partidos, $uploadedPlayers Jugadores, $uploadedFixtures Calendarios, $uploadedOfficials Oficiales., $uploadedVenues Canchas.",
               style: const TextStyle(fontWeight: FontWeight.w500),
             ),
             backgroundColor: Colors.green.shade700,

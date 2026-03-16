@@ -49,6 +49,58 @@ class ApiService {
     }
   }
 
+  // ==========================================
+  // --- FUNCIONES PARA SEDES (VENUES) ---
+  // ==========================================
+  Future<int> createVenue(String name, String address) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl?action=create_venue'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          "name": name,
+          "address": address,
+        }),
+      );
+      
+      _checkResponse(response);
+      final jsonResponse = jsonDecode(response.body);
+      
+      if (jsonResponse['data'] != null && jsonResponse['data']['newId'] != null) {
+        return int.parse(jsonResponse['data']['newId'].toString()); 
+      }
+      throw Exception("ID de sede no recibido.");
+    } catch (e) {
+      throw Exception('Error creando sede: $e');
+    }
+  }
+
+  Future<bool> updateVenue({
+    required String id,
+    required String name,
+    required String address,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl?action=update_venue'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          "id": id,
+          "name": name,
+          "address": address,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final body = jsonDecode(response.body);
+        return body['status'] == 'success';
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
   // --- NUEVO: OBTENER LISTA DE TORNEOS DESDE LA NUBE ---
   Future<List<Map<String, dynamic>>> fetchCloudTournaments() async {
     try {
