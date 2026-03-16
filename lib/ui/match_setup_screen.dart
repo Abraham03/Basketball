@@ -100,12 +100,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
             final auxReferees = catalogData.officials.where((o) => o.role == 'ARBITRO_AUXILIAR').toList();
             final scorekeepers = catalogData.officials.where((o) => o.role == 'ANOTADOR').toList();
 
-            // =========================================================
             // CAPA DE SEGURIDAD ABSOLUTA PARA DROPDOWNS
-            // =========================================================
-            // Esto asegura que cualquier selección previa se vincule con 
-            // la nueva instancia en memoria descargada de la base de datos.
-            
             if (selectedTeamA != null) {
               selectedTeamA = catalogData.teams.where((t) => t.id == selectedTeamA!.id).firstOrNull;
             }
@@ -143,11 +138,10 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                             _buildSectionTitle(
                               "Datos del Evento", 
                               Icons.event,
-                              // NUEVO: Botón para agregar Sede
                               trailing: IconButton(
                                 icon: const Icon(Icons.add_location_alt, color: Colors.greenAccent, size: 26),
                                 onPressed: _showAddVenueDialog,
-                                tooltip: "Agregar Sede/Cancha",
+                                tooltip: "Agregar Cancha",
                               ),
                             ),
                             const SizedBox(height: 16),
@@ -174,13 +168,12 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                             ),
                             const SizedBox(height: 16),
 
-                            // NUEVO: Fila del Dropdown de Sede con el botón de editar
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
-                                  child: _buildDropdown<model.Venue>(
-                                    label: "Cancha / Sede",
+                                  child: _buildBottomSheetSelector<model.Venue>(
+                                    label: "Cancha",
                                     icon: Icons.location_on,
                                     value: selectedVenue,
                                     items: catalogData.venues,
@@ -209,7 +202,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                             _buildSectionTitle("Equipos a Enfrentarse", Icons.sports_basketball),
                             const SizedBox(height: 20),
 
-                            _buildDropdown<model.Team>(
+                            _buildBottomSheetSelector<model.Team>(
                               label: "Equipo Local (A)",
                               icon: Icons.shield,
                               value: selectedTeamA,
@@ -235,7 +228,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                               ),
                             ),
 
-                            _buildDropdown<model.Team>(
+                            _buildBottomSheetSelector<model.Team>(
                               label: "Equipo Visitante (B)",
                               icon: Icons.shield_outlined,
                               value: selectedTeamB,
@@ -250,8 +243,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // --- TARJETA DE OFICIALES CON DROPDOWNS ---
-                      // --- TARJETA DE OFICIALES CON DROPDOWNS ---
+                      // --- TARJETA DE OFICIALES ---
                       _buildGlassCard(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -274,12 +266,11 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                                   style: TextStyle(color: Colors.orangeAccent, fontSize: 13, fontStyle: FontStyle.italic)),
                               ),
 
-                            // ÁRBITRO PRINCIPAL
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
-                                  child: _buildDropdown<model.Official>(
+                                  child: _buildBottomSheetSelector<model.Official>(
                                     label: "Árbitro Principal",
                                     icon: Icons.person,
                                     value: selectedMainReferee,
@@ -290,7 +281,6 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                                     displayText: (o) => o.name,
                                   ),
                                 ),
-                                // AQUÍ ESTÁ EL BOTÓN DE EDITAR: Solo aparece si hay un árbitro seleccionado
                                 if (selectedMainReferee != null)
                                   IconButton(
                                     icon: const Icon(Icons.edit, color: Colors.blueAccent),
@@ -300,12 +290,11 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                             ),
                             const SizedBox(height: 16),
                             
-                            // ÁRBITRO AUXILIAR
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
-                                  child: _buildDropdown<model.Official>(
+                                  child: _buildBottomSheetSelector<model.Official>(
                                     label: "Árbitro Auxiliar",
                                     icon: Icons.person_outline,
                                     value: selectedAuxReferee,
@@ -316,7 +305,6 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                                     displayText: (o) => o.name,
                                   ),
                                 ),
-                                // BOTÓN EDITAR ÁRBITRO AUXILIAR
                                 if (selectedAuxReferee != null)
                                   IconButton(
                                     icon: const Icon(Icons.edit, color: Colors.blueAccent),
@@ -326,12 +314,11 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                             ),
                             const SizedBox(height: 16),
                             
-                            // ANOTADOR
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
-                                  child: _buildDropdown<model.Official>(
+                                  child: _buildBottomSheetSelector<model.Official>(
                                     label: "Anotador (Mesa)",
                                     icon: Icons.edit_note,
                                     value: selectedScorekeeper,
@@ -342,7 +329,6 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                                     displayText: (o) => o.name,
                                   ),
                                 ),
-                                // BOTÓN EDITAR ANOTADOR
                                 if (selectedScorekeeper != null)
                                   IconButton(
                                     icon: const Icon(Icons.edit, color: Colors.blueAccent),
@@ -388,7 +374,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
   }
 
   // ===========================================================================
-  // WIDGETS AUXILIARES PARA EL DISEÑO GLASSMORPHISM
+  // WIDGETS AUXILIARES PARA EL DISEÑO GLASSMORPHISM E INTERFAZ MODERNA
   // ===========================================================================
 
   Widget _buildGlassCard({required Widget child}) {
@@ -428,7 +414,8 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
     );
   }
 
-  Widget _buildDropdown<T>({
+  // --- NUEVO: SELECTOR TIPO MODAL BOTTOM SHEET ---
+  Widget _buildBottomSheetSelector<T>({
     required String label,
     required IconData icon,
     required T? value,
@@ -439,42 +426,157 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
     bool Function(T)? enabledItem,
     bool isRequired = true,
   }) {
-    return IgnorePointer(
-      ignoring: isLocked,
-      child: DropdownButtonFormField<T>(
-        value: value,
-        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-        dropdownColor: const Color(0xFF1A1F2B), 
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(color: isLocked ? Colors.white30 : Colors.white54),
-          prefixIcon: Icon(icon, color: isLocked ? Colors.white30 : Colors.white54),
-          filled: true,
-          fillColor: isLocked ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.2),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.orangeAccent, width: 2)),
-        ),
-        icon: Icon(Icons.arrow_drop_down, color: isLocked ? Colors.transparent : Colors.white70),
-        items: items.map((T item) {
-          final isEnabled = enabledItem == null ? true : enabledItem(item);
-          return DropdownMenuItem<T>(
-            value: item,
-            enabled: isEnabled,
-            child: Text(
-              displayText(item), 
-              style: TextStyle(color: isEnabled ? Colors.white : Colors.white30)
+    return FormField<T>(
+      initialValue: value,
+      validator: (val) {
+        if (isRequired && value == null) return 'Requerido';
+        return null;
+      },
+      builder: (FormFieldState<T> state) {
+        final bool hasError = state.hasError;
+        
+        return InkWell(
+          onTap: isLocked ? null : () {
+            _showSelectorSheet<T>(
+              title: label,
+              items: items,
+              currentValue: value,
+              displayText: displayText,
+              enabledItem: enabledItem,
+              onSelect: (selected) {
+                onChanged(selected);
+                state.didChange(selected);
+              },
+            );
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: label,
+              labelStyle: TextStyle(color: isLocked ? Colors.white30 : Colors.white54),
+              prefixIcon: Icon(icon, color: isLocked ? Colors.white30 : Colors.white54),
+              filled: true,
+              fillColor: isLocked ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.2),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12), 
+                borderSide: hasError ? const BorderSide(color: Colors.redAccent, width: 1.5) : BorderSide.none
+              ),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.orangeAccent, width: 2)),
+              errorText: state.errorText,
             ),
-          );
-        }).toList(),
-        onChanged: onChanged,
-        validator: (val) {
-          // Lógica condicional: Si es requerido y está vacío, marca error.
-          if (isRequired && val == null) {
-            return 'Requerido';
+            isEmpty: value == null,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    value != null ? displayText(value) : '',
+                    style: TextStyle(
+                      color: value != null 
+                          ? (isLocked ? Colors.white54 : Colors.white) 
+                          : Colors.white30,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Icon(Icons.keyboard_arrow_down, color: isLocked ? Colors.transparent : Colors.white70),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // --- NUEVO: BOTTOM SHEET RENDERER ---
+  void _showSelectorSheet<T>({
+    required String title,
+    required List<T> items,
+    required T? currentValue,
+    required String Function(T) displayText,
+    required Function(T) onSelect,
+    bool Function(T)? enabledItem,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.5,
+          maxChildSize: 0.9,
+          minChildSize: 0.3,
+          expand: false,
+          builder: (_, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E2432).withValues(alpha: 0.95),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                border: Border.all(color: Colors.white12),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    margin: const EdgeInsets.symmetric(vertical: 12),
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.white30,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      title,
+                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const Divider(color: Colors.white12, height: 1),
+                  Expanded(
+                    child: ListView.separated(
+                      controller: scrollController,
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: items.length,
+                      separatorBuilder: (_, __) => const Divider(color: Colors.white12, height: 1),
+                      itemBuilder: (ctx, index) {
+                        final item = items[index];
+                        final isEnabled = enabledItem == null ? true : enabledItem(item);
+                        final isSelected = item == currentValue;
+
+                        return ListTile(
+                          enabled: isEnabled,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                          tileColor: isSelected ? Colors.orangeAccent.withValues(alpha: 0.1) : Colors.transparent,
+                          title: Text(
+                            displayText(item),
+                            style: TextStyle(
+                              color: isEnabled 
+                                  ? (isSelected ? Colors.orangeAccent : Colors.white) 
+                                  : Colors.white30,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              fontSize: 16,
+                            ),
+                          ),
+                          trailing: isSelected 
+                              ? const Icon(Icons.check_circle, color: Colors.orangeAccent) 
+                              : (isEnabled ? null : const Icon(Icons.block, color: Colors.white30, size: 18)),
+                          onTap: isEnabled ? () {
+                            onSelect(item);
+                            Navigator.pop(ctx);
+                          } : null,
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
           }
-          return null;
-        },
-      ),
+        );
+      },
     );
   }
 
@@ -500,7 +602,6 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
     final rosterA = data.players.where((p) => p.teamId == selectedTeamA!.id).toList();
     final rosterB = data.players.where((p) => p.teamId == selectedTeamB!.id).toList();
 
-    // Extraemos los nombres de los objetos seleccionados. Si son null, pasamos vacío.
     final String ref1Name = selectedMainReferee?.name ?? '';
     final String ref2Name = selectedAuxReferee?.name ?? '';
     final String scorekName = selectedScorekeeper?.name ?? '';
@@ -523,137 +624,6 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
           tournamentName: tournamentName,
           venueName: selectedVenue!.name,
         ),
-      ),
-    );
-  }
-
-  void _showAddOfficialDialog() {
-    final nameCtrl = TextEditingController();
-    String selectedRole = 'ARBITRO_PRINCIPAL'; // Rol por defecto
-    final formKey = GlobalKey<FormState>();
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder( // StatefulBuilder para actualizar el Dropdown interno
-        builder: (context, setModalState) {
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: const Row(
-              children: [
-                Icon(Icons.person_add_alt_1, color: Colors.orange),
-                SizedBox(width: 10),
-                Text("Nuevo Oficial", style: TextStyle(fontWeight: FontWeight.bold)),
-              ],
-            ),
-            content: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: nameCtrl,
-                    decoration: InputDecoration(
-                      labelText: "Nombre Completo",
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      prefixIcon: const Icon(Icons.person),
-                    ),
-                    validator: (v) => v == null || v.isEmpty ? "Requerido" : null,
-                  ),
-                  const SizedBox(height: 15),
-                  DropdownButtonFormField<String>(
-                    value: selectedRole,
-                    decoration: InputDecoration(
-                      labelText: "Puesto / Rol",
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      prefixIcon: const Icon(Icons.work),
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'ARBITRO_PRINCIPAL', child: Text('Árbitro Principal')),
-                      DropdownMenuItem(value: 'ARBITRO_AUXILIAR', child: Text('Árbitro Auxiliar')),
-                      DropdownMenuItem(value: 'ANOTADOR', child: Text('Anotador (Mesa)')),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        setModalState(() => selectedRole = val);
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange.shade600,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                onPressed: () async {
-                  if (formKey.currentState!.validate()) {
-                    final database = ref.read(databaseProvider);
-                    final api = ref.read(apiServiceProvider);
-                    
-                    String officialId;
-                    bool isSyncedStatus = false;
-
-                    // 1. Intentar subirlo a la nube primero
-                    try {
-                      final realIdInt = await api.createOfficial(nameCtrl.text, selectedRole);
-                      officialId = realIdInt.toString();
-                      isSyncedStatus = true; // Se subió con éxito
-                    } catch (e) {
-                      // 2. Si falla (no hay internet), generamos ID temporal negativo
-                      officialId = "-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}";
-                      isSyncedStatus = false;
-                      debugPrint("Guardado offline: $e");
-                    }
-
-                    // 3. Guardar en base de datos local (con ID real o temporal)
-                    await database.into(database.officials).insert(
-                      db.OfficialsCompanion.insert(
-                        id: officialId, 
-                        name: nameCtrl.text,
-                        role: drift.Value(selectedRole),
-                        active: const drift.Value(true),
-                        isSynced: drift.Value(isSyncedStatus), 
-                      ),
-                      mode: drift.InsertMode.insertOrReplace,
-                    );
-
-                    if (mounted) {
-                      Navigator.pop(context);
-                      // Refrescamos la UI para que aparezca en el Dropdown
-                      ref.invalidate(tournamentDataByIdProvider(widget.tournamentId));
-                      
-                      // Mostrar mensaje de éxito dependiendo de si subió a la nube o no
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Row(
-                            children: [
-                              Icon(isSyncedStatus ? Icons.cloud_done : Icons.save_alt, color: Colors.white),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(isSyncedStatus 
-                                  ? "Oficial guardado y sincronizado." 
-                                  : "Guardado offline. Recuerda sincronizar luego."
-                                ),
-                              ),
-                            ],
-                          ),
-                          backgroundColor: isSyncedStatus ? Colors.green.shade700 : Colors.orange.shade700,
-                        ),
-                      );
-                    }
-                  }
-                },
-                child: const Text("Guardar", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              ),
-            ],
-          );
-        }
       ),
     );
   }
@@ -864,7 +834,135 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
     );
   }
 
-  // --- NUEVO: DIÁLOGO PARA EDITAR OFICIAL ---
+  // ===========================================================================
+  // DIÁLOGOS DE OFICIALES
+  // ===========================================================================
+
+  void _showAddOfficialDialog() {
+    final nameCtrl = TextEditingController();
+    String selectedRole = 'ARBITRO_PRINCIPAL'; 
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder( 
+        builder: (context, setModalState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Row(
+              children: [
+                Icon(Icons.person_add_alt_1, color: Colors.orange),
+                SizedBox(width: 10),
+                Text("Nuevo Oficial", style: TextStyle(fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: nameCtrl,
+                    decoration: InputDecoration(
+                      labelText: "Nombre Completo",
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      prefixIcon: const Icon(Icons.person),
+                    ),
+                    validator: (v) => v == null || v.isEmpty ? "Requerido" : null,
+                  ),
+                  const SizedBox(height: 15),
+                  DropdownButtonFormField<String>(
+                    value: selectedRole,
+                    decoration: InputDecoration(
+                      labelText: "Puesto / Rol",
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      prefixIcon: const Icon(Icons.work),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'ARBITRO_PRINCIPAL', child: Text('Árbitro Principal')),
+                      DropdownMenuItem(value: 'ARBITRO_AUXILIAR', child: Text('Árbitro Auxiliar')),
+                      DropdownMenuItem(value: 'ANOTADOR', child: Text('Anotador (Mesa)')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        setModalState(() => selectedRole = val);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange.shade600,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () async {
+                  if (formKey.currentState!.validate()) {
+                    final database = ref.read(databaseProvider);
+                    final api = ref.read(apiServiceProvider);
+                    
+                    String officialId;
+                    bool isSyncedStatus = false;
+
+                    try {
+                      final realIdInt = await api.createOfficial(nameCtrl.text, selectedRole);
+                      officialId = realIdInt.toString();
+                      isSyncedStatus = true; 
+                    } catch (e) {
+                      officialId = "-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}";
+                      isSyncedStatus = false;
+                      debugPrint("Guardado offline: $e");
+                    }
+
+                    await database.into(database.officials).insert(
+                      db.OfficialsCompanion.insert(
+                        id: officialId, 
+                        name: nameCtrl.text,
+                        role: drift.Value(selectedRole),
+                        active: const drift.Value(true),
+                        isSynced: drift.Value(isSyncedStatus), 
+                      ),
+                      mode: drift.InsertMode.insertOrReplace,
+                    );
+
+                    if (mounted) {
+                      Navigator.pop(context);
+                      ref.invalidate(tournamentDataByIdProvider(widget.tournamentId));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              Icon(isSyncedStatus ? Icons.cloud_done : Icons.save_alt, color: Colors.white),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(isSyncedStatus 
+                                  ? "Oficial guardado y sincronizado." 
+                                  : "Guardado offline. Recuerda sincronizar luego."
+                                ),
+                              ),
+                            ],
+                          ),
+                          backgroundColor: isSyncedStatus ? Colors.green.shade700 : Colors.orange.shade700,
+                        ),
+                      );
+                    }
+                  }
+                },
+                child: const Text("Guardar", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          );
+        }
+      ),
+    );
+  }
+
   void _showEditOfficialDialog(model.Official official) {
     final nameCtrl = TextEditingController(text: official.name);
     String selectedRole = official.role; 
@@ -935,9 +1033,8 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                     final api = ref.read(apiServiceProvider);
                     
                     bool isSyncedStatus = false;
-
-                    // 1. Intentar actualizar en la nube primero (Solo si el ID es oficial y no un negativo temporal)
                     int? numericId = int.tryParse(official.id.toString());
+                    
                     if (numericId != null && numericId > 0) {
                       try {
                         final success = await api.updateOfficial(
@@ -955,7 +1052,6 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                       isSyncedStatus = false;
                     }
 
-                    // 2. Guardar actualización en base de datos local (Drift)
                     final updateStatement = database.update(database.officials)
                       ..where((o) => o.id.equals(official.id.toString()));
                       
@@ -969,7 +1065,6 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
 
                     if (mounted) {
                       Navigator.pop(context);
-                      // Refrescamos la UI para que aparezcan los cambios
                       ref.invalidate(tournamentDataByIdProvider(widget.tournamentId));
                       
                       ScaffoldMessenger.of(context).showSnackBar(
