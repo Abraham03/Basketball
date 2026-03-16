@@ -49,6 +49,22 @@ class ApiService {
     }
   }
 
+  // --- NUEVO: OBTENER LISTA DE TORNEOS DESDE LA NUBE ---
+  Future<List<Map<String, dynamic>>> fetchCloudTournaments() async {
+    try {
+      final response = await http.get(Uri.parse('$_baseUrl?action=get_tournaments_list'));
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final jsonResponse = jsonDecode(response.body);
+        if (jsonResponse['status'] == 'success') {
+          return List<Map<String, dynamic>>.from(jsonResponse['data']);
+        }
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
   Future<bool> generateFixture({
     required String tournamentId,
   }) async {

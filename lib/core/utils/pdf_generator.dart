@@ -12,7 +12,7 @@ class PdfCoords {
   static const double timeX = 270.0;
   static const double placeX = 180.0;
   static const double placeY = 105.0;
-  static const double gameNoX = 100.0;
+  //static const double gameNoX = 100.0;
 
   static const double referee1X = 365.0;
   static const double referee1Y = 105.0;
@@ -302,12 +302,12 @@ class PdfGenerator {
                   fontSize: 9,
                   color: PdfColors.blue900,
                 ),
-                _drawText(
+              /*  _drawText(
                   "001",
                   x: PdfCoords.gameNoX,
                   y: PdfCoords.placeY,
                   fontSize: 9,
-                ),
+                ),*/
                 _drawText(
                   dateStr,
                   x: PdfCoords.dateX,

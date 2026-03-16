@@ -162,7 +162,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                 controller: nameCtrl,
                 decoration: InputDecoration(
                   labelText: "Nombre del Torneo",
-                  hintText: "Ej: Liga Municipal 2026",
+                  hintText: "Ej: Liga Municipal",
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -215,6 +215,101 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
     );
   }
 
+  // --- NUEVO: BOTTOM SHEET PARA DESCARGAR DESDE LA NUBE ---
+  void _showCloudDownloadPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          maxChildSize: 0.9,
+          minChildSize: 0.4,
+          expand: false,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E2432).withOpacity(0.95),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                border: Border.all(color: Colors.white12),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(top: 12, bottom: 8),
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.white30,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text(
+                      "Descargar desde la Nube",
+                      style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                  const Divider(color: Colors.white12, height: 1),
+                  Expanded(
+                    child: FutureBuilder<List<Map<String, dynamic>>>(
+                      future: ref.read(apiServiceProvider).fetchCloudTournaments(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator(color: Colors.purpleAccent));
+                        }
+                        if (snapshot.hasError) {
+                          return const Center(child: Text("Error conectando al servidor", style: TextStyle(color: Colors.redAccent)));
+                        }
+
+                        final cloudTournaments = snapshot.data ?? [];
+
+                        return ListView(
+                          controller: scrollController,
+                          physics: const BouncingScrollPhysics(),
+                          children: [
+                            ListTile(
+                              leading: const Icon(Icons.public, color: Colors.purpleAccent, size: 30),
+                              title: const Text("Todos los Torneos", style: TextStyle(color: Colors.purpleAccent, fontWeight: FontWeight.bold, fontSize: 16)),
+                              subtitle: const Text("Descargar la base de datos completa", style: TextStyle(color: Colors.white54, fontSize: 12)),
+                              trailing: const Icon(Icons.cloud_download, color: Colors.purpleAccent),
+                              onTap: () {
+                                Navigator.pop(ctx);
+                                _syncData("0"); // "0" significa descargar todo
+                              },
+                            ),
+                            const Divider(color: Colors.white12),
+                            if (cloudTournaments.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.all(20.0),
+                                child: Center(child: Text("No hay torneos en la nube aún.", style: TextStyle(color: Colors.white54))),
+                              ),
+                            ...cloudTournaments.map((t) => ListTile(
+                                  leading: const Icon(Icons.emoji_events, color: Colors.white70),
+                                  title: Text(t['name'], style: const TextStyle(color: Colors.white)),
+                                  subtitle: Text(t['category'] ?? '', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                                  trailing: const Icon(Icons.download, color: Colors.white38),
+                                  onTap: () {
+                                    Navigator.pop(ctx);
+                                    _syncData(t['id'].toString());
+                                  },
+                                )),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final tournamentsAsync = ref.watch(tournamentsListProvider);
@@ -239,9 +334,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
               builder: (context, constraints) {
                 final bool isWideScreen = constraints.maxWidth > 600;
                 final int crossAxisCount = isWideScreen ? 4 : 2;
-                final double contentWidth = isWideScreen
-                    ? 800
-                    : double.infinity;
+                final double contentWidth = isWideScreen ? 800 : double.infinity;
 
                 return Center(
                   child: SizedBox(
@@ -249,10 +342,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                     child: Column(
                       children: [
                         Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 20,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -261,10 +351,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                                 behavior: HitTestBehavior.opaque,
                                 child: Container(
                                   color: Colors.transparent,
-                                  padding: const EdgeInsets.only(
-                                    top: 8.0,
-                                    bottom: 8.0,
-                                  ),
+                                  padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
                                   child: Row(
                                     children: [
                                       Container(
@@ -303,93 +390,54 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                               ),
                               const SizedBox(height: 20),
                               Text(
-                                "Torneo Activo:",
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.7),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  letterSpacing: 1.5,
-                                ),
-                              ),
+  "Espacio de Trabajo Local:", // <--- Cambio aquí
+  style: TextStyle(
+    color: Colors.white.withValues(alpha: 0.7),
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 1.5,
+  ),
+),
                               const SizedBox(height: 8),
 
                               tournamentsAsync.when(
                                 loading: () => const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
+                                  height: 20, width: 20,
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                                 ),
-                                error: (err, stack) => const Text(
-                                  "Error cargando torneos",
-                                  style: TextStyle(color: Colors.redAccent),
-                                ),
+                                error: (err, stack) => const Text("Error cargando torneos", style: TextStyle(color: Colors.redAccent)),
                                 data: (tournaments) {
-                                  if (tournaments.isEmpty) {
-                                    return const Text(
-                                      "Sin torneos (Crea uno nuevo +)",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontStyle: FontStyle.italic,
-                                      ),
-                                    );
-                                  }
-                                  if (selectedTournamentId == null &&
-                                      tournaments.isNotEmpty) {
-                                    Future.microtask(
-                                      () =>
-                                          ref
-                                                  .read(
-                                                    selectedTournamentIdProvider
-                                                        .notifier,
-                                                  )
-                                                  .state =
-                                              tournaments.first.id,
-                                    );
-                                  }
-                                  final selectedName = tournaments
-                                      .firstWhere(
-                                        (t) => t.id == selectedTournamentId,
-                                        orElse: () => tournaments.first,
-                                      )
-                                      .name;
+                                  
+                                  // Ya no mostramos un simple texto, mostramos siempre la tarjeta visual
+                                  // Si está vacía o es "0", dirá "Todos los Torneos"
+                                  final selectedName = (selectedTournamentId == "0" || selectedTournamentId == null)
+                                      ? "Todos los Torneos"
+                                      : tournaments.firstWhere(
+                                          (t) => t.id == selectedTournamentId,
+                                          orElse: () => tournaments.first, //usamos tournaments.first
+                                        ).name;
 
                                   return ClipRRect(
                                     borderRadius: BorderRadius.circular(15),
                                     child: BackdropFilter(
-                                      filter: ImageFilter.blur(
-                                        sigmaX: 10,
-                                        sigmaY: 10,
-                                      ),
+                                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                                       child: Material(
                                         color: Colors.white.withOpacity(0.15),
                                         child: InkWell(
-                                          onTap: () => _showTournamentPicker(
+                                          onTap: () => _showLocalTournamentPicker(
                                             context,
                                             tournaments,
                                             ref,
                                             selectedTournamentId,
                                           ),
                                           child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 20,
-                                              vertical: 16,
-                                            ),
+                                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                                             decoration: BoxDecoration(
-                                              borderRadius:
-                                                  BorderRadius.circular(15),
-                                              border: Border.all(
-                                                color: Colors.white.withOpacity(
-                                                  0.3,
-                                                ),
-                                              ),
+                                              borderRadius: BorderRadius.circular(15),
+                                              border: Border.all(color: Colors.white.withOpacity(0.3)),
                                             ),
                                             child: Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                               children: [
                                                 Expanded(
                                                   child: Text(
@@ -397,25 +445,17 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                                                     style: const TextStyle(
                                                       color: Colors.white,
                                                       fontSize: 18,
-                                                      fontWeight:
-                                                          FontWeight.bold,
+                                                      fontWeight: FontWeight.bold,
                                                     ),
                                                     maxLines: 1,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
+                                                    overflow: TextOverflow.ellipsis,
                                                   ),
                                                 ),
                                                 Container(
-                                                  padding: const EdgeInsets.all(
-                                                    4,
-                                                  ),
+                                                  padding: const EdgeInsets.all(4),
                                                   decoration: BoxDecoration(
-                                                    color: Colors.white
-                                                        .withOpacity(0.2),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          8,
-                                                        ),
+                                                    color: Colors.white.withOpacity(0.2),
+                                                    borderRadius: BorderRadius.circular(8),
                                                   ),
                                                   child: const Icon(
                                                     Icons.keyboard_arrow_down,
@@ -437,9 +477,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
 
                         Expanded(
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20.0,
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 20.0),
                             child: GridView.count(
                               crossAxisCount: crossAxisCount,
                               crossAxisSpacing: 16,
@@ -451,15 +489,12 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                                     title: "Calendario",
                                     icon: Icons.calendar_month,
                                     color: Colors.tealAccent,
-                                    onTap: selectedTournamentId == null
+                                    onTap: selectedTournamentId == null || selectedTournamentId == "0"
                                         ? () => _showNoTournamentAlert(context)
                                         : () => Navigator.push(
                                             context,
                                             MaterialPageRoute(
-                                              builder: (_) => FixtureListScreen(
-                                                tournamentId:
-                                                    selectedTournamentId,
-                                              ),
+                                              builder: (_) => FixtureListScreen(tournamentId: selectedTournamentId),
                                             ),
                                           ),
                                   ),
@@ -467,15 +502,12 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                                   title: "Jugar Partido",
                                   icon: Icons.sports_basketball,
                                   color: Colors.orange,
-                                  onTap: selectedTournamentId == null
+                                  onTap: selectedTournamentId == null || selectedTournamentId == "0"
                                       ? () => _showNoTournamentAlert(context)
                                       : () => Navigator.push(
                                           context,
                                           MaterialPageRoute(
-                                            builder: (_) => MatchSetupScreen(
-                                              tournamentId:
-                                                  selectedTournamentId,
-                                            ),
+                                            builder: (_) => MatchSetupScreen(tournamentId: selectedTournamentId),
                                           ),
                                         ),
                                 ),
@@ -486,43 +518,36 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                                     color: Colors.deepPurpleAccent,
                                     onTap: () => Navigator.push(
                                       context,
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            const ClientScoreboardScreen(),
-                                      ),
+                                      MaterialPageRoute(builder: (_) => const ClientScoreboardScreen()),
                                     ),
                                   ),
                                   GlassDashboardCard(
                                     title: "Equipos",
                                     icon: Icons.groups,
                                     color: Colors.blueAccent,
-                                    onTap: selectedTournamentId == null
+                                    onTap: selectedTournamentId == null || selectedTournamentId == "0"
                                         ? () => _showNoTournamentAlert(context)
                                         : () => Navigator.push(
                                             context,
                                             MaterialPageRoute(
-                                              builder: (_) =>
-                                                  TeamManagementScreen(
-                                                    tournamentId:
-                                                        selectedTournamentId,
-                                                  ),
+                                              builder: (_) => TeamManagementScreen(tournamentId: selectedTournamentId),
                                             ),
                                           ),
                                   ),
                                   GlassDashboardCard(
-                                    title: "Descargar Datos",
-                                    icon: Icons.cloud_download,
-                                    color: Colors.purpleAccent,
-                                    onTap: () => _syncData(),
-                                  ),
-                                  GlassDashboardCard(
-                                    title: "Subir a Nube",
-                                    icon: Icons.cloud_upload,
-                                    color: Colors.greenAccent,
-                                    onTap: () =>
-                                        _uploadPendingData(),
-                                  ),
+                                  title: "Descargar Datos",
+                                  icon: Icons.cloud_download,
+                                  color: Colors.purpleAccent,
+                                  onTap: () => _showCloudDownloadPicker(), // <- AHORA ABRE EL MENÚ DE LA NUBE
+                                ),
+                                GlassDashboardCard(
+                                  title: "Subir a Nube",
+                                  icon: Icons.cloud_upload,
+                                  color: Colors.greenAccent,
+                                  onTap: () => _uploadPendingData(),
+                                ),
                                 ],
+                                
                               ],
                             ),
                           ),
@@ -551,17 +576,24 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
     );
   }
 
-  void _showTournamentPicker(
+  // --- SELECTOR LOCAL (Ajustado) ---
+  void _showLocalTournamentPicker(
     BuildContext context,
     List<dynamic> tournaments,
     WidgetRef ref,
     String? currentId,
   ) {
+    // Convertimos a Map para inyectar "Todos los Torneos" sin errores de modelo
+    List<Map<String, dynamic>> extendedList = [
+      {"id": "0", "name": "Todos los Torneos"}
+    ];
+    for (var t in tournaments) {
+      extendedList.add({"id": t.id.toString(), "name": t.name});
+    }
+
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       isScrollControlled: true,
       builder: (ctx) {
         return DraggableScrollableSheet(
@@ -574,54 +606,38 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
               children: [
                 Container(
                   margin: const EdgeInsets.only(top: 10, bottom: 10),
-                  width: 40,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(5),
-                  ),
+                  width: 40, height: 5,
+                  decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(5)),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    "Selecciona un Torneo",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[800],
-                    ),
-                  ),
-                ),
+  padding: const EdgeInsets.all(16.0),
+  child: Text("Cambiar de Torneo (Offline)", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[800])),
+),
                 Expanded(
                   child: ListView.separated(
                     controller: scrollController,
-                    itemCount: tournaments.length,
+                    itemCount: extendedList.length,
                     separatorBuilder: (_, __) => const Divider(),
                     itemBuilder: (context, index) {
-                      final t = tournaments[index];
-                      final isSelected = t.id == currentId;
+                      final item = extendedList[index];
+                      final isSelected = item["id"] == (currentId ?? "0");
+                      final isAllOption = item["id"] == "0";
+
                       return ListTile(
                         leading: Icon(
-                          Icons.emoji_events,
+                          isAllOption ? Icons.public : Icons.emoji_events,
                           color: isSelected ? Colors.orange : Colors.grey,
                         ),
                         title: Text(
-                          t.name,
+                          item["name"],
                           style: TextStyle(
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                            color: isSelected ? Colors.orange : Colors.black87,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            color: isSelected ? Colors.orange : (isAllOption ? Colors.black : Colors.black87),
                           ),
                         ),
-                        trailing: isSelected
-                            ? const Icon(Icons.check, color: Colors.orange)
-                            : null,
+                        trailing: isSelected ? const Icon(Icons.check, color: Colors.orange) : null,
                         onTap: () {
-                          ref
-                                  .read(selectedTournamentIdProvider.notifier)
-                                  .state =
-                              t.id;
+                          ref.read(selectedTournamentIdProvider.notifier).state = item["id"];
                           Navigator.pop(context);
                         },
                       );
@@ -645,7 +661,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
             SizedBox(width: 10),
             Expanded(
               child: Text(
-                "Por favor, selecciona un torneo en la parte superior para continuar.",
+                "Por favor, selecciona un torneo específico arriba para continuar.",
                 style: TextStyle(fontWeight: FontWeight.w500),
               ),
             ),
@@ -659,21 +675,16 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
     );
   }
 
-  Future<void> _syncData() async {
-    final selectedTournamentId = ref.read(selectedTournamentIdProvider);
-    final String syncId = selectedTournamentId ?? "0";
+  // --- MODIFICADO: AHORA RECIBE EL ID DIRECTO DESDE EL MENÚ DE LA NUBE ---
+  Future<void> _syncData(String syncId) async {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: const Row(
           children: [
             SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 2,
-              ),
+              width: 20, height: 20,
+              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
             ),
             SizedBox(width: 15),
             Text("Sincronizando datos... por favor espera.", style: TextStyle(fontWeight: FontWeight.w500)),
@@ -704,9 +715,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         await db.delete(db.officials).go();
 
         for (var t in catalogData.tournaments) {
-          await db
-              .into(db.tournaments)
-              .insert(
+          await db.into(db.tournaments).insert(
                 TournamentsCompanion.insert(
                   id: drift.Value(t.id.toString()),
                   name: t.name,
@@ -720,20 +729,14 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
 
         for (var m in catalogData.fixturesRaw) {
           DateTime? scheduledDate;
-          if (m['scheduled_datetime'] != null &&
-              m['scheduled_datetime'].toString().isNotEmpty) {
-            scheduledDate = DateTime.tryParse(
-              m['scheduled_datetime'].toString(),
-            );
+          if (m['scheduled_datetime'] != null && m['scheduled_datetime'].toString().isNotEmpty) {
+            scheduledDate = DateTime.tryParse(m['scheduled_datetime'].toString());
           }
-          int? sA;
-          int? sB;
+          int? sA, sB;
           if (m['score_a'] != null) sA = int.tryParse(m['score_a'].toString());
           if (m['score_b'] != null) sB = int.tryParse(m['score_b'].toString());
 
-          await db
-              .into(db.fixtures)
-              .insert(
+          await db.into(db.fixtures).insert(
                 FixturesCompanion.insert(
                   id: m['id'].toString(),
                   tournamentId: m['tournament_id'].toString(),
@@ -757,9 +760,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         }
 
         for (var team in catalogData.teams) {
-          await db
-              .into(db.teams)
-              .insert(
+          await db.into(db.teams).insert(
                 TeamsCompanion.insert(
                   id: drift.Value(team.id.toString()),
                   name: team.name,
@@ -773,9 +774,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         }
 
         for (var venue in catalogData.venues) {
-          await db
-              .into(db.venues)
-              .insert(
+          await db.into(db.venues).insert(
                 VenuesCompanion.insert(
                   id: drift.Value(venue.id.toString()),
                   name: venue.name,
@@ -787,9 +786,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         }
 
         for (var rel in catalogData.relationships) {
-          await db
-              .into(db.tournamentTeams)
-              .insert(
+          await db.into(db.tournamentTeams).insert(
                 TournamentTeamsCompanion.insert(
                   tournamentId: rel.tournamentId.toString(),
                   teamId: rel.teamId.toString(),
@@ -800,9 +797,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         }
 
         for (var p in catalogData.players) {
-          await db
-              .into(db.players)
-              .insert(
+          await db.into(db.players).insert(
                 PlayersCompanion.insert(
                   id: drift.Value(p.id.toString()),
                   name: p.name,
@@ -827,9 +822,10 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
             mode: drift.InsertMode.insertOrReplace,
           );
         }
-
       });
 
+      // Actualizamos el selector de la UI al torneo que acabamos de descargar
+      ref.read(selectedTournamentIdProvider.notifier).state = syncId;
       ref.invalidate(tournamentsListProvider);
 
       if (context.mounted) {
@@ -854,7 +850,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         
-        // --- MEJORA: DIÁLOGO DE ERROR PROFESIONAL ---
         showDialog(
           context: context,
           builder: (_) => AlertDialog(
@@ -907,8 +902,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         content: const Row(
           children: [
             SizedBox(
-              width: 20,
-              height: 20,
+              width: 20, height: 20,
               child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
             ),
             SizedBox(width: 15),
@@ -921,6 +915,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         margin: const EdgeInsets.all(16),
       ),
     );
+    
     int uploadedTournaments = 0;
     int uploadedTeams = 0;
     int uploadedPlayers = 0;
@@ -928,23 +923,15 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
     int uploadedFixtures = 0;
     int uploadedOfficials = 0;
 
-
     // Subir torneos
     try {
-      final pendingTournaments = await (db.select(
-        db.tournaments,
-      )..where((tbl) => tbl.isSynced.equals(false))).get();
+      final pendingTournaments = await (db.select(db.tournaments)..where((tbl) => tbl.isSynced.equals(false))).get();
       for (var tourn in pendingTournaments) {
         try {
-          final realIdString = await api.createTournament(
-            tourn.name,
-            tourn.category ?? 'Libre',
-          );
+          final realIdString = await api.createTournament(tourn.name, tourn.category ?? 'Libre');
           final String oldUuid = tourn.id;
           await db.transaction(() async {
-            await db
-                .into(db.tournaments)
-                .insert(
+            await db.into(db.tournaments).insert(
                   TournamentsCompanion.insert(
                     id: drift.Value(realIdString),
                     name: tourn.name,
@@ -953,24 +940,16 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                     isSynced: const drift.Value(true),
                   ),
                 );
-            await (db.update(
-              db.tournamentTeams,
-            )..where((t) => t.tournamentId.equals(oldUuid))).write(
+            await (db.update(db.tournamentTeams)..where((t) => t.tournamentId.equals(oldUuid))).write(
               TournamentTeamsCompanion(tournamentId: drift.Value(realIdString)),
             );
-            await (db.update(
-              db.fixtures,
-            )..where((f) => f.tournamentId.equals(oldUuid))).write(
+            await (db.update(db.fixtures)..where((f) => f.tournamentId.equals(oldUuid))).write(
               FixturesCompanion(tournamentId: drift.Value(realIdString)),
             );
-            await (db.update(
-              db.matches,
-            )..where((m) => m.tournamentId.equals(oldUuid))).write(
+            await (db.update(db.matches)..where((m) => m.tournamentId.equals(oldUuid))).write(
               MatchesCompanion(tournamentId: drift.Value(realIdString)),
             );
-            await (db.delete(
-              db.tournaments,
-            )..where((t) => t.id.equals(oldUuid))).go();
+            await (db.delete(db.tournaments)..where((t) => t.id.equals(oldUuid))).go();
           });
           uploadedTournaments++;
         } catch (e) {
@@ -979,27 +958,19 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
       }
 
       // Subir equipos
-      final pendingTeams = await (db.select(
-        db.teams,
-      )..where((tbl) => tbl.isSynced.equals(false))).get();
+      final pendingTeams = await (db.select(db.teams)..where((tbl) => tbl.isSynced.equals(false))).get();
       for (var team in pendingTeams) {
         try {
-          final relation = await (db.select(
-            db.tournamentTeams,
-          )..where((t) => t.teamId.equals(team.id))).getSingleOrNull();
+          final relation = await (db.select(db.tournamentTeams)..where((t) => t.teamId.equals(team.id))).getSingleOrNull();
           final realIdInt = await api.createTeam(
-            team.name,
-            team.shortName ?? '',
-            team.coachName ?? '',
+            team.name, team.shortName ?? '', team.coachName ?? '',
             tournamentId: relation?.tournamentId,
           );
           final String oldTeamId = team.id;
           final String newTeamIdString = realIdInt.toString();
 
           await db.transaction(() async {
-            await db
-                .into(db.teams)
-                .insert(
+            await db.into(db.teams).insert(
                   TeamsCompanion.insert(
                     id: drift.Value(newTeamIdString),
                     name: team.name,
@@ -1008,25 +979,18 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                     isSynced: const drift.Value(true),
                   ),
                 );
-            await (db.update(
-              db.tournamentTeams,
-            )..where((t) => t.teamId.equals(oldTeamId))).write(
+            await (db.update(db.tournamentTeams)..where((t) => t.teamId.equals(oldTeamId))).write(
               TournamentTeamsCompanion(teamId: drift.Value(newTeamIdString)),
             );
-
-            // Actualizar Fixtures Locales para que apunten al nuevo ID real del equipo
             await (db.update(db.fixtures)..where((f) => f.teamAId.equals(oldTeamId)))
                 .write(FixturesCompanion(teamAId: drift.Value(newTeamIdString)));
             await (db.update(db.fixtures)..where((f) => f.teamBId.equals(oldTeamId)))
                 .write(FixturesCompanion(teamBId: drift.Value(newTeamIdString)));
 
             final tempTeamIdInt = int.tryParse(oldTeamId) ?? 0;
-            await (db.update(db.players)
-                  ..where((p) => p.teamId.equals(tempTeamIdInt)))
+            await (db.update(db.players)..where((p) => p.teamId.equals(tempTeamIdInt)))
                 .write(PlayersCompanion(teamId: drift.Value(realIdInt)));
-            await (db.delete(
-              db.teams,
-            )..where((t) => t.id.equals(oldTeamId))).go();
+            await (db.delete(db.teams)..where((t) => t.id.equals(oldTeamId))).go();
           });
           uploadedTeams++;
         } catch (e) {
@@ -1035,35 +999,21 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
       }
 
       // Subir jugadores
-      final pendingPlayers = await (db.select(
-        db.players,
-      )..where((tbl) => tbl.isSynced.equals(false))).get();
+      final pendingPlayers = await (db.select(db.players)..where((tbl) => tbl.isSynced.equals(false))).get();
       for (var player in pendingPlayers) {
         try {
           final isExistingPlayer = (int.tryParse(player.id) ?? 0) > 0;
           if (isExistingPlayer) {
-            final success = await api.updatePlayer(
-              player.id,
-              player.teamId,
-              player.name,
-              player.defaultNumber,
-            );
+            final success = await api.updatePlayer(player.id, player.teamId, player.name, player.defaultNumber);
             if (success) {
-              await (db.update(db.players)
-                    ..where((p) => p.id.equals(player.id)))
+              await (db.update(db.players)..where((p) => p.id.equals(player.id)))
                   .write(const PlayersCompanion(isSynced: drift.Value(true)));
               uploadedPlayers++;
             }
           } else {
-            final realPlayerId = await api.addPlayer(
-              player.teamId,
-              player.name,
-              player.defaultNumber,
-            );
+            final realPlayerId = await api.addPlayer(player.teamId, player.name, player.defaultNumber);
             await db.transaction(() async {
-              await db
-                  .into(db.players)
-                  .insert(
+              await db.into(db.players).insert(
                     PlayersCompanion.insert(
                       id: drift.Value(realPlayerId.toString()),
                       teamId: player.teamId,
@@ -1073,16 +1023,10 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                       active: const drift.Value(true),
                     ),
                   );
-              await (db.update(
-                db.gameEvents,
-              )..where((e) => e.playerId.equals(player.id))).write(
-                GameEventsCompanion(
-                  playerId: drift.Value(realPlayerId.toString()),
-                ),
+              await (db.update(db.gameEvents)..where((e) => e.playerId.equals(player.id))).write(
+                GameEventsCompanion(playerId: drift.Value(realPlayerId.toString())),
               );
-              await (db.delete(
-                db.players,
-              )..where((p) => p.id.equals(player.id))).go();
+              await (db.delete(db.players)..where((p) => p.id.equals(player.id))).go();
             });
             uploadedPlayers++;
           }
@@ -1091,35 +1035,26 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         }
       }
 
-
-      // --- 4. SUBIR FIXTURES PENDIENTES (INTELIGENTE) ---
-      final pendingFixtures = await (db.select(
-        db.fixtures,
-      )..where((tbl) => tbl.isSynced.equals(false))).get();
-      
+      // SubIR FIXTURES PENDIENTES
+      final pendingFixtures = await (db.select(db.fixtures)..where((tbl) => tbl.isSynced.equals(false))).get();
       for (var fixture in pendingFixtures) {
         try {
-          // Extraemos el número de jornada
           int roundOrder = 1;
           final matchRoundStr = RegExp(r'\d+').firstMatch(fixture.roundName);
           if (matchRoundStr != null) {
             roundOrder = int.parse(matchRoundStr.group(0)!);
           }
 
-          // LÓGICA INTELIGENTE: ¿Es nuevo (UUID) o es editado (ID numérico)?
           int? numericId = int.tryParse(fixture.id);
-
           bool success = false;
 
           if (numericId != null) {
-            // ES UN PARTIDO EXISTENTE QUE FUE EDITADO: Llamamos a UPDATE
             success = await api.updateFixtureTeams(
               fixtureId: numericId,
               newTeamAId: int.tryParse(fixture.teamAId) ?? 0,
               newTeamBId: int.tryParse(fixture.teamBId) ?? 0,
             );
           } else {
-            // ES UN PARTIDO NUEVO CREADO OFFLINE: Llamamos a ADD
             success = await api.addManualFixture(
               tournamentId: fixture.tournamentId,
               roundOrder: roundOrder,
@@ -1129,8 +1064,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
           }
 
           if (success) {
-            // Si subió bien, borramos la copia desincronizada local.
-            // El `_syncData` final descargará la versión oficial.
             await (db.delete(db.fixtures)..where((f) => f.id.equals(fixture.id))).go();
             uploadedFixtures++;
           }
@@ -1139,11 +1072,8 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         }
       }
       
-
       // SUBIR PARTIDOS PENDIENTES
-      final pendingMatches = await (db.select(
-        db.matches,
-      )..where((tbl) => tbl.isSynced.equals(false))).get();
+      final pendingMatches = await (db.select(db.matches)..where((tbl) => tbl.isSynced.equals(false))).get();
       for (var match in pendingMatches) {
         final query = db.select(db.gameEvents).join([
           drift.leftOuterJoin(
@@ -1195,9 +1125,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
             "score_after": currentScore,
             "type": rawType,
           };
-          if (event.playerId != null &&
-              event.playerId!.isNotEmpty &&
-              event.playerId != '-1') {
+          if (event.playerId != null && event.playerId!.isNotEmpty && event.playerId != '-1') {
             eventPayload["player_id"] = int.tryParse(event.playerId!);
           } else {
             eventPayload["player_id"] = null;
@@ -1206,8 +1134,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         }).toList();
 
         Uint8List? savedPdfBytes;
-        if (match.matchReportPath != null &&
-            match.matchReportPath!.isNotEmpty) {
+        if (match.matchReportPath != null && match.matchReportPath!.isNotEmpty) {
           try {
             final file = File(match.matchReportPath!);
             if (await file.exists()) savedPdfBytes = await file.readAsBytes();
@@ -1216,29 +1143,20 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
           }
         }
 
-        // 1. Justo antes de construir matchPayload, busca los rosters en la DB local
         final rosterRows = await (db.select(db.matchRosters)..where((r) => r.matchId.equals(match.id))).get();
-
-        // 2. Mapea esos datos a una lista de JSON, calculando el campo "played"
         final rostersList = rosterRows.map((r) {
           final pIdInt = int.tryParse(r.playerId) ?? 0;
-          
-          // Como no tenemos el "state" de RAM aquí, verificamos si el jugador 
-          // generó al menos 1 evento (punto o falta) en el partido guardado.
           bool hasPlayed = eventsList.any((event) => event["player_id"] == pIdInt);
-
           return {
             "player_id": pIdInt,
             "team_side": r.teamSide,
             "jersey_number": r.jerseyNumber,
             "is_captain": r.isCaptain ? 1 : 0,
-            "played": hasPlayed ? 1 : 0 // <--- NUEVO CAMPO
+            "played": hasPlayed ? 1 : 0
           };
         }).toList();
 
-        final fixtureRow = await (db.select(
-          db.fixtures,
-        )..where((f) => f.matchId.equals(match.id))).getSingleOrNull();
+        final fixtureRow = await (db.select(db.fixtures)..where((f) => f.matchId.equals(match.id))).getSingleOrNull();
         final matchPayload = {
           "match_id": match.id,
           "fixture_id": fixtureRow?.id,
@@ -1279,7 +1197,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
           final String oldId = official.id;
 
           await db.transaction(() async {
-            // Guardamos el oficial con el ID real de la nube
             await db.into(db.officials).insert(
               OfficialsCompanion.insert(
                 id: realIdInt.toString(), 
@@ -1290,7 +1207,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
               ),
               mode: drift.InsertMode.insertOrReplace
             );
-            // Borramos el oficial temporal
             await (db.delete(db.officials)..where((o) => o.id.equals(oldId))).go();
           });
 
@@ -1300,9 +1216,8 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         }
       }
 
-      // 6. Refrescar el estado de la UI y traer los datos más limpios de la BD
       if (uploadedFixtures > 0 || uploadedMatches > 0) {
-        await _syncData(); // Descargar la versión oficial de MySQL
+        await _syncData("0"); 
       } else {
         ref.invalidate(tournamentsListProvider);
       }
@@ -1323,13 +1238,10 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
           ),
         );
       }
-
       
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        
-        // --- MEJORA PROFESIONAL: Diálogo en vez de texto plano ---
         showDialog(
           context: context,
           builder: (_) => AlertDialog(
