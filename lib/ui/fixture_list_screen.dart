@@ -1,4 +1,3 @@
-// lib/ui/screens/fixture_list_screen.dart
 // ignore_for_file: use_build_context_synchronously, deprecated_member_use
 
 import 'dart:ui';
@@ -44,17 +43,17 @@ class FixtureListScreen extends ConsumerStatefulWidget {
 }
 
 class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
-  // Estado para el filtro de jornadas
-  String _selectedRound = "Todas";
+  // Lo dejamos nulo inicialmente para poder asignarle la Jornada 1 de forma automática al cargar
+  String? _selectedRound;
 
   // --- HELPER PARA RESOLVER LA RUTA DEL LOGO ---
   String _resolveLogoUrl(String? path) {
     if (path == null || path.isEmpty) return '';
     if (path.startsWith('http')) return path;
-    // Si la BD trae rutas como "../assets/team_logo/...", las convertimos a URL absolutas
     return path.replaceAll('../', 'https://basket.techsolutions.management/');
   }
 
+  // --- BOTTOM SHEET DE OPCIONES DE GENERACIÓN ---
   void _showGenerationOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -77,19 +76,19 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
             
             ListTile(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              tileColor: Colors.white.withOpacity(0.05),
+              tileColor: Colors.white.withValues(alpha: 0.05),
               leading: const CircleAvatar(backgroundColor: Colors.blueAccent, child: Icon(Icons.auto_awesome, color: Colors.white)),
               title: const Text("Generación Automática", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               subtitle: const Text("Crea todas las jornadas y cruza a todos los equipos usando el método de Round Robin.", style: TextStyle(color: Colors.white54, fontSize: 12)),
               onTap: () {
                 Navigator.pop(ctx);
-                _generateNewFixture(context); // Llama a tu función original
+                _generateNewFixture(context); 
               },
             ),
             const SizedBox(height: 12),
             ListTile(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              tileColor: Colors.white.withOpacity(0.05),
+              tileColor: Colors.white.withValues(alpha: 0.05),
               leading: const CircleAvatar(backgroundColor: Colors.orangeAccent, child: Icon(Icons.edit_calendar, color: Colors.black)),
               title: const Text("Constructor Manual", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               subtitle: const Text("Crea jornadas y programa partidos uno por uno, ideal para torneos en progreso.", style: TextStyle(color: Colors.white54, fontSize: 12)),
@@ -104,6 +103,85 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  // --- BOTTOM SHEET DE FILTRO DE JORNADAS ---
+  void _showRoundsFilterBottomSheet(List<String> rounds, String currentActiveRound) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (BuildContext ctx) {
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+            child: Container(
+              height: MediaQuery.of(context).size.height * 0.45, 
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E2432).withValues(alpha: 0.9), 
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                border: Border.all(color: Colors.white12),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(top: 12, bottom: 8),
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.white30,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text(
+                      "Filtrar por Jornada",
+                      style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 1.2),
+                    ),
+                  ),
+                  const Divider(color: Colors.white12, height: 1),
+                  Expanded(
+                    child: ListView.builder(
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: rounds.length,
+                      itemBuilder: (context, index) {
+                        final round = rounds[index];
+                        final isSelected = round == currentActiveRound;
+                        
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 4),
+                          tileColor: isSelected ? Colors.orangeAccent.withValues(alpha: 0.1) : Colors.transparent,
+                          title: Text(
+                            round.toUpperCase(),
+                            style: TextStyle(
+                              color: isSelected ? Colors.orangeAccent : Colors.white70,
+                              fontWeight: isSelected ? FontWeight.w900 : FontWeight.normal,
+                              fontSize: 16,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                          trailing: isSelected 
+                              ? const Icon(Icons.check_circle, color: Colors.orangeAccent) 
+                              : null,
+                          onTap: () {
+                            Navigator.pop(ctx); 
+                            if (round != currentActiveRound) {
+                              setState(() => _selectedRound = round); 
+                            }
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -124,7 +202,6 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
     try {
       final api = ref.read(apiServiceProvider);
       
-      // 1. Guardamos las reglas del torneo primero
       final rulesSaved = await api.saveTournamentRules(
         tournamentId: widget.tournamentId,
         vueltas: rules['vueltas'],
@@ -137,7 +214,6 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
 
       if (!rulesSaved) throw Exception("Error guardando las reglas del torneo");
 
-      // 2. Generamos el fixture automáticamente (el backend leerá las reglas que acabamos de guardar)
       final success = await api.generateFixture(
         tournamentId: widget.tournamentId,
       );
@@ -174,7 +250,7 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
           });
           
           ref.invalidate(localFixtureProvider(widget.tournamentId));
-          setState(() => _selectedRound = "Todas"); 
+          setState(() => _selectedRound = null); // Reset a default al generar
         }
 
         if (!mounted) return; 
@@ -190,8 +266,6 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
     }
   }
 
-  
-
   @override
   Widget build(BuildContext context) {
     final fixtureAsync = ref.watch(localFixtureProvider(widget.tournamentId));
@@ -202,7 +276,7 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
       
       appBar: AppBar(
         title: const Text("Calendario de Juegos", style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 1.0)),
-        backgroundColor: Colors.black.withOpacity(0.6), 
+        backgroundColor: Colors.black.withValues(alpha: 0.6), 
         elevation: 0,
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -218,7 +292,7 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
       ),
 
       body: AppBackground(
-        opacity: 0.8, // Mayor opacidad para mejorar lectura
+        opacity: 0.8,
         child: fixtureAsync.when(
           loading: () => const Center(child: CircularProgressIndicator(color: Colors.orangeAccent)),
           error: (err, stack) => Center(child: Text("Error: $err", style: const TextStyle(color: Colors.redAccent))),
@@ -230,7 +304,7 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
                   children: [
                     Container(
                       padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), shape: BoxShape.circle),
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), shape: BoxShape.circle),
                       child: const Icon(Icons.calendar_month_outlined, size: 70, color: Colors.white54),
                     ),
                     const SizedBox(height: 24),
@@ -239,54 +313,80 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
                     Text(
                       "Configura y genera el calendario\ndesde el botón inferior.", 
                       textAlign: TextAlign.center, 
-                      style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 16)
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 16)
                     ),
                   ],
                 ),
               );
             }
 
-            List<String> allRounds = ["Todas"];
-            allRounds.addAll(groupedRounds.keys.toList());
+            // 1. Configuramos la lista completa de opciones del Bottom Sheet
+            List<String> allRounds = ["Todas", ...groupedRounds.keys];
 
+            // 2. Establecemos "Jornada 1" (o la primera llave disponible) como predeterminada si no hay selección
+            String activeRound = _selectedRound ?? (groupedRounds.keys.isNotEmpty ? groupedRounds.keys.first : "Todas");
+
+            // 3. Filtramos los datos
             Map<String, List<Fixture>> filteredRounds = {};
-            if (_selectedRound == "Todas") {
+            if (activeRound == "Todas") {
               filteredRounds = groupedRounds;
-            } else if (groupedRounds.containsKey(_selectedRound)) {
-              filteredRounds[_selectedRound] = groupedRounds[_selectedRound]!;
+            } else if (groupedRounds.containsKey(activeRound)) {
+              filteredRounds[activeRound] = groupedRounds[activeRound]!;
             }
 
             return SafeArea(
               child: Column(
                 children: [
-                  // --- BARRA DE FILTRO POR JORNADAS ---
-                  Container(
-                    height: 60,
-                    margin: const EdgeInsets.only(top: 10, bottom: 5),
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: allRounds.length,
-                      itemBuilder: (context, index) {
-                        final round = allRounds[index];
-                        final isSelected = _selectedRound == round;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 10),
-                          child: ChoiceChip(
-                            label: Text(round.toUpperCase(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isSelected ? Colors.black : Colors.white70)),
-                            selected: isSelected,
-                            selectedColor: Colors.orangeAccent,
-                            backgroundColor: Colors.black.withOpacity(0.8),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20), 
-                              side: const BorderSide(color: Colors.transparent)
+                  
+                  // --- BOTÓN DE FILTRO POR JORNADA (ABRE BOTTOM SHEET) ---
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Filtrar Partidos", 
+                          style: TextStyle(color: Colors.white70, fontSize: 15, fontWeight: FontWeight.bold)
+                        ),
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () => _showRoundsFilterBottomSheet(allRounds, activeRound),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.3), 
+                                borderRadius: BorderRadius.circular(16), 
+                                border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.5), width: 1.5), 
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.orangeAccent.withValues(alpha: 0.1),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  )
+                                ]
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    activeRound.toUpperCase(),
+                                    style: const TextStyle(
+                                      color: Colors.orangeAccent, 
+                                      fontSize: 15, 
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 1.0
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Icon(Icons.filter_list, color: Colors.orangeAccent, size: 20),
+                                ],
+                              ),
                             ),
-                            onSelected: (selected) {
-                              if (selected) setState(() => _selectedRound = round);
-                            },
                           ),
-                        );
-                      },
+                        ),
+                      ],
                     ),
                   ),
 
@@ -303,12 +403,12 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (_selectedRound == "Todas") 
+                            // Solo mostramos el separador si estamos en la vista "Todas"
+                            if (activeRound == "Todas") 
                               Padding(
                                 padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
                                 child: Row(
                                   children: [
-                                    // Píldora moderna blanca con texto en NEGRO
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                       decoration: BoxDecoration(
@@ -357,7 +457,7 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
       width: 55,
       height: 55,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         shape: BoxShape.circle,
         border: Border.all(color: Colors.white24, width: 1.5),
       ),
@@ -386,7 +486,6 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
 
     final isFinished = match.status == 'FINISHED';
 
-    // Formatear la fecha para que sea súper profesional y visible
     String dateFormatted = "Horario por definir";
     if (match.scheduledDatetime != null) {
       final dt = match.scheduledDatetime!;
@@ -441,22 +540,21 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
                     SnackBar(content: Text("ℹ️ Partido en estado: ${match.status}"), backgroundColor: Colors.blueGrey)
                   );
               },
-              splashColor: Colors.orange.withOpacity(0.3),
-              highlightColor: Colors.orange.withOpacity(0.1),
+              splashColor: Colors.orange.withValues(alpha: 0.3),
+              highlightColor: Colors.orange.withValues(alpha: 0.1),
               child: Container(
                 decoration: BoxDecoration(
                   gradient: LinearBinding.linear(
-                    Colors.white.withOpacity(0.15), 
-                    Colors.white.withOpacity(0.03)
+                    Colors.white.withValues(alpha: 0.15), 
+                    Colors.white.withValues(alpha: 0.03)
                   ),
-                  border: Border.all(color: Colors.white.withOpacity(0.15)),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     children: [
-                      // Encabezado de la Tarjeta (Estado y Fecha/Lugar super visibles)
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -503,12 +601,10 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
                       
                       const SizedBox(height: 20),
                       
-                      // Cuerpo Principal (Equipo A - Score/Acción - Equipo B)
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          // EQUIPO A
                           Expanded(
                             flex: 3,
                             child: Column(
@@ -526,7 +622,6 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
                             ),
                           ),
 
-                          // SCORE O BOTÓN DE ACCIÓN CENTRAL
                           Expanded(
                             flex: 4,
                             child: Column(
@@ -543,14 +638,13 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
                                   )
                                 ),
                                 const SizedBox(height: 12),
-                                // Botón de jugar
                                 Container(
                                   width: 45,
                                   height: 45,
                                   decoration: BoxDecoration(
-                                    color: isPlayable ? Colors.orangeAccent : Colors.white.withOpacity(0.05), 
+                                    color: isPlayable ? Colors.orangeAccent : Colors.white.withValues(alpha: 0.05), 
                                     shape: BoxShape.circle,
-                                    boxShadow: isPlayable ? [BoxShadow(color: Colors.orangeAccent.withOpacity(0.4), blurRadius: 10, spreadRadius: 1)] : []
+                                    boxShadow: isPlayable ? [BoxShadow(color: Colors.orangeAccent.withValues(alpha: 0.4), blurRadius: 10, spreadRadius: 1)] : []
                                   ),
                                   child: Icon(
                                     (match.status == 'IN_PROGRESS' || match.status == 'PLAYING') 
@@ -566,7 +660,6 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
                             ),
                           ),
 
-                          // EQUIPO B
                           Expanded(
                             flex: 3,
                             child: Column(
@@ -596,7 +689,6 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
     );
   }
 
-  // Helper para renderizar un chip de estado
   Widget _buildStatusBadge(String status) {
     Color bgColor;
     Color txtColor;
@@ -604,26 +696,26 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
 
     switch (status) {
       case 'FINISHED':
-        bgColor = Colors.green.withOpacity(0.2);
+        bgColor = Colors.green.withValues(alpha: 0.2);
         txtColor = Colors.greenAccent;
         label = "FINALIZADO";
         break;
       case 'IN_PROGRESS':
       case 'PLAYING':
-        bgColor = Colors.orange.withOpacity(0.2);
+        bgColor = Colors.orange.withValues(alpha: 0.2);
         txtColor = Colors.orangeAccent;
         label = "EN JUEGO";
         break;
       case 'FORFEIT_A':
       case 'FORFEIT_B':
-        bgColor = Colors.red.withOpacity(0.2);
+        bgColor = Colors.red.withValues(alpha: 0.2);
         txtColor = Colors.redAccent;
         label = "AUSENCIA";
         break;
       case 'SCHEDULED':
       case 'PENDING':
       default:
-        bgColor = Colors.white.withOpacity(0.1);
+        bgColor = Colors.white.withValues(alpha: 0.1);
         txtColor = Colors.white70;
         label = "PROGRAMADO";
         break;
@@ -634,14 +726,13 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: txtColor.withOpacity(0.5))
+        border: Border.all(color: txtColor.withValues(alpha: 0.5))
       ),
       child: Text(label, style: TextStyle(color: txtColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
     );
   }
 }
 
-// Extensión para usar gradientes como fondo del contenedor (Material)
 class LinearBinding {
    static LinearGradient linear(Color c1, Color c2) {
       return LinearGradient(

@@ -35,6 +35,90 @@ class _ManualFixtureBuilderScreenState
     _loadData();
   }
 
+  // --- NUEVO: BOTTOM SHEET PARA SELECCIÓN DE JORNADAS ---
+  void _showRoundsBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent, // Transparente para aplicar nuestro propio diseño redondeado
+      isScrollControlled: true, // Permite que el modal ocupe más espacio si es necesario
+      builder: (BuildContext ctx) {
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+            child: Container(
+              height: MediaQuery.of(context).size.height * 0.5, // Ocupará la mitad de la pantalla
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E2432).withValues(alpha: 0.9), // Fondo oscuro esmerilado
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                border: Border.all(color: Colors.white12),
+              ),
+              child: Column(
+                children: [
+                  // --- BARRA DE ARRASTRE (Grip) ---
+                  Container(
+                    margin: const EdgeInsets.only(top: 12, bottom: 8),
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.white30,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  
+                  // --- TÍTULO ---
+                  const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text(
+                      "Seleccionar Jornada",
+                      style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 1.2),
+                    ),
+                  ),
+                  const Divider(color: Colors.white12, height: 1),
+                  
+                  // --- LISTA DE JORNADAS ---
+                  Expanded(
+                    child: ListView.builder(
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: _availableRounds.length,
+                      itemBuilder: (context, index) {
+                        final rId = _availableRounds[index];
+                        final isSelected = rId == _selectedRoundId;
+                        
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 4),
+                          tileColor: isSelected ? Colors.orangeAccent.withValues(alpha: 0.1) : Colors.transparent,
+                          title: Text(
+                            "Jornada $rId",
+                            style: TextStyle(
+                              color: isSelected ? Colors.orangeAccent : Colors.white70,
+                              fontWeight: isSelected ? FontWeight.w900 : FontWeight.normal,
+                              fontSize: 18,
+                            ),
+                          ),
+                          trailing: isSelected 
+                              ? const Icon(Icons.check_circle, color: Colors.orangeAccent) 
+                              : null,
+                          onTap: () {
+                            Navigator.pop(ctx); // Cierra el modal
+                            if (rId != _selectedRoundId) {
+                              setState(() => _selectedRoundId = rId);
+                              _loadData(); // Carga los partidos de la nueva jornada
+                            }
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     await _loadAvailableRounds();
@@ -172,7 +256,7 @@ class _ManualFixtureBuilderScreenState
     _playedMatchups = matchups;
   }
 
-  Future<void> _loadCreatedMatchesLocally() async {
+Future<void> _loadCreatedMatchesLocally() async {
     final db = ref.read(databaseProvider);
     final localFixtures = await (db.select(db.fixtures)
           ..where((f) =>
@@ -189,8 +273,56 @@ class _ManualFixtureBuilderScreenState
         'teamBName': f.teamBName,
         'logoA': f.logoA,
         'logoB': f.logoB,
+        'status': f.status, 
       };
     }).toList();
+  }
+
+  // --- NUEVO: ALGORITMO PREDICTIVO DE EMPAREJAMIENTO ---
+  // --- ALGORITMO PREDICTIVO DE EMPAREJAMIENTO ACTUALIZADO ---
+  bool _canCompleteRound(int ignoreTeamA, int ignoreTeamB, {int releasingTeamA = 0, int releasingTeamB = 0}) {
+    List<int> allTeams = _teamsStatus.map((t) => int.parse(t['id'].toString())).toList();
+
+    List<int> teamsAlreadyPlayedThisRound = [];
+    for (var t in _teamsStatus) {
+      if (int.parse(t['scheduled_this_round'].toString()) > 0) {
+        teamsAlreadyPlayedThisRound.add(int.parse(t['id'].toString()));
+      }
+    }
+
+    // Si estamos editando un partido, los equipos que formaban parte de ese partido 
+    // ahora están "libres" de nuevo y no debemos contarlos como "ya jugados".
+    teamsAlreadyPlayedThisRound.removeWhere((tId) => tId == releasingTeamA || tId == releasingTeamB);
+
+    List<int> freeTeams = allTeams.where((tId) => 
+      !teamsAlreadyPlayedThisRound.contains(tId) && 
+      tId != ignoreTeamA && 
+      tId != ignoreTeamB
+    ).toList();
+
+    if (freeTeams.length <= 1) return true;
+
+    if (freeTeams.length % 2 != 0) {
+        return true; 
+    }
+
+    for (int t1 in freeTeams) {
+      bool hasValidOpponent = false;
+      for (int t2 in freeTeams) {
+        if (t1 != t2) {
+          bool alreadyPlayedAgainst = _playedMatchups[t1]?.contains(t2) ?? false;
+          if (!alreadyPlayedAgainst) {
+            hasValidOpponent = true;
+            break; 
+          }
+        }
+      }
+      if (!hasValidOpponent) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   void _addNewRound() {
@@ -302,6 +434,19 @@ class _ManualFixtureBuilderScreenState
                       onChanged: (val) => setModalState(() => selectedTeamB = val),
                     ),
                     const SizedBox(height: 30),
+                    
+                    // --- MENSAJE DE ADVERTENCIA PREDICTIVA ---
+                    if (selectedTeamA != null && selectedTeamB != null && selectedTeamA != selectedTeamB)
+                      if (!_canCompleteRound(selectedTeamA!, selectedTeamB!))
+                        const Padding(
+                          padding: EdgeInsets.only(bottom: 12.0),
+                          child: Text(
+                            "⚠️ Si guardas este partido, los equipos que sobran en esta jornada no podrán jugar porque ya se enfrentaron antes.",
+                            style: TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
@@ -316,7 +461,8 @@ class _ManualFixtureBuilderScreenState
                             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
-                          onPressed: (selectedTeamA != null && selectedTeamB != null && selectedTeamA != selectedTeamB)
+                          // Bloquear el botón si la advertencia es visible
+                          onPressed: (selectedTeamA != null && selectedTeamB != null && selectedTeamA != selectedTeamB && _canCompleteRound(selectedTeamA!, selectedTeamB!))
                               ? () async {
                                   Navigator.pop(ctx);
                                   await _saveManualMatch(selectedTeamA!, selectedTeamB!);
@@ -336,10 +482,15 @@ class _ManualFixtureBuilderScreenState
     );
   }
 
-  // --- NUEVO: DIÁLOGO PARA EDITAR PARTIDO ---
+  // --- DIÁLOGO PARA EDITAR PARTIDO ---
   void _showEditMatchDialog(Map<String, dynamic> match) {
     int? selectedTeamA = int.tryParse(match['teamAId'].toString());
     int? selectedTeamB = int.tryParse(match['teamBId'].toString());
+    
+    // Guardamos los originales para la lógica predictiva
+    int originalA = selectedTeamA ?? 0;
+    int originalB = selectedTeamB ?? 0;
+    
     final String fixtureId = match['id'].toString();
 
     showDialog(
@@ -373,7 +524,7 @@ class _ManualFixtureBuilderScreenState
                       color: Colors.orangeAccent,
                       selectedValue: selectedTeamA,
                       otherSelectedValue: selectedTeamB,
-                      originalTeamIdToIgnore: int.tryParse(match['teamAId'].toString()), // Ignorar regla de "ya jugó" para el equipo original
+                      originalTeamIdToIgnore: originalA, 
                       onChanged: (val) => setModalState(() => selectedTeamA = val),
                     ),
                     const Padding(
@@ -385,10 +536,24 @@ class _ManualFixtureBuilderScreenState
                       color: Colors.lightBlueAccent,
                       selectedValue: selectedTeamB,
                       otherSelectedValue: selectedTeamA,
-                      originalTeamIdToIgnore: int.tryParse(match['teamBId'].toString()), // Ignorar regla de "ya jugó" para el equipo original
+                      originalTeamIdToIgnore: originalB, 
                       onChanged: (val) => setModalState(() => selectedTeamB = val),
                     ),
                     const SizedBox(height: 30),
+
+                    // --- MENSAJE DE ADVERTENCIA PREDICTIVA PARA EDICIÓN ---
+                    // Al editar, le decimos al algoritmo que "libere" temporalmente a los dos equipos que estaban originalmente en el partido
+                    if (selectedTeamA != null && selectedTeamB != null && selectedTeamA != selectedTeamB)
+                      if (!_canCompleteRound(selectedTeamA!, selectedTeamB!, releasingTeamA: originalA, releasingTeamB: originalB))
+                        const Padding(
+                          padding: EdgeInsets.only(bottom: 12.0),
+                          child: Text(
+                            "⚠️ Si guardas este partido, los equipos que sobran en esta jornada no podrán jugar porque ya se enfrentaron antes.",
+                            style: TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
@@ -403,7 +568,8 @@ class _ManualFixtureBuilderScreenState
                             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
-                          onPressed: (selectedTeamA != null && selectedTeamB != null && selectedTeamA != selectedTeamB)
+                          // Bloquear el botón si la advertencia es visible
+                          onPressed: (selectedTeamA != null && selectedTeamB != null && selectedTeamA != selectedTeamB && _canCompleteRound(selectedTeamA!, selectedTeamB!, releasingTeamA: originalA, releasingTeamB: originalB))
                               ? () async {
                                   Navigator.pop(ctx);
                                   await _updateManualMatch(fixtureId, selectedTeamA!, selectedTeamB!);
@@ -428,81 +594,143 @@ class _ManualFixtureBuilderScreenState
     required Color color,
     required int? selectedValue,
     required int? otherSelectedValue,
-    required int? originalTeamIdToIgnore, // Parámetro para saber qué equipo no bloquear al editar
+    required int? originalTeamIdToIgnore, 
     required Function(int?) onChanged,
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.black26,
+        color: Colors.black.withValues(alpha: 0.3), // Fondo un poco más oscuro para resaltar
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.5), width: 1.5), // Borde más notorio
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          )
+        ]
       ),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title.toUpperCase(),
-            style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+          Row(
+            children: [
+              Icon(Icons.shield, color: color, size: 14),
+              const SizedBox(width: 6),
+              Text(
+                title.toUpperCase(),
+                style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.2),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           DropdownButtonHideUnderline(
             child: DropdownButton<int>(
-              dropdownColor: const Color(0xFF2C3444),
+              dropdownColor: const Color(0xFF1E2432), // Color de fondo del menú desplegado
               isExpanded: true,
-              hint: const Text("Seleccionar equipo...", style: TextStyle(color: Colors.white54)),
+              iconSize: 28,
+              hint: const Text("Seleccionar equipo...", style: TextStyle(color: Colors.white38, fontSize: 15)),
               value: selectedValue,
-              icon: Icon(Icons.arrow_drop_down_circle, color: color),
+              icon: Icon(Icons.expand_circle_down, color: color.withValues(alpha: 0.7)),
               items: _teamsStatus.map((team) {
                 final teamId = int.parse(team['id'].toString());
                 
-                // Si el equipo que estamos renderizando es el mismo que estaba originalmente en el partido, 
-                // no lo bloqueamos porque el usuario podría querer dejarlo igual.
                 bool isOriginalTeam = teamId == originalTeamIdToIgnore;
-
                 bool alreadyPlayedRound = int.parse(team['scheduled_this_round'].toString()) > 0;
                 bool isSameTeam = teamId == otherSelectedValue;
                 bool alreadyPlayedAgainst = otherSelectedValue != null && 
                     (_playedMatchups[otherSelectedValue]?.contains(teamId) ?? false);
 
-                // Se bloquea si cumple las reglas Y NO es el equipo original que ya estaba en ese lado
                 bool isDisabled = (!isOriginalTeam && alreadyPlayedRound) || isSameTeam || (!isOriginalTeam && alreadyPlayedAgainst);
+
+                // Definir colores y textos según el estado
+                Color dotColor = Colors.greenAccent;
+                String statusText = "JJ: ${team['total_scheduled']}";
+                Color statusColor = Colors.greenAccent;
+                IconData statusIcon = Icons.check_circle_outline;
+
+                if (isSameTeam) {
+                  dotColor = Colors.orangeAccent;
+                  statusText = "EN USO";
+                  statusColor = Colors.orangeAccent;
+                  statusIcon = Icons.warning_amber_rounded;
+                } else if (!isOriginalTeam && alreadyPlayedAgainst) {
+                  dotColor = Colors.redAccent;
+                  statusText = "YA ENFRENTADOS";
+                  statusColor = Colors.redAccent;
+                  statusIcon = Icons.block;
+                } else if (!isOriginalTeam && alreadyPlayedRound) {
+                  dotColor = Colors.redAccent;
+                  statusText = "JUGÓ EN JORNADA";
+                  statusColor = Colors.redAccent;
+                  statusIcon = Icons.event_busy;
+                } else if (isOriginalTeam) {
+                  dotColor = Colors.blueAccent;
+                  statusText = "EQUIPO ACTUAL";
+                  statusColor = Colors.blueAccent;
+                  statusIcon = Icons.restore;
+                }
 
                 return DropdownMenuItem<int>(
                   value: teamId,
                   enabled: !isDisabled,
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 8, height: 8,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isDisabled ? Colors.redAccent : Colors.greenAccent,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          team['name'],
-                          style: TextStyle(
-                            color: isDisabled ? Colors.white54 : Colors.white,
-                            fontWeight: isDisabled ? FontWeight.normal : FontWeight.bold,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    decoration: BoxDecoration(
+                      border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.05)))
+                    ),
+                    child: Row(
+                      children: [
+                        // Indicador de color
+                        Container(
+                          width: 10, height: 10,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: dotColor,
+                            boxShadow: [
+                              BoxShadow(color: dotColor.withValues(alpha: 0.5), blurRadius: 4)
+                            ]
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      
-                      if (isSameTeam)
-                        const Text("EN USO", style: TextStyle(color: Colors.orangeAccent, fontSize: 10, fontWeight: FontWeight.bold))
-                      else if (!isOriginalTeam && alreadyPlayedAgainst)
-                        const Text("YA ENFRENTADOS", style: TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold))
-                      else if (!isOriginalTeam && alreadyPlayedRound)
-                        const Text("JUGÓ EN JORNADA", style: TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold))
-                      else if (isOriginalTeam)
-                        const Text("EQUIPO ACTUAL", style: TextStyle(color: Colors.blueAccent, fontSize: 10, fontWeight: FontWeight.bold))
-                      else
-                        Text("JJ: ${team['total_scheduled']}", style: const TextStyle(color: Colors.greenAccent, fontSize: 12)),
-                    ],
+                        const SizedBox(width: 12),
+                        
+                        // Nombre del equipo
+                        Expanded(
+                          child: Text(
+                            team['name'].toString().toUpperCase(),
+                            style: TextStyle(
+                              color: isDisabled ? Colors.white38 : Colors.white,
+                              fontWeight: isDisabled ? FontWeight.normal : FontWeight.w800,
+                              fontSize: 14,
+                              letterSpacing: 0.5
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        
+                        // Etiqueta de estado
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: statusColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: statusColor.withValues(alpha: 0.3))
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(statusIcon, color: statusColor, size: 12),
+                              const SizedBox(width: 4),
+                              Text(
+                                statusText, 
+                                style: TextStyle(color: statusColor, fontSize: 9, fontWeight: FontWeight.bold)
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               }).toList(),
@@ -742,33 +970,46 @@ class _ManualFixtureBuilderScreenState
                                     children: [
                                       Text("PROGRAMACIÓN", style: TextStyle(color: Colors.orangeAccent, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2.0)),
                                       SizedBox(height: 4),
-                                      Text("Selecciona Jornada", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                                      Text("Jornada Actual", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                                     ],
                                   ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white10,
-                                      borderRadius: BorderRadius.circular(12)
-                                    ),
-                                    child: DropdownButtonHideUnderline(
-                                      child: DropdownButton<int>(
-                                        dropdownColor: const Color(0xFF2C3444),
-                                        value: _selectedRoundId,
-                                        icon: const Icon(Icons.keyboard_arrow_down, color: Colors.orangeAccent),
-                                        style: const TextStyle(color: Colors.orangeAccent, fontSize: 20, fontWeight: FontWeight.w900),
-                                        items: _availableRounds.map((rId) {
-                                          return DropdownMenuItem<int>(
-                                            value: rId,
-                                            child: Text("Jornada $rId"),
-                                          );
-                                        }).toList(),
-                                        onChanged: (val) {
-                                          if (val != null && val != _selectedRoundId) {
-                                            setState(() => _selectedRoundId = val);
-                                            _loadData();
-                                          }
-                                        },
+                                  
+                                  // --- BOTÓN QUE ABRE EL BOTTOM SHEET ---
+                                  Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(16),
+                                      onTap: _showRoundsBottomSheet, // <- Llama al modal
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withValues(alpha: 0.3), 
+                                          borderRadius: BorderRadius.circular(16), 
+                                          border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.5), width: 1.5), 
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.orangeAccent.withValues(alpha: 0.1),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 2),
+                                            )
+                                          ]
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              "Jornada $_selectedRoundId",
+                                              style: const TextStyle(
+                                                color: Colors.orangeAccent, 
+                                                fontSize: 18, 
+                                                fontWeight: FontWeight.w900,
+                                                letterSpacing: 1.0
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            const Icon(Icons.expand_circle_down, color: Colors.orangeAccent, size: 22),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -809,12 +1050,18 @@ class _ManualFixtureBuilderScreenState
                                           child: Row(
                                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                             children: [
-                                              // NUEVO: Botón para editar
-                                              IconButton(
-                                                icon: const Icon(Icons.edit_calendar, color: Colors.white54),
-                                                onPressed: () => _showEditMatchDialog(match),
-                                                tooltip: "Editar Equipos",
-                                              ),
+                                             if (match['status'] == 'SCHEDULED')
+                                                IconButton(
+                                                  icon: const Icon(Icons.edit_calendar, color: Colors.white54),
+                                                  onPressed: () => _showEditMatchDialog(match),
+                                                  tooltip: "Editar Equipos",
+                                                )
+                                              else
+                                                // Si ya se jugó o está en curso, mostramos un candado
+                                                const Padding(
+                                                  padding: EdgeInsets.all(12.0),
+                                                  child: Icon(Icons.lock, color: Colors.redAccent, size: 20),
+                                                ),
                                               Expanded(
                                                 child: Text(
                                                   match['teamAName'],
