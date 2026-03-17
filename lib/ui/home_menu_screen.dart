@@ -356,15 +356,22 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                                   child: Row(
                                     children: [
                                       Container(
-                                        padding: const EdgeInsets.all(8),
+                                        width: 45,
+                                        height: 45,
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.2),
+                                          color: Colors.white, // Fondo blanco para que el logo resalte
                                           shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(
-                                          Icons.sports_basketball,
-                                          size: 28,
-                                          color: Colors.white,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.2),
+                                              blurRadius: 5,
+                                              offset: const Offset(0, 3),
+                                            )
+                                          ],
+                                          image: const DecorationImage(
+                                            image: AssetImage('assets/images/app_logo.png'), // Tu ruta exacta
+                                            fit: BoxFit.contain, // Ajusta la imagen dentro del círculo
+                                          ),
                                         ),
                                       ),
                                       const SizedBox(width: 15),
