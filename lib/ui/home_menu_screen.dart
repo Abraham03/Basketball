@@ -1009,41 +1009,60 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
       // ------------------------------------------
 
       // Subir equipos
+      // Subir equipos
       final pendingTeams = await (db.select(db.teams)..where((tbl) => tbl.isSynced.equals(false))).get();
       for (var team in pendingTeams) {
         try {
-          final relation = await (db.select(db.tournamentTeams)..where((t) => t.teamId.equals(team.id))).getSingleOrNull();
-          final realIdInt = await api.createTeam(
-            team.name, team.shortName ?? '', team.coachName ?? '',
-            tournamentId: relation?.tournamentId,
-          );
-          final String oldTeamId = team.id;
-          final String newTeamIdString = realIdInt.toString();
+          final isExistingTeam = (int.tryParse(team.id) ?? 0) > 0; // ¿Tiene ID real de BD?
 
-          await db.transaction(() async {
-            await db.into(db.teams).insert(
-                  TeamsCompanion.insert(
-                    id: drift.Value(newTeamIdString),
-                    name: team.name,
-                    shortName: drift.Value(team.shortName),
-                    coachName: drift.Value(team.coachName),
-                    isSynced: const drift.Value(true),
-                  ),
-                );
-            await (db.update(db.tournamentTeams)..where((t) => t.teamId.equals(oldTeamId))).write(
-              TournamentTeamsCompanion(teamId: drift.Value(newTeamIdString)),
+          if (isExistingTeam) {
+            // 1. ES UNA ACTUALIZACIÓN OFFLINE
+            final success = await api.updateTeam(
+              id: team.id,
+              name: team.name,
+              shortName: team.shortName ?? '',
+              coachName: team.coachName ?? '',
             );
-            await (db.update(db.fixtures)..where((f) => f.teamAId.equals(oldTeamId)))
-                .write(FixturesCompanion(teamAId: drift.Value(newTeamIdString)));
-            await (db.update(db.fixtures)..where((f) => f.teamBId.equals(oldTeamId)))
-                .write(FixturesCompanion(teamBId: drift.Value(newTeamIdString)));
+            if (success) {
+              await (db.update(db.teams)..where((t) => t.id.equals(team.id)))
+                  .write(const TeamsCompanion(isSynced: drift.Value(true)));
+              uploadedTeams++;
+            }
+          } else {
+            // 2. ES UN EQUIPO NUEVO CREADO OFFLINE
+            final relation = await (db.select(db.tournamentTeams)..where((t) => t.teamId.equals(team.id))).getSingleOrNull();
+            final realIdInt = await api.createTeam(
+              team.name, team.shortName ?? '', team.coachName ?? '',
+              tournamentId: relation?.tournamentId,
+            );
+            final String oldTeamId = team.id;
+            final String newTeamIdString = realIdInt.toString();
 
-            final tempTeamIdInt = int.tryParse(oldTeamId) ?? 0;
-            await (db.update(db.players)..where((p) => p.teamId.equals(tempTeamIdInt)))
-                .write(PlayersCompanion(teamId: drift.Value(realIdInt)));
-            await (db.delete(db.teams)..where((t) => t.id.equals(oldTeamId))).go();
-          });
-          uploadedTeams++;
+            await db.transaction(() async {
+              await db.into(db.teams).insert(
+                    TeamsCompanion.insert(
+                      id: drift.Value(newTeamIdString),
+                      name: team.name,
+                      shortName: drift.Value(team.shortName),
+                      coachName: drift.Value(team.coachName),
+                      isSynced: const drift.Value(true),
+                    ),
+                  );
+              await (db.update(db.tournamentTeams)..where((t) => t.teamId.equals(oldTeamId))).write(
+                TournamentTeamsCompanion(teamId: drift.Value(newTeamIdString)),
+              );
+              await (db.update(db.fixtures)..where((f) => f.teamAId.equals(oldTeamId)))
+                  .write(FixturesCompanion(teamAId: drift.Value(newTeamIdString)));
+              await (db.update(db.fixtures)..where((f) => f.teamBId.equals(oldTeamId)))
+                  .write(FixturesCompanion(teamBId: drift.Value(newTeamIdString)));
+
+              final tempTeamIdInt = int.tryParse(oldTeamId) ?? 0;
+              await (db.update(db.players)..where((p) => p.teamId.equals(tempTeamIdInt)))
+                  .write(PlayersCompanion(teamId: drift.Value(realIdInt)));
+              await (db.delete(db.teams)..where((t) => t.id.equals(oldTeamId))).go();
+            });
+            uploadedTeams++;
+          }
         } catch (e) {
           debugPrint("Error al subir equipo: $e");
         }

@@ -656,7 +656,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
               TextFormField(
                 controller: nameCtrl,
                 decoration: InputDecoration(
-                  labelText: "Nombre de Cancha/Sede",
+                  labelText: "Nombre de Cancha",
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   prefixIcon: const Icon(Icons.stadium),
                 ),
