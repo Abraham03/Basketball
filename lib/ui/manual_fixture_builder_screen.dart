@@ -278,53 +278,31 @@ Future<void> _loadCreatedMatchesLocally() async {
     }).toList();
   }
 
-  // --- NUEVO: ALGORITMO PREDICTIVO DE EMPAREJAMIENTO ---
   // --- ALGORITMO PREDICTIVO DE EMPAREJAMIENTO ACTUALIZADO ---
+  // Ahora solo bloquea si intentan jugar en la misma jornada.
+  /*
   bool _canCompleteRound(int ignoreTeamA, int ignoreTeamB, {int releasingTeamA = 0, int releasingTeamB = 0}) {
-    List<int> allTeams = _teamsStatus.map((t) => int.parse(t['id'].toString())).toList();
+    // 1. Verificar regla estricta: ¿Alguien ya jugó en ESTA jornada?
+    bool aPlayedRound = false;
+    bool bPlayedRound = false;
 
-    List<int> teamsAlreadyPlayedThisRound = [];
     for (var t in _teamsStatus) {
-      if (int.parse(t['scheduled_this_round'].toString()) > 0) {
-        teamsAlreadyPlayedThisRound.add(int.parse(t['id'].toString()));
-      }
-    }
-
-    // Si estamos editando un partido, los equipos que formaban parte de ese partido 
-    // ahora están "libres" de nuevo y no debemos contarlos como "ya jugados".
-    teamsAlreadyPlayedThisRound.removeWhere((tId) => tId == releasingTeamA || tId == releasingTeamB);
-
-    List<int> freeTeams = allTeams.where((tId) => 
-      !teamsAlreadyPlayedThisRound.contains(tId) && 
-      tId != ignoreTeamA && 
-      tId != ignoreTeamB
-    ).toList();
-
-    if (freeTeams.length <= 1) return true;
-
-    if (freeTeams.length % 2 != 0) {
-        return true; 
-    }
-
-    for (int t1 in freeTeams) {
-      bool hasValidOpponent = false;
-      for (int t2 in freeTeams) {
-        if (t1 != t2) {
-          bool alreadyPlayedAgainst = _playedMatchups[t1]?.contains(t2) ?? false;
-          if (!alreadyPlayedAgainst) {
-            hasValidOpponent = true;
-            break; 
-          }
+      int tId = int.parse(t['id'].toString());
+      if (tId != releasingTeamA && tId != releasingTeamB) {
+        if (int.parse(t['scheduled_this_round'].toString()) > 0) {
+          if (tId == ignoreTeamA) aPlayedRound = true;
+          if (tId == ignoreTeamB) bPlayedRound = true;
         }
       }
-      if (!hasValidOpponent) {
-        return false;
-      }
     }
 
-    return true;
-  }
+    // SI alguno ya jugó en ESTA jornada, bloqueamos (retorna false)
+    if (aPlayedRound || bPlayedRound) return false;
 
+    // Si pasaron la regla de jornada, permitimos guardar (aunque haya advertencia visual de que ya se enfrentaron en el torneo)
+    return true; 
+  }
+*/
   void _addNewRound() {
     setState(() {
       int newRound =
@@ -343,7 +321,7 @@ Future<void> _loadCreatedMatchesLocally() async {
   Future<void> _showTournamentRulesDialog() async {
     final rules = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (ctx) => const TournamentRulesDialog(showVueltas: false),
+      builder: (ctx) => const TournamentRulesDialog(showVueltas: true), 
     );
 
     if (rules != null && mounted) {
@@ -435,17 +413,16 @@ Future<void> _loadCreatedMatchesLocally() async {
                     ),
                     const SizedBox(height: 30),
                     
-                    // --- MENSAJE DE ADVERTENCIA PREDICTIVA ---
-                    if (selectedTeamA != null && selectedTeamB != null && selectedTeamA != selectedTeamB)
-                      if (!_canCompleteRound(selectedTeamA!, selectedTeamB!))
-                        const Padding(
-                          padding: EdgeInsets.only(bottom: 12.0),
-                          child: Text(
-                            "⚠️ Si guardas este partido, los equipos que sobran en esta jornada no podrán jugar porque ya se enfrentaron antes.",
-                            style: TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.bold),
-                            textAlign: TextAlign.center,
-                          ),
+                    // --- MENSAJE DE ADVERTENCIA (Solo visual) ---
+                    if (selectedTeamA != null && selectedTeamB != null && (_playedMatchups[selectedTeamA]?.contains(selectedTeamB) ?? false))
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 12.0),
+                        child: Text(
+                          "⚠️ Cuidado: Estos equipos ya se enfrentaron anteriormente en este torneo.",
+                          style: TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
                         ),
+                      ),
 
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -461,8 +438,8 @@ Future<void> _loadCreatedMatchesLocally() async {
                             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
-                          // Bloquear el botón si la advertencia es visible
-                          onPressed: (selectedTeamA != null && selectedTeamB != null && selectedTeamA != selectedTeamB && _canCompleteRound(selectedTeamA!, selectedTeamB!))
+                          // SIEMPRE habilitado mientras haya 2 equipos distintos
+                          onPressed: (selectedTeamA != null && selectedTeamB != null && selectedTeamA != selectedTeamB)
                               ? () async {
                                   Navigator.pop(ctx);
                                   await _saveManualMatch(selectedTeamA!, selectedTeamB!);
@@ -541,18 +518,16 @@ Future<void> _loadCreatedMatchesLocally() async {
                     ),
                     const SizedBox(height: 30),
 
-                    // --- MENSAJE DE ADVERTENCIA PREDICTIVA PARA EDICIÓN ---
-                    // Al editar, le decimos al algoritmo que "libere" temporalmente a los dos equipos que estaban originalmente en el partido
-                    if (selectedTeamA != null && selectedTeamB != null && selectedTeamA != selectedTeamB)
-                      if (!_canCompleteRound(selectedTeamA!, selectedTeamB!, releasingTeamA: originalA, releasingTeamB: originalB))
-                        const Padding(
-                          padding: EdgeInsets.only(bottom: 12.0),
-                          child: Text(
-                            "⚠️ Si guardas este partido, los equipos que sobran en esta jornada no podrán jugar porque ya se enfrentaron antes.",
-                            style: TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.bold),
-                            textAlign: TextAlign.center,
-                          ),
+                    // --- MENSAJE DE ADVERTENCIA (Solo visual) ---
+                    if (selectedTeamA != null && selectedTeamB != null && (_playedMatchups[selectedTeamA]?.contains(selectedTeamB) ?? false))
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 12.0),
+                        child: Text(
+                          "⚠️ Cuidado: Estos equipos ya se enfrentaron anteriormente en este torneo.",
+                          style: TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
                         ),
+                      ),
 
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -568,8 +543,8 @@ Future<void> _loadCreatedMatchesLocally() async {
                             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
-                          // Bloquear el botón si la advertencia es visible
-                          onPressed: (selectedTeamA != null && selectedTeamB != null && selectedTeamA != selectedTeamB && _canCompleteRound(selectedTeamA!, selectedTeamB!, releasingTeamA: originalA, releasingTeamB: originalB))
+                          // SIEMPRE habilitado mientras haya 2 equipos distintos
+                          onPressed: (selectedTeamA != null && selectedTeamB != null && selectedTeamA != selectedTeamB)
                               ? () async {
                                   Navigator.pop(ctx);
                                   await _updateManualMatch(fixtureId, selectedTeamA!, selectedTeamB!);
@@ -642,7 +617,9 @@ Future<void> _loadCreatedMatchesLocally() async {
                 bool alreadyPlayedAgainst = otherSelectedValue != null && 
                     (_playedMatchups[otherSelectedValue]?.contains(teamId) ?? false);
 
-                bool isDisabled = (!isOriginalTeam && alreadyPlayedRound) || isSameTeam || (!isOriginalTeam && alreadyPlayedAgainst);
+                // Solo deshabilitar si es el mismo equipo o si ya jugó en ESTA jornada. 
+                // "alreadyPlayedAgainst" (ya jugaron en el torneo) será solo visual (rojo) pero seleccionable.
+                bool isDisabled = isSameTeam;
 
                 // Definir colores y textos según el estado
                 Color dotColor = Colors.greenAccent;

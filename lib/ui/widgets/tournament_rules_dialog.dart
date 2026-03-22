@@ -11,7 +11,8 @@ class TournamentRulesDialog extends StatefulWidget {
 }
 
 class _TournamentRulesDialogState extends State<TournamentRulesDialog> {
-  int selectedVueltas = 1;
+  // Inicializamos los controladores de texto
+  final txtVueltas = TextEditingController(text: "1");
   final txtWin = TextEditingController(text: "2");
   final txtLoss = TextEditingController(text: "1");
   final txtDraw = TextEditingController(text: "1");
@@ -61,8 +62,11 @@ class _TournamentRulesDialogState extends State<TournamentRulesDialog> {
               if (widget.showVueltas) ...[
                 Container(
                   padding: const EdgeInsets.all(12),
-                  // ignore: deprecated_member_use
-                  decoration: BoxDecoration(color: Colors.redAccent.withOpacity(0.1), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.redAccent.withOpacity(0.3))),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withOpacity(0.1), 
+                    borderRadius: BorderRadius.circular(10), 
+                    border: Border.all(color: Colors.redAccent.withOpacity(0.3))
+                  ),
                   child: const Row(
                     children: [
                       Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 24),
@@ -72,25 +76,9 @@ class _TournamentRulesDialogState extends State<TournamentRulesDialog> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                DropdownButtonFormField<int>(
-                  dropdownColor: const Color(0xFF2C3444),
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                  decoration: InputDecoration(
-                    labelText: "Formato del Torneo", 
-                    labelStyle: const TextStyle(color: Colors.white54, fontWeight: FontWeight.normal),
-                    filled: true,
-                    fillColor: Colors.black26,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)
-                  ),
-                  initialValue: selectedVueltas,
-                  items: const [
-                    DropdownMenuItem(value: 1, child: Text("Una Vuelta (Ida)")),
-                    DropdownMenuItem(value: 2, child: Text("Dos Vueltas (Ida y Vuelta)")),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) setState(() => selectedVueltas = val);
-                  },
-                ),
+                const Text("VUELTAS / ENFRENTAMIENTOS", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orangeAccent, fontSize: 12, letterSpacing: 1.2)),
+                const SizedBox(height: 10),
+                _buildNumberField("Cantidad de vueltas (Ej: 1, 2, 4)", txtVueltas),
                 const SizedBox(height: 24),
               ] else ...[
                 const Text("Define cómo se sumarán los puntos en la tabla de posiciones.", style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.3)),
@@ -124,7 +112,10 @@ class _TournamentRulesDialogState extends State<TournamentRulesDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context, null), child: const Text("Cancelar", style: TextStyle(color: Colors.grey))),
+        TextButton(
+          onPressed: () => Navigator.pop(context, null), 
+          child: const Text("Cancelar", style: TextStyle(color: Colors.grey))
+        ),
         FilledButton.icon(
           style: FilledButton.styleFrom(
             backgroundColor: Colors.orange.shade600,
@@ -135,9 +126,9 @@ class _TournamentRulesDialogState extends State<TournamentRulesDialog> {
           label: Text(widget.showVueltas ? "Generar" : "Guardar", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
           onPressed: () {
             if (formKey.currentState!.validate()) {
-              // Retornamos un mapa con todos los datos capturados
+              // Retornamos un mapa con TODOS los datos capturados y parseados a enteros
               Navigator.pop(context, {
-                'vueltas': selectedVueltas,
+                'vueltas': int.parse(txtVueltas.text),
                 'win': int.parse(txtWin.text),
                 'loss': int.parse(txtLoss.text),
                 'draw': int.parse(txtDraw.text),
