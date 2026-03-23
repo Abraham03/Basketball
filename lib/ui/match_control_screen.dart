@@ -32,6 +32,7 @@ class MatchControlScreen extends ConsumerStatefulWidget {
   final String scorekeeper;
   final String tournamentName;
   final String categoryName;
+  final String tournamentLogoUrl;
   final String venueName;
   final List<Player> fullRosterA;
   final List<Player> fullRosterB;
@@ -58,6 +59,7 @@ class MatchControlScreen extends ConsumerStatefulWidget {
     required this.scorekeeper,
     required this.tournamentName,
     required this.categoryName,
+    required this.tournamentLogoUrl,
     required this.venueName,
     required this.fullRosterA,
     required this.fullRosterB,
@@ -806,7 +808,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     showDialog(context: context, barrierDismissible: false, builder: (c) => const Center(child: CircularProgressIndicator(color: Colors.orangeAccent)));
     try {
       final api = ref.read(apiServiceProvider); final controller = ref.read(matchGameProvider.notifier); final dbBase = ref.read(databaseProvider);
-      final pdfBytes = await PdfGenerator.generateBytes(state, widget.teamAName, widget.teamBName, tournamentName: widget.tournamentName, categoryName: widget.categoryName, venueName: widget.venueName, mainReferee: widget.mainReferee, auxReferee: widget.auxReferee, scorekeeper: widget.scorekeeper, coachA: widget.coachA, coachB: widget.coachB, captainAId: widget.captainAId, captainBId: widget.captainBId, protestSignature: signature, matchDate: widget.matchDate ?? DateTime.now());
+      final pdfBytes = await PdfGenerator.generateBytes(state, widget.teamAName, widget.teamBName, tournamentName: widget.tournamentName, categoryName: widget.categoryName,tournamentLogoUrl: widget.tournamentLogoUrl, venueName: widget.venueName, mainReferee: widget.mainReferee, auxReferee: widget.auxReferee, scorekeeper: widget.scorekeeper, coachA: widget.coachA, coachB: widget.coachB, captainAId: widget.captainAId, captainBId: widget.captainBId, protestSignature: signature, matchDate: widget.matchDate ?? DateTime.now());
       bool synced = await controller.finalizeAndSync(api, signature, pdfBytes, widget.teamAName, widget.teamBName);
 
       await (dbBase.update(dbBase.matches)..where((tbl) => tbl.id.equals(state.matchId))).write(const db.MatchesCompanion(status: drift.Value('FINISHED')));
@@ -828,7 +830,7 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
   }
   
   void _goToPdfPreview(BuildContext context, MatchState state, Uint8List? signature) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => PdfPreviewScreen(state: state, teamAName: widget.teamAName, teamBName: widget.teamBName, tournamentName: widget.tournamentName, categoryName: widget.categoryName, venueName: widget.venueName, mainReferee: widget.mainReferee, auxReferee: widget.auxReferee, scorekeeper: widget.scorekeeper, coachA: widget.coachA, coachB: widget.coachB, captainAId: widget.captainAId, captainBId: widget.captainBId, matchDate: widget.matchDate, protestSignature: signature)));
+      Navigator.push(context, MaterialPageRoute(builder: (_) => PdfPreviewScreen(state: state, teamAName: widget.teamAName, teamBName: widget.teamBName, tournamentName: widget.tournamentName, categoryName: widget.categoryName,tournamentLogoUrl: widget.tournamentLogoUrl, venueName: widget.venueName, mainReferee: widget.mainReferee, auxReferee: widget.auxReferee, scorekeeper: widget.scorekeeper, coachA: widget.coachA, coachB: widget.coachB, captainAId: widget.captainAId, captainBId: widget.captainBId, matchDate: widget.matchDate, protestSignature: signature)));
   }
   
   void _showFinalOptionsDialog(BuildContext context, MatchState currentState) {

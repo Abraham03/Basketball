@@ -3413,6 +3413,17 @@ class $TournamentsTable extends Tournaments
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _logoUrlMeta = const VerificationMeta(
+    'logoUrl',
+  );
+  @override
+  late final GeneratedColumn<String> logoUrl = GeneratedColumn<String>(
+    'logo_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
   late final GeneratedColumn<String> status = GeneratedColumn<String>(
@@ -3453,6 +3464,7 @@ class $TournamentsTable extends Tournaments
     isSynced,
     name,
     category,
+    logoUrl,
     status,
     startDate,
     endDate,
@@ -3502,6 +3514,12 @@ class $TournamentsTable extends Tournaments
       context.handle(
         _categoryMeta,
         category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    }
+    if (data.containsKey('logo_url')) {
+      context.handle(
+        _logoUrlMeta,
+        logoUrl.isAcceptableOrUnknown(data['logo_url']!, _logoUrlMeta),
       );
     }
     if (data.containsKey('status')) {
@@ -3555,6 +3573,10 @@ class $TournamentsTable extends Tournaments
         DriftSqlType.string,
         data['${effectivePrefix}category'],
       ),
+      logoUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}logo_url'],
+      ),
       status: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}status'],
@@ -3583,6 +3605,7 @@ class Tournament extends DataClass implements Insertable<Tournament> {
   final bool isSynced;
   final String name;
   final String? category;
+  final String? logoUrl;
   final String status;
   final DateTime? startDate;
   final DateTime? endDate;
@@ -3593,6 +3616,7 @@ class Tournament extends DataClass implements Insertable<Tournament> {
     required this.isSynced,
     required this.name,
     this.category,
+    this.logoUrl,
     required this.status,
     this.startDate,
     this.endDate,
@@ -3609,6 +3633,9 @@ class Tournament extends DataClass implements Insertable<Tournament> {
     map['name'] = Variable<String>(name);
     if (!nullToAbsent || category != null) {
       map['category'] = Variable<String>(category);
+    }
+    if (!nullToAbsent || logoUrl != null) {
+      map['logo_url'] = Variable<String>(logoUrl);
     }
     map['status'] = Variable<String>(status);
     if (!nullToAbsent || startDate != null) {
@@ -3632,6 +3659,9 @@ class Tournament extends DataClass implements Insertable<Tournament> {
       category: category == null && nullToAbsent
           ? const Value.absent()
           : Value(category),
+      logoUrl: logoUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(logoUrl),
       status: Value(status),
       startDate: startDate == null && nullToAbsent
           ? const Value.absent()
@@ -3654,6 +3684,7 @@ class Tournament extends DataClass implements Insertable<Tournament> {
       isSynced: serializer.fromJson<bool>(json['isSynced']),
       name: serializer.fromJson<String>(json['name']),
       category: serializer.fromJson<String?>(json['category']),
+      logoUrl: serializer.fromJson<String?>(json['logoUrl']),
       status: serializer.fromJson<String>(json['status']),
       startDate: serializer.fromJson<DateTime?>(json['startDate']),
       endDate: serializer.fromJson<DateTime?>(json['endDate']),
@@ -3669,6 +3700,7 @@ class Tournament extends DataClass implements Insertable<Tournament> {
       'isSynced': serializer.toJson<bool>(isSynced),
       'name': serializer.toJson<String>(name),
       'category': serializer.toJson<String?>(category),
+      'logoUrl': serializer.toJson<String?>(logoUrl),
       'status': serializer.toJson<String>(status),
       'startDate': serializer.toJson<DateTime?>(startDate),
       'endDate': serializer.toJson<DateTime?>(endDate),
@@ -3682,6 +3714,7 @@ class Tournament extends DataClass implements Insertable<Tournament> {
     bool? isSynced,
     String? name,
     Value<String?> category = const Value.absent(),
+    Value<String?> logoUrl = const Value.absent(),
     String? status,
     Value<DateTime?> startDate = const Value.absent(),
     Value<DateTime?> endDate = const Value.absent(),
@@ -3692,6 +3725,7 @@ class Tournament extends DataClass implements Insertable<Tournament> {
     isSynced: isSynced ?? this.isSynced,
     name: name ?? this.name,
     category: category.present ? category.value : this.category,
+    logoUrl: logoUrl.present ? logoUrl.value : this.logoUrl,
     status: status ?? this.status,
     startDate: startDate.present ? startDate.value : this.startDate,
     endDate: endDate.present ? endDate.value : this.endDate,
@@ -3704,6 +3738,7 @@ class Tournament extends DataClass implements Insertable<Tournament> {
       isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
       name: data.name.present ? data.name.value : this.name,
       category: data.category.present ? data.category.value : this.category,
+      logoUrl: data.logoUrl.present ? data.logoUrl.value : this.logoUrl,
       status: data.status.present ? data.status.value : this.status,
       startDate: data.startDate.present ? data.startDate.value : this.startDate,
       endDate: data.endDate.present ? data.endDate.value : this.endDate,
@@ -3719,6 +3754,7 @@ class Tournament extends DataClass implements Insertable<Tournament> {
           ..write('isSynced: $isSynced, ')
           ..write('name: $name, ')
           ..write('category: $category, ')
+          ..write('logoUrl: $logoUrl, ')
           ..write('status: $status, ')
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate')
@@ -3734,6 +3770,7 @@ class Tournament extends DataClass implements Insertable<Tournament> {
     isSynced,
     name,
     category,
+    logoUrl,
     status,
     startDate,
     endDate,
@@ -3748,6 +3785,7 @@ class Tournament extends DataClass implements Insertable<Tournament> {
           other.isSynced == this.isSynced &&
           other.name == this.name &&
           other.category == this.category &&
+          other.logoUrl == this.logoUrl &&
           other.status == this.status &&
           other.startDate == this.startDate &&
           other.endDate == this.endDate);
@@ -3760,6 +3798,7 @@ class TournamentsCompanion extends UpdateCompanion<Tournament> {
   final Value<bool> isSynced;
   final Value<String> name;
   final Value<String?> category;
+  final Value<String?> logoUrl;
   final Value<String> status;
   final Value<DateTime?> startDate;
   final Value<DateTime?> endDate;
@@ -3771,6 +3810,7 @@ class TournamentsCompanion extends UpdateCompanion<Tournament> {
     this.isSynced = const Value.absent(),
     this.name = const Value.absent(),
     this.category = const Value.absent(),
+    this.logoUrl = const Value.absent(),
     this.status = const Value.absent(),
     this.startDate = const Value.absent(),
     this.endDate = const Value.absent(),
@@ -3783,6 +3823,7 @@ class TournamentsCompanion extends UpdateCompanion<Tournament> {
     this.isSynced = const Value.absent(),
     required String name,
     this.category = const Value.absent(),
+    this.logoUrl = const Value.absent(),
     this.status = const Value.absent(),
     this.startDate = const Value.absent(),
     this.endDate = const Value.absent(),
@@ -3795,6 +3836,7 @@ class TournamentsCompanion extends UpdateCompanion<Tournament> {
     Expression<bool>? isSynced,
     Expression<String>? name,
     Expression<String>? category,
+    Expression<String>? logoUrl,
     Expression<String>? status,
     Expression<DateTime>? startDate,
     Expression<DateTime>? endDate,
@@ -3807,6 +3849,7 @@ class TournamentsCompanion extends UpdateCompanion<Tournament> {
       if (isSynced != null) 'is_synced': isSynced,
       if (name != null) 'name': name,
       if (category != null) 'category': category,
+      if (logoUrl != null) 'logo_url': logoUrl,
       if (status != null) 'status': status,
       if (startDate != null) 'start_date': startDate,
       if (endDate != null) 'end_date': endDate,
@@ -3821,6 +3864,7 @@ class TournamentsCompanion extends UpdateCompanion<Tournament> {
     Value<bool>? isSynced,
     Value<String>? name,
     Value<String?>? category,
+    Value<String?>? logoUrl,
     Value<String>? status,
     Value<DateTime?>? startDate,
     Value<DateTime?>? endDate,
@@ -3833,6 +3877,7 @@ class TournamentsCompanion extends UpdateCompanion<Tournament> {
       isSynced: isSynced ?? this.isSynced,
       name: name ?? this.name,
       category: category ?? this.category,
+      logoUrl: logoUrl ?? this.logoUrl,
       status: status ?? this.status,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
@@ -3861,6 +3906,9 @@ class TournamentsCompanion extends UpdateCompanion<Tournament> {
     if (category.present) {
       map['category'] = Variable<String>(category.value);
     }
+    if (logoUrl.present) {
+      map['logo_url'] = Variable<String>(logoUrl.value);
+    }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
@@ -3885,6 +3933,7 @@ class TournamentsCompanion extends UpdateCompanion<Tournament> {
           ..write('isSynced: $isSynced, ')
           ..write('name: $name, ')
           ..write('category: $category, ')
+          ..write('logoUrl: $logoUrl, ')
           ..write('status: $status, ')
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
@@ -8806,6 +8855,7 @@ typedef $$TournamentsTableCreateCompanionBuilder =
       Value<bool> isSynced,
       required String name,
       Value<String?> category,
+      Value<String?> logoUrl,
       Value<String> status,
       Value<DateTime?> startDate,
       Value<DateTime?> endDate,
@@ -8819,6 +8869,7 @@ typedef $$TournamentsTableUpdateCompanionBuilder =
       Value<bool> isSynced,
       Value<String> name,
       Value<String?> category,
+      Value<String?> logoUrl,
       Value<String> status,
       Value<DateTime?> startDate,
       Value<DateTime?> endDate,
@@ -8911,6 +8962,11 @@ class $$TournamentsTableFilterComposer
 
   ColumnFilters<String> get category => $composableBuilder(
     column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get logoUrl => $composableBuilder(
+    column: $table.logoUrl,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9019,6 +9075,11 @@ class $$TournamentsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get logoUrl => $composableBuilder(
+    column: $table.logoUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get status => $composableBuilder(
     column: $table.status,
     builder: (column) => ColumnOrderings(column),
@@ -9061,6 +9122,9 @@ class $$TournamentsTableAnnotationComposer
 
   GeneratedColumn<String> get category =>
       $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<String> get logoUrl =>
+      $composableBuilder(column: $table.logoUrl, builder: (column) => column);
 
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
@@ -9156,6 +9220,7 @@ class $$TournamentsTableTableManager
                 Value<bool> isSynced = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String?> category = const Value.absent(),
+                Value<String?> logoUrl = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<DateTime?> startDate = const Value.absent(),
                 Value<DateTime?> endDate = const Value.absent(),
@@ -9167,6 +9232,7 @@ class $$TournamentsTableTableManager
                 isSynced: isSynced,
                 name: name,
                 category: category,
+                logoUrl: logoUrl,
                 status: status,
                 startDate: startDate,
                 endDate: endDate,
@@ -9180,6 +9246,7 @@ class $$TournamentsTableTableManager
                 Value<bool> isSynced = const Value.absent(),
                 required String name,
                 Value<String?> category = const Value.absent(),
+                Value<String?> logoUrl = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<DateTime?> startDate = const Value.absent(),
                 Value<DateTime?> endDate = const Value.absent(),
@@ -9191,6 +9258,7 @@ class $$TournamentsTableTableManager
                 isSynced: isSynced,
                 name: name,
                 category: category,
+                logoUrl: logoUrl,
                 status: status,
                 startDate: startDate,
                 endDate: endDate,

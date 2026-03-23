@@ -48,8 +48,10 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
     tournamentsListAsync.when(
       data: (list) {
         try {
-          final t = list.firstWhere((element) => element.id == widget.tournamentId);
+          // Aseguramos la comparación de IDs
+          final t = list.firstWhere((element) => element.id.toString() == widget.tournamentId.toString());
           currentTournamentName = t.name;
+          selectedTournament = t as model.Tournament?; // <--- ¡AQUÍ ESTABA EL DETALLE VISUAL!
         } catch (_) {
           currentTournamentName = "Torneo Desconocido";
         }
@@ -591,6 +593,25 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
       );
       return;
     }
+
+    // --- MAGIA: BUSCAMOS EL TORNEO DIRECTO EN LA BASE DE DATOS DE DRIFT ---
+    final driftTournaments = ref.read(tournamentsListProvider).value ?? [];
+    final currentTourn = driftTournaments.where((t) => t.id.toString() == widget.tournamentId).firstOrNull;
+
+    String resolvedTournLogo = "";
+    String finalCategory = "LIBRE";
+
+    if (currentTourn != null) {
+      finalCategory = currentTourn.category ?? 'LIBRE';
+      
+      // Aquí obtenemos el logo fresco directamente de la tabla
+      if (currentTourn.logoUrl != null && currentTourn.logoUrl!.isNotEmpty) {
+        resolvedTournLogo = currentTourn.logoUrl!.replaceAll('../', 'https://basket.techsolutions.management/');
+      }
+    }
+    
+    // Imprimimos para confirmar que ahora sí tiene datos
+    print("NUEVA URL DEL LOGO: $resolvedTournLogo");
     
     String matchIdToUse;
     if (widget.preSelectedFixture != null && widget.preSelectedFixture!.matchId != null && widget.preSelectedFixture!.matchId!.isNotEmpty) {
@@ -622,7 +643,8 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
           auxReferee: ref2Name,
           scorekeeper: scorekName,
           tournamentName: tournamentName,
-          categoryName: selectedTournament?.category ?? 'LIBRE',
+          tournamentLogoUrl: resolvedTournLogo, // <--- ENVIAMOS EL LOGO REAL
+          categoryName: finalCategory,          // <--- ENVIAMOS LA CATEGORÍA REAL
           venueName: selectedVenue!.name,
         ),
       ),

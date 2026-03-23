@@ -6,6 +6,15 @@ import '../../logic/match_game_controller.dart';
 import 'dart:typed_data';
 
 class PdfCoords {
+
+// Coordenada para el logo (A la izquierda del nombre del torneo)
+  static const double tournamentLogoX = 10.0; 
+  static const double tournamentLogoY = 8.0;
+
+  // Coordenada para el logo (A la derecha del nombre del torneo)
+  static const double derechatournamentLogoX = 550.0; 
+  static const double derechatournamentLogoY = 8.0;
+
   static const double headerY = 90.0;
   static const double competitionX = 85.0;
   static const double categoryX = 390.0;
@@ -143,6 +152,7 @@ class PdfGenerator {
     String teamBName, {
     String tournamentName = "",
     String categoryName = "",
+    String tournamentLogoUrl = "",
     String venueName = "",
     String mainReferee = "",
     String auxReferee = "",
@@ -160,6 +170,7 @@ class PdfGenerator {
       teamBName,
       tournamentName,
       categoryName,
+      tournamentLogoUrl,
       venueName,
       mainReferee,
       auxReferee,
@@ -180,6 +191,7 @@ class PdfGenerator {
     String teamBName, {
     String tournamentName = "",
     String categoryName = "",
+    String tournamentLogoUrl = "",
     String venueName = "",
     String mainReferee = "",
     String auxReferee = "",
@@ -197,6 +209,7 @@ class PdfGenerator {
       teamBName,
       tournamentName,
       categoryName,
+      tournamentLogoUrl,
       venueName,
       mainReferee,
       auxReferee,
@@ -221,6 +234,7 @@ class PdfGenerator {
     String teamBName, {
     String tournamentName = "",
     String categoryName = "",
+    String tournamentLogoUrl = "",
     String venueName = "",
     String mainReferee = "",
     String auxReferee = "",
@@ -238,6 +252,7 @@ class PdfGenerator {
       teamBName,
       tournamentName,
       categoryName,
+      tournamentLogoUrl,
       venueName,
       mainReferee,
       auxReferee,
@@ -259,6 +274,7 @@ class PdfGenerator {
     String teamBName,
     String tournamentName,
     String categoryName,
+    String tournamentLogoUrl,
     String venueName,
     String mainReferee,
     String auxReferee,
@@ -288,6 +304,23 @@ class PdfGenerator {
         ? "${matchDate.hour.toString().padLeft(2, '0')}:${matchDate.minute.toString().padLeft(2, '0')}"
         : "";
 
+    // --- MAGIA DEL LOGO: INTENTAMOS DESCARGARLO ---
+    pw.ImageProvider? tournLogoProvider;
+    if (tournamentLogoUrl.isNotEmpty) {
+      try {
+        // 1. Formateamos la URL para que sea un link web válido
+        String finalUrl = tournamentLogoUrl;
+        if (finalUrl.startsWith('../')) {
+          finalUrl = finalUrl.replaceAll('../', 'https://basket.techsolutions.management/');
+        }
+
+        // 2. Descargamos la imagen usando la URL completa
+        tournLogoProvider = await networkImage(finalUrl);
+      } catch (e) {
+        // Si falla la descarga, no pasa nada, se imprime el acta sin logo
+      }
+    }    
+
     try {
       final imageBytes = await rootBundle.load(
         'assets/images/hoja_anotacion.png',
@@ -302,6 +335,30 @@ class PdfGenerator {
             return pw.Stack(
               children: [
                 pw.Positioned.fill(child: pw.Image(image, fit: pw.BoxFit.fill)),
+
+                if (tournLogoProvider != null)
+                  pw.Positioned(
+                    left: PdfCoords.tournamentLogoX, // Recuerda haber creado esto en PdfCoords
+                    top: PdfCoords.tournamentLogoY,  // Recuerda haber creado esto en PdfCoords
+                    child: pw.Image(
+                      tournLogoProvider,
+                      width: 53, 
+                      height: 53,
+                    ),
+                  ),
+
+
+                  // 2do LOGO (ABAJO / FOOTER)
+                  pw.Positioned(
+                    left: PdfCoords.derechatournamentLogoX,
+                    top: PdfCoords.derechatournamentLogoY,  
+                    child: pw.Image(
+                      tournLogoProvider!, 
+                      width: 53, // <--- TAMAÑO DEL LOGO INFERIOR
+                      height: 53, // <--- TAMAÑO DEL LOGO INFERIOR
+                      fit: pw.BoxFit.contain,
+                    ),
+                  ),
 
                 _drawText(
                   tournamentName,

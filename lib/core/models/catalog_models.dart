@@ -5,14 +5,16 @@ class Tournament {
   final int id;
   final String name;
   final String category;
+  final String? logoUrl;
 
-  Tournament({required this.id, required this.name, required this.category});
+  Tournament({required this.id, required this.name, required this.category,this.logoUrl});
 
   factory Tournament.fromJson(Map<String, dynamic> json) {
     return Tournament(
       id: int.parse(json['id'].toString()),
       name: json['name'],
       category: json['category'] ?? '',
+      logoUrl: json['logo_url'],
     );
   }
 
