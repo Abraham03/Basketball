@@ -622,6 +622,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
           auxReferee: ref2Name,
           scorekeeper: scorekName,
           tournamentName: tournamentName,
+          categoryName: selectedTournament?.category ?? 'LIBRE',
           venueName: selectedVenue!.name,
         ),
       ),

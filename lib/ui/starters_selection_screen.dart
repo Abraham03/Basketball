@@ -25,6 +25,7 @@ class StartersSelectionScreen extends ConsumerStatefulWidget {
   final String auxReferee;
   final String scorekeeper;
   final String tournamentName;
+  final String categoryName;
   final String venueName;
 
   const StartersSelectionScreen({
@@ -41,6 +42,7 @@ class StartersSelectionScreen extends ConsumerStatefulWidget {
     required this.auxReferee,
     required this.scorekeeper,
     required this.tournamentName,
+    required this.categoryName,
     required this.venueName,
   });
 
@@ -534,6 +536,7 @@ class _StartersSelectionScreenState
           auxReferee: widget.auxReferee,
           scorekeeper: widget.scorekeeper,
           tournamentName: widget.tournamentName,
+          categoryName: widget.categoryName,
           venueName: widget.venueName,
           fullRosterA: widget.rosterA,
           fullRosterB: widget.rosterB,

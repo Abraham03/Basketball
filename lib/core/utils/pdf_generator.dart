@@ -7,7 +7,8 @@ import 'dart:typed_data';
 
 class PdfCoords {
   static const double headerY = 90.0;
-  static const double competitionX = 390.0;
+  static const double competitionX = 85.0;
+  static const double categoryX = 390.0;
   static const double dateX = 188.0;
   static const double timeX = 270.0;
   static const double placeX = 180.0;
@@ -141,6 +142,7 @@ class PdfGenerator {
     String teamAName,
     String teamBName, {
     String tournamentName = "",
+    String categoryName = "",
     String venueName = "",
     String mainReferee = "",
     String auxReferee = "",
@@ -157,6 +159,7 @@ class PdfGenerator {
       teamAName,
       teamBName,
       tournamentName,
+      categoryName,
       venueName,
       mainReferee,
       auxReferee,
@@ -176,6 +179,7 @@ class PdfGenerator {
     String teamAName,
     String teamBName, {
     String tournamentName = "",
+    String categoryName = "",
     String venueName = "",
     String mainReferee = "",
     String auxReferee = "",
@@ -192,6 +196,7 @@ class PdfGenerator {
       teamAName,
       teamBName,
       tournamentName,
+      categoryName,
       venueName,
       mainReferee,
       auxReferee,
@@ -215,6 +220,7 @@ class PdfGenerator {
     String teamAName,
     String teamBName, {
     String tournamentName = "",
+    String categoryName = "",
     String venueName = "",
     String mainReferee = "",
     String auxReferee = "",
@@ -231,6 +237,7 @@ class PdfGenerator {
       teamAName,
       teamBName,
       tournamentName,
+      categoryName,
       venueName,
       mainReferee,
       auxReferee,
@@ -251,6 +258,7 @@ class PdfGenerator {
     String teamAName,
     String teamBName,
     String tournamentName,
+    String categoryName,
     String venueName,
     String mainReferee,
     String auxReferee,
@@ -298,6 +306,14 @@ class PdfGenerator {
                 _drawText(
                   tournamentName,
                   x: PdfCoords.competitionX,
+                  y: PdfCoords.headerY,
+                  fontSize: 9,
+                  color: PdfColors.blue900,
+                ),
+                // --- 2. CATEGORÍA / RAMA ---
+                _drawText(
+                  categoryName,
+                  x: PdfCoords.categoryX, // Ahora usa 390.0 (donde antes estaba competencia)
                   y: PdfCoords.headerY,
                   fontSize: 9,
                   color: PdfColors.blue900,
