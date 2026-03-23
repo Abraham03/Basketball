@@ -564,36 +564,67 @@ class PdfGenerator {
 
                 ..._drawTimeouts(state),
 
-                ..._buildRosterList(
-                  players: _getSortedRoster(
-                    state.teamAOnCourt,
-                    state.teamABench,
-                    state.playerStats,
+                // --- LÓGICA DE DEFAULT PARA EQUIPO A ---
+                if (state.forfeitStatus == 'TEAM_A' || state.forfeitStatus == 'BOTH') ...[
+                  ..._buildRosterList(
+                    players: const [], // Lista vacía para dibujar solo las rayas
+                    stats: state.playerStats,
+                    startXNum: PdfCoords.teamAColNumX,
+                    startXName: PdfCoords.teamAColNameX,
+                    startXCaptain: PdfCoords.teamAColCaptainX,
+                    startXFouls: PdfCoords.teamAColFoulsX,
+                    startY: PdfCoords.teamAListStartY,
+                    entryX: PdfCoords.teamAColEntryX,
+                    captainId: captainAId,
                   ),
-                  stats: state.playerStats,
-                  startXNum: PdfCoords.teamAColNumX,
-                  startXName: PdfCoords.teamAColNameX,
-                  startXCaptain: PdfCoords.teamAColCaptainX,
-                  startXFouls: PdfCoords.teamAColFoulsX,
-                  startY: PdfCoords.teamAListStartY,
-                  entryX: PdfCoords.teamAColEntryX,
-                  captainId: captainAId,
-                ),
-                ..._buildRosterList(
-                  players: _getSortedRoster(
-                    state.teamBOnCourt,
-                    state.teamBBench,
-                    state.playerStats,
+                ] else ...[
+                  ..._buildRosterList(
+                    players: _getSortedRoster(
+                      state.teamAOnCourt,
+                      state.teamABench,
+                      state.playerStats,
+                    ),
+                    stats: state.playerStats,
+                    startXNum: PdfCoords.teamAColNumX,
+                    startXName: PdfCoords.teamAColNameX,
+                    startXCaptain: PdfCoords.teamAColCaptainX,
+                    startXFouls: PdfCoords.teamAColFoulsX,
+                    startY: PdfCoords.teamAListStartY,
+                    entryX: PdfCoords.teamAColEntryX,
+                    captainId: captainAId,
                   ),
-                  stats: state.playerStats,
-                  startXNum: PdfCoords.teamBColNumX,
-                  startXName: PdfCoords.teamBColNameX,
-                  startXCaptain: PdfCoords.teamBColCaptainX,
-                  startXFouls: PdfCoords.teamBColFoulsX,
-                  startY: PdfCoords.teamBListStartY,
-                  entryX: PdfCoords.teamBColEntryX,
-                  captainId: captainBId,
-                ),
+                ],
+
+                // --- LÓGICA DE DEFAULT PARA EQUIPO B ---
+                if (state.forfeitStatus == 'TEAM_B' || state.forfeitStatus == 'BOTH') ...[
+                  ..._buildRosterList(
+                    players: const [], // Lista vacía para dibujar solo las rayas
+                    stats: state.playerStats,
+                    startXNum: PdfCoords.teamBColNumX,
+                    startXName: PdfCoords.teamBColNameX,
+                    startXCaptain: PdfCoords.teamBColCaptainX,
+                    startXFouls: PdfCoords.teamBColFoulsX,
+                    startY: PdfCoords.teamBListStartY,
+                    entryX: PdfCoords.teamBColEntryX,
+                    captainId: captainBId,
+                  ),
+                ] else ...[
+                  ..._buildRosterList(
+                    players: _getSortedRoster(
+                      state.teamBOnCourt,
+                      state.teamBBench,
+                      state.playerStats,
+                    ),
+                    stats: state.playerStats,
+                    startXNum: PdfCoords.teamBColNumX,
+                    startXName: PdfCoords.teamBColNameX,
+                    startXCaptain: PdfCoords.teamBColCaptainX,
+                    startXFouls: PdfCoords.teamBColFoulsX,
+                    startY: PdfCoords.teamBListStartY,
+                    entryX: PdfCoords.teamBColEntryX,
+                    captainId: captainBId,
+                  ),
+                ],
 
                 _drawText(
                   "${state.scoreA}",
@@ -911,6 +942,7 @@ class PdfGenerator {
     required int count,
     required double startX,
     required double startY,
+    required PdfColor foulColor, // <--- Nuevo parámetro
   }) {
     List<pw.Widget> marks = [];
     int limit = 4;
@@ -924,7 +956,7 @@ class PdfGenerator {
             y: startY,
             fontSize: 10,
             isBold: true,
-            color: PdfColors.blue900,
+            color: foulColor, // <--- Aplicamos el color FIBA
           ),
         );
       } else {
@@ -970,11 +1002,18 @@ class PdfGenerator {
 
   static List<pw.Widget> _drawTeamFoulsSection(MatchState state) {
     List<pw.Widget> widgets = [];
+
+    // --- REGLA FIBA DE COLORES ---
+    const PdfColor colorQ1Q3 = PdfColors.red;
+    const PdfColor colorQ2Q4 = PdfColors.blue900;
+
+    // ----- EQUIPO A -----
     widgets.addAll(
       _drawFoulMarks(
         count: _countTeamFouls(state, 'A', 1),
         startX: PdfCoords.teamAFoulsX,
         startY: PdfCoords.teamAFoulsPeriod1Y,
+        foulColor: colorQ1Q3, // 1er Cuarto: Rojo
       ),
     );
     widgets.addAll(
@@ -982,6 +1021,7 @@ class PdfGenerator {
         count: _countTeamFouls(state, 'A', 2),
         startX: PdfCoords.teamAFoulsX + 80.0,
         startY: PdfCoords.teamAFoulsPeriod1Y,
+        foulColor: colorQ2Q4, // 2do Cuarto: Azul
       ),
     );
     widgets.addAll(
@@ -989,6 +1029,7 @@ class PdfGenerator {
         count: _countTeamFouls(state, 'A', 3),
         startX: PdfCoords.teamAFoulsX,
         startY: PdfCoords.teamAFoulsPeriod3Y,
+        foulColor: colorQ1Q3, // 3er Cuarto: Rojo
       ),
     );
     widgets.addAll(
@@ -996,13 +1037,17 @@ class PdfGenerator {
         count: _countTeamFouls(state, 'A', 4),
         startX: PdfCoords.teamAFoulsX + 80.0,
         startY: PdfCoords.teamAFoulsPeriod3Y,
+        foulColor: colorQ2Q4, // 4to Cuarto: Azul
       ),
     );
+
+    // ----- EQUIPO B -----
     widgets.addAll(
       _drawFoulMarks(
         count: _countTeamFouls(state, 'B', 1),
         startX: PdfCoords.teamBFoulsX,
         startY: PdfCoords.teamBFoulsPeriod1Y,
+        foulColor: colorQ1Q3, // 1er Cuarto: Rojo
       ),
     );
     widgets.addAll(
@@ -1010,6 +1055,7 @@ class PdfGenerator {
         count: _countTeamFouls(state, 'B', 2),
         startX: PdfCoords.teamBFoulsX + 80.0,
         startY: PdfCoords.teamBFoulsPeriod1Y,
+        foulColor: colorQ2Q4, // 2do Cuarto: Azul
       ),
     );
     widgets.addAll(
@@ -1017,6 +1063,7 @@ class PdfGenerator {
         count: _countTeamFouls(state, 'B', 3),
         startX: PdfCoords.teamBFoulsX,
         startY: PdfCoords.teamBFoulsPeriod3Y,
+        foulColor: colorQ1Q3, // 3er Cuarto: Rojo
       ),
     );
     widgets.addAll(
@@ -1024,6 +1071,7 @@ class PdfGenerator {
         count: _countTeamFouls(state, 'B', 4),
         startX: PdfCoords.teamBFoulsX + 80.0,
         startY: PdfCoords.teamBFoulsPeriod3Y,
+        foulColor: colorQ2Q4, // 4to Cuarto: Azul
       ),
     );
     return widgets;
