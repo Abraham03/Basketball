@@ -39,6 +39,7 @@ class PlayerStats {
   final int fouls;
   final bool isOnCourt;
   final bool isStarter;
+  final bool hasPlayed;
   final String playerNumber; 
   final List<String> foulDetails;
 
@@ -48,6 +49,7 @@ class PlayerStats {
     this.fouls = 0,
     this.isOnCourt = false,
     this.isStarter = false,
+    this.hasPlayed = false,
     this.playerNumber = "00", 
     this.foulDetails = const [],
   });
@@ -58,6 +60,7 @@ class PlayerStats {
     int? fouls,
     bool? isOnCourt,
     bool? isStarter,
+    bool? hasPlayed,
     String? playerNumber,
     List<String>? foulDetails,
   }) {
@@ -67,6 +70,7 @@ class PlayerStats {
       fouls: fouls ?? this.fouls,
       isOnCourt: isOnCourt ?? this.isOnCourt,
       isStarter: isStarter ?? this.isStarter,
+      hasPlayed: hasPlayed ?? this.hasPlayed,
       playerNumber: playerNumber ?? this.playerNumber,
       foulDetails: foulDetails ?? this.foulDetails,
     );
@@ -546,13 +550,13 @@ class MatchGameController extends StateNotifier<MatchState> {
 
     for (var player in rosterA) {
       final isStarter = startersA.contains(player.id);
-      initialStats[player.name] = PlayerStats(dbId: player.id, isOnCourt: isStarter, isStarter: isStarter, playerNumber: player.defaultNumber.toString());
+      initialStats[player.name] = PlayerStats(dbId: player.id, isOnCourt: isStarter, isStarter: isStarter,hasPlayed: isStarter, playerNumber: player.defaultNumber.toString());
       if (isStarter) { courtA.add(player.name); } else { benchA.add(player.name); }
     }
 
     for (var player in rosterB) {
       final isStarter = startersB.contains(player.id);
-      initialStats[player.name] = PlayerStats(dbId: player.id, isOnCourt: isStarter, isStarter: isStarter, playerNumber: player.defaultNumber.toString());
+      initialStats[player.name] = PlayerStats(dbId: player.id, isOnCourt: isStarter, isStarter: isStarter,hasPlayed: isStarter, playerNumber: player.defaultNumber.toString());
       if (isStarter) { courtB.add(player.name); } else { benchB.add(player.name); }
     }
 
@@ -678,7 +682,7 @@ class MatchGameController extends StateNotifier<MatchState> {
     _saveToHistory();
     final newStats = Map<String, PlayerStats>.from(state.playerStats);
     if (newStats.containsKey(playerOut)) newStats[playerOut] = newStats[playerOut]!.copyWith(isOnCourt: false);
-    if (newStats.containsKey(playerIn)) newStats[playerIn] = newStats[playerIn]!.copyWith(isOnCourt: true);
+    if (newStats.containsKey(playerIn)) newStats[playerIn] = newStats[playerIn]!.copyWith(isOnCourt: true, hasPlayed: true);
 
     if (teamId == 'A') {
       final newOnCourt = List<String>.from(state.teamAOnCourt)..remove(playerOut)..add(playerIn);

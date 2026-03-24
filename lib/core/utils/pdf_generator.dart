@@ -564,11 +564,12 @@ class PdfGenerator {
 
                 ..._drawTimeouts(state),
 
-                // --- LÓGICA DE DEFAULT PARA EQUIPO A ---
-                if (state.forfeitStatus == 'TEAM_A' || state.forfeitStatus == 'BOTH') ...[
+                // --- LÓGICA PARA EQUIPO A ---
+                if (state.forfeitStatus == 'TEAM_A' || state.forfeitStatus == 'TEAM_B' || state.forfeitStatus == 'BOTH') ...[
                   ..._buildRosterList(
-                    players: const [], // Lista vacía para dibujar solo las rayas
+                    players: const [], 
                     stats: state.playerStats,
+                    scoreLog: state.scoreLog,
                     startXNum: PdfCoords.teamAColNumX,
                     startXName: PdfCoords.teamAColNameX,
                     startXCaptain: PdfCoords.teamAColCaptainX,
@@ -579,12 +580,10 @@ class PdfGenerator {
                   ),
                 ] else ...[
                   ..._buildRosterList(
-                    players: _getSortedRoster(
-                      state.teamAOnCourt,
-                      state.teamABench,
-                      state.playerStats,
-                    ),
+                    // EXTRAEMOS DIRECTO DE LOS STATS PARA ASEGURAR QUE SE IMPRIMAN
+                    players: _getSortedRosterFromStats(state, 'A'),
                     stats: state.playerStats,
+                    scoreLog: state.scoreLog,
                     startXNum: PdfCoords.teamAColNumX,
                     startXName: PdfCoords.teamAColNameX,
                     startXCaptain: PdfCoords.teamAColCaptainX,
@@ -595,11 +594,12 @@ class PdfGenerator {
                   ),
                 ],
 
-                // --- LÓGICA DE DEFAULT PARA EQUIPO B ---
-                if (state.forfeitStatus == 'TEAM_B' || state.forfeitStatus == 'BOTH') ...[
+                // --- LÓGICA PARA EQUIPO B ---
+                if (state.forfeitStatus == 'TEAM_A' || state.forfeitStatus == 'TEAM_B' || state.forfeitStatus == 'BOTH') ...[
                   ..._buildRosterList(
-                    players: const [], // Lista vacía para dibujar solo las rayas
+                    players: const [], 
                     stats: state.playerStats,
+                    scoreLog: state.scoreLog,
                     startXNum: PdfCoords.teamBColNumX,
                     startXName: PdfCoords.teamBColNameX,
                     startXCaptain: PdfCoords.teamBColCaptainX,
@@ -610,12 +610,10 @@ class PdfGenerator {
                   ),
                 ] else ...[
                   ..._buildRosterList(
-                    players: _getSortedRoster(
-                      state.teamBOnCourt,
-                      state.teamBBench,
-                      state.playerStats,
-                    ),
+                     // EXTRAEMOS DIRECTO DE LOS STATS PARA ASEGURAR QUE SE IMPRIMAN
+                    players: _getSortedRosterFromStats(state, 'B'),
                     stats: state.playerStats,
+                    scoreLog: state.scoreLog,
                     startXNum: PdfCoords.teamBColNumX,
                     startXName: PdfCoords.teamBColNameX,
                     startXCaptain: PdfCoords.teamBColCaptainX,
@@ -625,6 +623,7 @@ class PdfGenerator {
                     captainId: captainBId,
                   ),
                 ],
+                
 
                 _drawText(
                   "${state.scoreA}",
@@ -850,6 +849,7 @@ class PdfGenerator {
   static List<pw.Widget> _buildRosterList({
     required List<String> players,
     required Map<String, PlayerStats> stats,
+    required List<ScoreEvent> scoreLog, 
     required double startXNum,
     required double startXName,
     required double startXCaptain,
@@ -864,24 +864,21 @@ class PdfGenerator {
     double currentY = startY - (11 * PdfCoords.rowHeight);
 
     for (var i = 0; i < limit; i++) {
+      // --- CASO 1: LA FILA TIENE JUGADOR ---
       if (i < players.length) {
         final playerName = players[i];
         final stat = stats[playerName] ?? const PlayerStats();
         final dorsal = stat.playerNumber.isNotEmpty ? stat.playerNumber : "";
 
-        // Dorsal en color azul
+        // Filtramos las faltas exactas de este jugador desde el historial
+        final playerFoulEvents = scoreLog.where((e) => e.playerId == playerName && e.points == 0).toList();
+
+        // Dorsal
         widgets.add(_drawText(dorsal, x: startXNum, y: currentY, fontSize: 10, color: PdfColors.blue900));
 
         if (captainId != null && stat.dbId == captainId) {
           widgets.add(
-            _drawText(
-              "C",
-              x: startXCaptain,
-              y: currentY,
-              fontSize: 9,
-              isBold: true,
-              color: PdfColors.blue900,
-            ),
+            _drawText("C", x: startXCaptain, y: currentY, fontSize: 9, isBold: true, color: PdfColors.blue900),
           );
         }
 
@@ -892,25 +889,44 @@ class PdfGenerator {
         displayName = playerName.length > 18
             ? "${playerName.substring(0, 16)}..."
             : playerName;
-        // Nombre en color azul
+            
+        // Nombre
         widgets.add(
           _drawText(displayName, x: startXName, y: currentY, fontSize: 10, color: PdfColors.blue900),
         );
 
+        // --- Marca de "Titular" o "Entró a cancha" (REGLA FIBA PERMANENTE) ---
+        bool hasPlayedEvents = stat.points > 0 || stat.fouls > 0 || stat.isOnCourt || stat.hasPlayed;
+        
         if (stat.isStarter) {
           widgets.add(_drawStarterMark(x: entryX, y: currentY));
-        } else if (stat.points > 0 || stat.fouls > 0 || stat.isOnCourt) {
-          // X de entrada a cancha en color azul
+        } else if (hasPlayedEvents) {
           widgets.add(_drawText("X", x: entryX, y: currentY, fontSize: 10, color: PdfColors.blue900));
         }
 
+        // --- DIBUJO DE LAS FALTAS DEL JUGADOR ---
         for (int f = 0; f < 5; f++) {
           double foulX = startXFouls + (f * PdfCoords.foulBoxWidth);
           if (f < stat.foulDetails.length) {
             String foulCode = stat.foulDetails[f];
-            PdfColor color = (f == 4 || foulCode == 'D')
-                ? PdfColors.red
-                : PdfColors.blue900;
+            
+            int foulPeriod = (f < playerFoulEvents.length) ? playerFoulEvents[f].period : 1;
+            
+            // NUEVA REGLA DE COLORES
+            PdfColor foulColor;
+            if (foulPeriod == 1) {
+              foulColor = PdfColors.red; // Primer Cuarto
+            } else if (foulPeriod == 2) {
+              foulColor = PdfColors.blue900; // Segundo Cuarto
+            } else if (foulPeriod == 3) {
+              foulColor = PdfColors.red; // Tercer Cuarto
+            } else {
+              foulColor = PdfColors.blue900; // Cuarto Cuarto y Extras
+            }
+
+            // Descalificantes siempre van en rojo
+            if (foulCode == 'D') foulColor = PdfColors.red;
+
             widgets.add(
               _drawText(
                 foulCode,
@@ -918,19 +934,63 @@ class PdfGenerator {
                 y: currentY,
                 fontSize: 8,
                 isBold: true,
-                color: color,
+                color: foulColor,
               ),
             );
-          } else {
-            widgets.add(_drawBlueHorizontalMark(foulX, currentY));
           }
         }
-      } else {
-        widgets.add(_drawHorizontalLine(startXName, currentY, 130));
-        widgets.add(_drawHorizontalLine(startXNum, currentY, 20));
+
+        // --- LÍNEA DIVISORIA AL FINAL DEL PRIMER BLOQUE (MITAD 1) ---
+        int firstHalfFouls = playerFoulEvents.where((e) => e.period <= 2).length;
+        if (firstHalfFouls > 5) firstHalfFouls = 5; 
+        
+        double boxHeight = 14.5; 
+        
+        if (firstHalfFouls == 0) {
+          // Si NO tuvo faltas, dibujamos solo la línea vertical al inicio
+          widgets.add(
+            pw.Positioned(
+              left: startXFouls - 1.0, 
+              top: currentY - 1.0,
+              child: pw.Container(
+                width: 2.0,
+                height: boxHeight,
+                color: PdfColors.blue900,
+              ),
+            ),
+          );
+        } else {
+          // Si SÍ tuvo faltas, la línea va desde la primera casilla hasta el final de la última falta cometida
+          double blockWidth = firstHalfFouls * PdfCoords.foulBoxWidth;
+          widgets.add(
+            pw.Positioned(
+              left: startXFouls - 1.0, 
+              top: currentY - 1.0,
+              child: pw.Container(
+                width: blockWidth + 1.0, // Anchura total desde el inicio hasta el fin de sus faltas
+                height: boxHeight,
+                decoration: pw.BoxDecoration(
+                  border: pw.Border(
+                    top: pw.BorderSide(color: PdfColors.blue900, width: 1.5),
+                    bottom: pw.BorderSide(color: PdfColors.blue900, width: 1.5),
+                    right: pw.BorderSide(color: PdfColors.blue900, width: 2.0),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+
+      } 
+      // --- CASO 2: LA FILA ESTÁ VACÍA (O ES FORFEIT Y LA LISTA VIENE EN []) ---
+      else {
+        widgets.add(_drawHorizontalLine(startXName, currentY, 130)); // Raya del Nombre
+        widgets.add(_drawHorizontalLine(startXNum, currentY, 20));   // Raya del Número
+        widgets.add(_drawHorizontalLine(entryX - 2, currentY, 10));  // Raya de la entrada (E)
+        
         for (int f = 0; f < 5; f++) {
           double foulX = startXFouls + (f * PdfCoords.foulBoxWidth);
-          widgets.add(_drawHorizontalLine(foulX, currentY, 10));
+          widgets.add(_drawHorizontalLine(foulX, currentY, 10));     // Rayas de las faltas vacías
         }
       }
       currentY += PdfCoords.rowHeight;
@@ -982,15 +1042,26 @@ class PdfGenerator {
     );
   }
 
-  static List<String> _getSortedRoster(
-    List<String> court,
-    List<String> bench,
-    Map<String, PlayerStats> stats,
-  ) {
-    List<String> allPlayers = [...court, ...bench];
+  static List<String> _getSortedRosterFromStats(MatchState state, String teamSide) {
+    // Obtenemos los nombres de los jugadores basándonos en a qué equipo pertenecen
+    // Utilizaremos los nombres que estén en las listas combinadas del estado.
+    List<String> allPlayers = [];
+    if (teamSide == 'A') {
+      allPlayers = [...state.teamAOnCourt, ...state.teamABench];
+    } else {
+      allPlayers = [...state.teamBOnCourt, ...state.teamBBench];
+    }
+
+    // Si por alguna razón las listas están vacías pero hay stats, intentamos recuperarlos
+    // (Esto es un salvavidas por si el estado no sincronizó bien las listas de cancha/banca)
+    if (allPlayers.isEmpty && state.playerStats.isNotEmpty) {
+      // Nota: Esto asume que no podemos saber de qué equipo son solo viendo el mapa de stats.
+      // Por lo que es crucial que teamAOnCourt y teamABench tengan datos.
+    }
+
     allPlayers.sort((a, b) {
-      String numA = stats[a]?.playerNumber ?? "0";
-      String numB = stats[b]?.playerNumber ?? "0";
+      String numA = state.playerStats[a]?.playerNumber ?? "0";
+      String numB = state.playerStats[b]?.playerNumber ?? "0";
       int intA = int.tryParse(numA) ?? 999;
       int intB = int.tryParse(numB) ?? 999;
       int comparison = intA.compareTo(intB);
