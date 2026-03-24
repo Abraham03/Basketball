@@ -528,6 +528,26 @@ class ApiService {
     }
   }
 
+  Future<bool> deleteSingleFixture(int fixtureId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl?action=delete_single_fixture'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          "fixture_id": fixtureId,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final respData = jsonDecode(response.body);
+        return respData['status'] == 'success';
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
   // Ahora aceptamos 200 (OK) y 201 (Created) como exitosos
   void _checkResponse(http.Response response) {
     if (response.statusCode != 200 && response.statusCode != 201) {

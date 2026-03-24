@@ -207,7 +207,7 @@ class _ManualFixtureBuilderScreenState
     final localFixtures = await (db.select(db.fixtures)
           ..where((f) =>
               f.tournamentId.equals(widget.tournamentId) &
-              f.status.isNotIn(['CANCELLED'])))
+              f.status.isNotIn(['CANCELLED', 'DELETED']))) 
         .get();
 
     List<Map<String, dynamic>> fallbackStatus = [];
@@ -261,7 +261,8 @@ Future<void> _loadCreatedMatchesLocally() async {
     final localFixtures = await (db.select(db.fixtures)
           ..where((f) =>
               f.tournamentId.equals(widget.tournamentId) &
-              f.roundName.equals("Jornada $_selectedRoundId")))
+              f.roundName.equals("Jornada $_selectedRoundId") &
+              f.status.isNotIn(['DELETED'])))
         .get();
 
     _createdMatchesForRound = localFixtures.map((f) {
@@ -872,6 +873,92 @@ Future<void> _loadCreatedMatchesLocally() async {
     }
   }
 
+
+  // --- FUNCIONES PARA ELIMINAR PARTIDO ---
+  void _confirmDeleteMatch(Map<String, dynamic> match) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1F2B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.delete_forever, color: Colors.redAccent),
+            SizedBox(width: 10),
+            Text("Eliminar Partido", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          "¿Estás seguro de que deseas eliminar el partido entre\n\n${match['teamAName']} vs ${match['teamBName']}?", 
+          style: const TextStyle(color: Colors.white70)
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx), 
+            child: const Text("Cancelar", style: TextStyle(color: Colors.grey))
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _deleteManualMatch(match['id'].toString());
+            },
+            child: const Text("Eliminar", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteManualMatch(String fixtureId) async {
+    setState(() => _isLoading = true);
+    try {
+      final db = ref.read(databaseProvider);
+      final api = ref.read(apiServiceProvider);
+
+      int? numericId = int.tryParse(fixtureId);
+      
+      if (numericId != null) {
+        // El partido ya existía en la nube. Intentamos borrarlo.
+        try {
+          final success = await api.deleteSingleFixture(numericId);
+          if (success) {
+            // Se borró en la nube, lo borramos localmente por completo
+            await (db.delete(db.fixtures)..where((f) => f.id.equals(fixtureId))).go();
+          } else {
+            // Falló en la nube, hacemos borrado lógico (Soft Delete)
+            await (db.update(db.fixtures)..where((f) => f.id.equals(fixtureId))).write(
+              const FixturesCompanion(status: drift.Value('DELETED'), isSynced: drift.Value(false))
+            );
+          }
+        } catch (e) {
+          // No hay internet, hacemos borrado lógico para sincronizarlo después
+          await (db.update(db.fixtures)..where((f) => f.id.equals(fixtureId))).write(
+            const FixturesCompanion(status: drift.Value('DELETED'), isSynced: drift.Value(false))
+          );
+        }
+      } else {
+        // Si no tiene ID numérico, significa que nunca subió a la nube (se creó offline). Se puede borrar de raíz.
+        await (db.delete(db.fixtures)..where((f) => f.id.equals(fixtureId))).go();
+      }
+
+      await _loadData(); 
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("🗑️ Partido eliminado exitosamente"), backgroundColor: Colors.redAccent),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("❌ Error al eliminar: $e"), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1028,10 +1115,20 @@ Future<void> _loadCreatedMatchesLocally() async {
                                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                             children: [
                                              if (match['status'] == 'SCHEDULED')
-                                                IconButton(
-                                                  icon: const Icon(Icons.edit_calendar, color: Colors.white54),
-                                                  onPressed: () => _showEditMatchDialog(match),
-                                                  tooltip: "Editar Equipos",
+                                                Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    IconButton(
+                                                      icon: const Icon(Icons.edit_calendar, color: Colors.white54),
+                                                      onPressed: () => _showEditMatchDialog(match),
+                                                      tooltip: "Editar Equipos",
+                                                    ),
+                                                    IconButton(
+                                                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                                      onPressed: () => _confirmDeleteMatch(match),
+                                                      tooltip: "Eliminar Partido",
+                                                    ),
+                                                  ],
                                                 )
                                               else
                                                 // Si ya se jugó o está en curso, mostramos un candado

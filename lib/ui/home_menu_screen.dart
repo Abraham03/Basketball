@@ -1123,15 +1123,30 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
       final pendingFixtures = await (db.select(db.fixtures)..where((tbl) => tbl.isSynced.equals(false))).get();
       for (var fixture in pendingFixtures) {
         try {
+          
+          int? numericId = int.tryParse(fixture.id);
+
+          if (fixture.status == 'DELETED') {
+            if (numericId != null) {
+              final success = await api.deleteSingleFixture(numericId);
+              if (success) {
+                // Ahora sí lo borramos de raíz localmente
+                await (db.delete(db.fixtures)..where((f) => f.id.equals(fixture.id))).go();
+                uploadedFixtures++;
+              }
+            } else {
+              await (db.delete(db.fixtures)..where((f) => f.id.equals(fixture.id))).go();
+            }
+            continue; // Saltamos el resto del código, ya terminamos con este partido
+          }
+          
           int roundOrder = 1;
           final matchRoundStr = RegExp(r'\d+').firstMatch(fixture.roundName);
           if (matchRoundStr != null) {
             roundOrder = int.parse(matchRoundStr.group(0)!);
           }
-
-          int? numericId = int.tryParse(fixture.id);
+          
           bool success = false;
-
           if (numericId != null) {
             success = await api.updateFixtureTeams(
               fixtureId: numericId,
