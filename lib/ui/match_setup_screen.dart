@@ -50,13 +50,19 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
         try {
           // Aseguramos la comparación de IDs
           final t = list.firstWhere((element) => element.id.toString() == widget.tournamentId.toString());
+          
+          // Asignamos el nombre correctamente
           currentTournamentName = t.name;
-          selectedTournament = t as model.Tournament?; // <--- ¡AQUÍ ESTABA EL DETALLE VISUAL!
-        } catch (_) {
+          
+          // ELIMINAMOS la siguiente línea porque causaba que el código fallara y se fuera al catch:
+          // selectedTournament = t as model.Tournament?; 
+          
+        } catch (e) {
           currentTournamentName = "Torneo Desconocido";
+          debugPrint("Error al cargar nombre del torneo: $e");
         }
       },
-      loading: () => currentTournamentName = "...",
+      loading: () => currentTournamentName = "Cargando...",
       error: (_, __) => currentTournamentName = "Error",
     );
 

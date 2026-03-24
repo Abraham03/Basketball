@@ -584,19 +584,24 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
     );
   }
 
-  // --- SELECTOR LOCAL (Ajustado) ---
+  // --- SELECTOR LOCAL (Ajustado con Categoría) ---
   void _showLocalTournamentPicker(
     BuildContext context,
     List<dynamic> tournaments,
     WidgetRef ref,
     String? currentId,
   ) {
-    // Convertimos a Map para inyectar "Todos los Torneos" sin errores de modelo
+    // Convertimos a Map para inyectar "Todos los Torneos" sin errores de modelo,
+    // agregando también el campo de "category".
     List<Map<String, dynamic>> extendedList = [
-      {"id": "0", "name": "Todos los Torneos"}
+      {"id": "0", "name": "Todos los Torneos", "category": "Base de datos completa"}
     ];
     for (var t in tournaments) {
-      extendedList.add({"id": t.id.toString(), "name": t.name});
+      extendedList.add({
+        "id": t.id.toString(), 
+        "name": t.name,
+        "category": t.category ?? 'Libre' // Añadimos la categoría aquí
+      });
     }
 
     showModalBottomSheet(
@@ -618,9 +623,9 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                   decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(5)),
                 ),
                 Padding(
-  padding: const EdgeInsets.all(16.0),
-  child: Text("Cambiar de Torneo (Offline)", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[800])),
-),
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text("Cambiar de Torneo (Offline)", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[800])),
+                ),
                 Expanded(
                   child: ListView.separated(
                     controller: scrollController,
@@ -641,6 +646,14 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                           style: TextStyle(
                             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                             color: isSelected ? Colors.orange : (isAllOption ? Colors.black : Colors.black87),
+                          ),
+                        ),
+                        // AQUÍ AGREGAMOS EL SUBTITLE PARA MOSTRAR LA CATEGORÍA
+                        subtitle: Text(
+                          item["category"],
+                          style: TextStyle(
+                            color: isAllOption ? Colors.black45 : Colors.grey.shade600,
+                            fontSize: 12,
                           ),
                         ),
                         trailing: isSelected ? const Icon(Icons.check, color: Colors.orange) : null,
