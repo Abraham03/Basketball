@@ -53,6 +53,19 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
     return path.replaceAll('../', 'https://basket.techsolutions.management/');
   }
 
+  // --- HELPER PARA TEXTO DE ENFRENTAMIENTO ---
+  String _getEncounterText(int count) {
+    switch (count) {
+      case 1: return "1er Encuentro";
+      case 2: return "2do Encuentro";
+      case 3: return "3er Encuentro";
+      case 4: return "4to Encuentro";
+      case 5: return "5to Encuentro";
+      case 6: return "6to Encuentro";
+      default: return "${count}º Encuentro";
+    }
+  }
+
   // --- BOTTOM SHEET DE OPCIONES DE GENERACIÓN ---
   void _showGenerationOptions(BuildContext context) {
     showModalBottomSheet(
@@ -320,6 +333,34 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
               );
             }
 
+            // --- LÓGICA DE CONTEO DE ENFRENTAMIENTOS ---
+            List<Fixture> allMatches = [];
+            for (var list in groupedRounds.values) {
+              allMatches.addAll(list);
+            }
+            
+            // Ordenar los partidos de forma cronológica (por Jornada)
+            allMatches.sort((a, b) {
+              int roundA = int.tryParse(a.roundName.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+              int roundB = int.tryParse(b.roundName.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+              if (roundA != roundB) return roundA.compareTo(roundB);
+              return a.id.compareTo(b.id);
+            });
+
+            // Mapa para almacenar qué enfrentamiento es para cada partido
+            Map<String, int> encounterMap = {};
+            Map<String, int> pairCounts = {};
+
+            for (var m in allMatches) {
+              // Creamos una clave única para cada par de equipos (ej: "12_15")
+              List<String> teams = [m.teamAId, m.teamBId];
+              teams.sort();
+              String pairKey = teams.join('_');
+              
+              pairCounts[pairKey] = (pairCounts[pairKey] ?? 0) + 1;
+              encounterMap[m.id] = pairCounts[pairKey]!;
+            }
+
             // 1. Configuramos la lista completa de opciones del Bottom Sheet
             List<String> allRounds = ["Todas", ...groupedRounds.keys];
 
@@ -433,7 +474,8 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
                                 ),
                               ),
                             
-                            ...matches.map((m) => _buildMatchCard(context, m)),
+                            // Renderizamos el Card enviando el número de enfrentamiento calculado
+                            ...matches.map((m) => _buildMatchCard(context, m, encounterMap[m.id] ?? 1)),
                           ],
                         );
                       },
@@ -478,7 +520,7 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
   }
 
   // --- DISEÑO DE TARJETA DE PARTIDO PROFESIONAL ---
-  Widget _buildMatchCard(BuildContext context, Fixture match) {
+  Widget _buildMatchCard(BuildContext context, Fixture match, int encounterNumber) {
     final isPlayable = match.status == 'SCHEDULED' || 
                        match.status == 'PENDING' || 
                        match.status == 'IN_PROGRESS' || 
@@ -526,8 +568,7 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
                          teamBId: currentState.teamBId ?? 0,
                          coachA: '',
                          coachB: '',
-                       ),
-                     ));
+                       )));
                      return; 
                    }
                  }
@@ -630,8 +671,8 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
                               children: [
                                 Text(
                                   isFinished && match.scoreA != null && match.scoreB != null 
-                                    ? "${match.scoreA} - ${match.scoreB}" 
-                                    : "VS", 
+                                      ? "${match.scoreA} - ${match.scoreB}" 
+                                      : "VS", 
                                   style: TextStyle(
                                     color: isFinished ? Colors.white : Colors.orangeAccent, 
                                     fontSize: 28, 
@@ -639,7 +680,22 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
                                     letterSpacing: 2.0
                                   )
                                 ),
+                                const SizedBox(height: 4),
+                                
+                                // --- NUEVO: ETIQUETA DE NÚMERO DE ENFRENTAMIENTO ---
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    _getEncounterText(encounterNumber).toUpperCase(), 
+                                    style: const TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.8)
+                                  ),
+                                ),
                                 const SizedBox(height: 12),
+                                
                                 Container(
                                   width: 45,
                                   height: 45,

@@ -349,16 +349,17 @@ class PdfGenerator {
 
 
                   // 2do LOGO (ABAJO / FOOTER)
-                  pw.Positioned(
-                    left: PdfCoords.derechatournamentLogoX,
-                    top: PdfCoords.derechatournamentLogoY,  
-                    child: pw.Image(
-                      tournLogoProvider!, 
-                      width: 53, // <--- TAMAÑO DEL LOGO INFERIOR
-                      height: 53, // <--- TAMAÑO DEL LOGO INFERIOR
-                      fit: pw.BoxFit.contain,
+                  if (tournLogoProvider != null) // <--- 1. AGREGAMOS LA VALIDACIÓN
+                    pw.Positioned(
+                      left: PdfCoords.derechatournamentLogoX,
+                      top: PdfCoords.derechatournamentLogoY,  
+                      child: pw.Image(
+                        tournLogoProvider, // <--- 2. QUITAMOS EL SIGNO DE EXCLAMACIÓN
+                        width: 53, 
+                        height: 53, 
+                        fit: pw.BoxFit.contain,
+                      ),
                     ),
-                  ),
 
                 _drawText(
                   tournamentName,
