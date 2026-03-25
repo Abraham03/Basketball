@@ -40,7 +40,7 @@ class PlayerStats {
   final bool isOnCourt;
   final bool isStarter;
   final bool hasPlayed;
-  final String playerNumber; 
+  final String playerNumber;
   final List<String> foulDetails;
 
   const PlayerStats({
@@ -50,7 +50,7 @@ class PlayerStats {
     this.isOnCourt = false,
     this.isStarter = false,
     this.hasPlayed = false,
-    this.playerNumber = "00", 
+    this.playerNumber = "00",
     this.foulDetails = const [],
   });
 
@@ -90,8 +90,8 @@ class MatchState {
   final List<ScoreEvent> scoreLog;
   final int? tournamentId;
   final int? venueId;
-  final int? teamAId; 
-  final int? teamBId; 
+  final int? teamAId;
+  final int? teamBId;
   final String mainReferee;
   final String auxReferee;
   final String scorekeeper;
@@ -103,13 +103,13 @@ class MatchState {
   final List<String> teamBOnCourt;
   final List<String> teamBBench;
 
-  final List<String> teamATimeouts1; 
-  final List<String> teamATimeouts2; 
-  final List<String> teamAOTTimeouts; 
+  final List<String> teamATimeouts1;
+  final List<String> teamATimeouts2;
+  final List<String> teamAOTTimeouts;
 
   final List<String> teamBTimeouts1;
   final List<String> teamBTimeouts2;
-  final List<String> teamBOTTimeouts; 
+  final List<String> teamBOTTimeouts;
 
   final Map<String, PlayerStats> playerStats;
 
@@ -122,7 +122,9 @@ class MatchState {
     this.isRunning = false,
     this.currentPeriod = 1,
     this.possession = '',
-    this.periodScores = const { 1: [0, 0] },
+    this.periodScores = const {
+      1: [0, 0],
+    },
     this.scoreLog = const [],
     this.teamAOnCourt = const [],
     this.teamABench = const [],
@@ -261,11 +263,11 @@ class MatchGameController extends StateNotifier<MatchState> {
   int getTeamFouls(String teamId) {
     return state.scoreLog.where((e) {
       // Retorna true solo si es del equipo actual, en este periodo, no tiene puntos,
-      return e.teamId == teamId && 
-             e.period == state.currentPeriod && 
-             e.points == 0 &&
-             !e.type.startsWith('C') && 
-             !e.type.startsWith('B');
+      return e.teamId == teamId &&
+          e.period == state.currentPeriod &&
+          e.points == 0 &&
+          !e.type.startsWith('C') &&
+          !e.type.startsWith('B');
     }).length;
   }
 
@@ -275,13 +277,12 @@ class MatchGameController extends StateNotifier<MatchState> {
   }
 
   Future<bool> finalizeAndSync(
-    ApiService api, 
-    Uint8List? signatureBytes, 
+    ApiService api,
+    Uint8List? signatureBytes,
     Uint8List? pdfBytes,
-    String teamAName, 
-    String teamBName
+    String teamAName,
+    String teamBName,
   ) async {
-    
     String? signatureBase64;
     if (signatureBytes != null) {
       signatureBase64 = base64Encode(signatureBytes);
@@ -295,45 +296,55 @@ class MatchGameController extends StateNotifier<MatchState> {
         final file = File('${directory.path}/match_${state.matchId}.pdf');
         await file.writeAsBytes(pdfBytes);
         localPdfPath = file.path;
-        
-        await (_dao.update(_dao.db.matches)..where((tbl) => tbl.id.equals(state.matchId)))
-            .write(MatchesCompanion(matchReportPath: drift.Value(localPdfPath)));
+
+        await (_dao.update(
+          _dao.db.matches,
+        )..where((tbl) => tbl.id.equals(state.matchId))).write(
+          MatchesCompanion(matchReportPath: drift.Value(localPdfPath)),
+        );
       } catch (e) {
         // Silencio en release
       }
     }
 
     final eventsList = state.scoreLog.map((e) {
-      final currentStats = state.playerStats[e.playerId]; 
+      final currentStats = state.playerStats[e.playerId];
       final updatedNumber = currentStats?.playerNumber ?? e.playerNumber;
-      String? parsedPlayerId = (e.dbPlayerId == 0 || e.dbPlayerId == -1) ? null : e.dbPlayerId.toString();
+      String? parsedPlayerId = (e.dbPlayerId == 0 || e.dbPlayerId == -1)
+          ? null
+          : e.dbPlayerId.toString();
 
       return {
         "period": e.period,
-        "team_side": e.teamId, 
-        "player_name": e.playerId, 
+        "team_side": e.teamId,
+        "player_name": e.playerId,
         "player_id": parsedPlayerId,
-        "player_number": updatedNumber, 
-        "points_scored": e.points, 
-        "score_after": e.scoreAfter, 
-        "type": e.type, 
+        "player_number": updatedNumber,
+        "points_scored": e.points,
+        "score_after": e.scoreAfter,
+        "type": e.type,
       };
     }).toList();
 
     // 1. Buscamos los rosters en la DB local usando _dao.db y el state
-    final rosterRows = await (_dao.db.select(_dao.db.matchRosters)
-          ..where((r) => r.matchId.equals(state.matchId)))
-        .get();
+    final rosterRows = await (_dao.db.select(
+      _dao.db.matchRosters,
+    )..where((r) => r.matchId.equals(state.matchId))).get();
 
     // 2. Mapeamos esos datos a una lista de JSON, agregando la lógica de "played"
     final rostersList = rosterRows.map((r) {
       // Buscar las estadísticas de este jugador en el state usando su ID de DB
-      final pStats = state.playerStats.values.where((p) => p.dbId.toString() == r.playerId).firstOrNull;
-      
+      final pStats = state.playerStats.values
+          .where((p) => p.dbId.toString() == r.playerId)
+          .firstOrNull;
+
       // Consideramos que jugó si fue titular, si está en cancha ahora, o si tiene puntos/faltas.
       bool hasPlayed = false;
       if (pStats != null) {
-        if (pStats.isStarter || pStats.isOnCourt || pStats.points > 0 || pStats.fouls > 0) {
+        if (pStats.isStarter ||
+            pStats.isOnCourt ||
+            pStats.points > 0 ||
+            pStats.fouls > 0) {
           hasPlayed = true;
         }
       }
@@ -343,16 +354,17 @@ class MatchGameController extends StateNotifier<MatchState> {
         "team_side": r.teamSide,
         "jersey_number": r.jerseyNumber,
         "is_captain": r.isCaptain ? 1 : 0,
-        "played": hasPlayed ? 1 : 0 
+        "played": hasPlayed ? 1 : 0,
       };
     }).toList();
 
     final now = DateTime.now();
-    final formattedDate = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
-      
+    final formattedDate =
+        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
+
     final payload = {
       "match_id": state.matchId,
-      "fixture_id": state.fixtureId, 
+      "fixture_id": state.fixtureId,
       "tournament_id": state.tournamentId,
       "venue_id": state.venueId,
       "team_a_id": state.teamAId,
@@ -362,30 +374,31 @@ class MatchGameController extends StateNotifier<MatchState> {
       "score_a": state.scoreA,
       "score_b": state.scoreB,
       "current_period": state.currentPeriod,
-      "time_left": "${state.timeLeft.inMinutes}:${(state.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}",
+      "time_left":
+          "${state.timeLeft.inMinutes}:${(state.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}",
       "main_referee": state.mainReferee,
       "aux_referee": state.auxReferee,
       "scorekeeper": state.scorekeeper,
       "forfeit_status": state.forfeitStatus,
       "observaciones": state.observaciones,
-      "match_date": formattedDate, 
+      "match_date": formattedDate,
       "signature_base64": signatureBase64,
       "events": eventsList,
       "rosters": rostersList,
     };
 
     try {
-        final success = await api.syncMatchDataMultipart(
-          matchData: payload, 
-          pdfBytes: pdfBytes
-        ); 
-        if (success) {
-            await _dao.markAsSynced(state.matchId);
-             if (localPdfPath != null) File(localPdfPath).delete();
-        }
-        return success;
+      final success = await api.syncMatchDataMultipart(
+        matchData: payload,
+        pdfBytes: pdfBytes,
+      );
+      if (success) {
+        await _dao.markAsSynced(state.matchId);
+        if (localPdfPath != null) File(localPdfPath).delete();
+      }
+      return success;
     } catch (e) {
-        return false; 
+      return false;
     }
   }
 
@@ -394,7 +407,7 @@ class MatchGameController extends StateNotifier<MatchState> {
     // defaultingTeam puede ser 'A', 'B' o 'BOTH'
     int newScoreA = 0;
     int newScoreB = 0;
-    
+
     if (defaultingTeam == 'A') {
       newScoreB = 20; // Pierde A por default 0-20
     } else if (defaultingTeam == 'B') {
@@ -404,10 +417,12 @@ class MatchGameController extends StateNotifier<MatchState> {
     state = state.copyWith(
       scoreA: newScoreA,
       scoreB: newScoreB,
-      forfeitStatus: defaultingTeam == 'A' ? 'TEAM_A' : (defaultingTeam == 'B' ? 'TEAM_B' : 'BOTH'),
+      forfeitStatus: defaultingTeam == 'A'
+          ? 'TEAM_A'
+          : (defaultingTeam == 'B' ? 'TEAM_B' : 'BOTH'),
       timeLeft: const Duration(seconds: 0),
     );
-    
+
     _pause();
     _saveToDatabase();
   }
@@ -415,33 +430,37 @@ class MatchGameController extends StateNotifier<MatchState> {
   void addTimeout(String teamId) {
     _saveToHistory();
 
-    int minutesLeft = (state.timeLeft.inSeconds / 60).floor(); 
-    if (state.timeLeft.inSeconds % 60 > 0 && minutesLeft == 10) minutesLeft = 9; 
-    if (minutesLeft == 0 && state.timeLeft.inSeconds > 0) {minutesLeft = 1;}
-    else if (state.timeLeft.inSeconds == 0) {minutesLeft = 0;} 
+    int minutesLeft = (state.timeLeft.inSeconds / 60).floor();
+    if (state.timeLeft.inSeconds % 60 > 0 && minutesLeft == 10) minutesLeft = 9;
+    if (minutesLeft == 0 && state.timeLeft.inSeconds > 0) {
+      minutesLeft = 1;
+    } else if (state.timeLeft.inSeconds == 0) {
+      minutesLeft = 0;
+    }
 
     String minStr = minutesLeft.toString();
-    bool isClutchTime = state.currentPeriod == 4 && state.timeLeft.inSeconds <= 120;
+    bool isClutchTime =
+        state.currentPeriod == 4 && state.timeLeft.inSeconds <= 120;
 
     _processTimeoutWithRules(teamId, minStr, state.currentPeriod, isClutchTime);
     _logEventToDb(null, 0, 0, 'TIMEOUT_$teamId');
   }
 
-  void addTeamFoul(String teamId, String type) { 
+  void addTeamFoul(String teamId, String type) {
     _saveToHistory();
     String specialName = type == 'C' ? "Entrenador" : "Banca";
-    
+
     List<ScoreEvent> newScoreLog = List.from(state.scoreLog);
     newScoreLog.add(
       ScoreEvent(
         period: state.currentPeriod,
         teamId: teamId,
-        playerId: specialName, 
-        dbPlayerId: 0, 
-        playerNumber: "", 
+        playerId: specialName,
+        dbPlayerId: 0,
+        playerNumber: "",
         points: 0,
         scoreAfter: (teamId == 'A' ? state.scoreA : state.scoreB),
-        type: type, 
+        type: type,
       ),
     );
 
@@ -450,44 +469,61 @@ class MatchGameController extends StateNotifier<MatchState> {
     _logEventToDb(null, 0, 1, '${type}_$teamId');
   }
 
-  void _processTimeoutWithRules(String teamId, String minStr, int period, bool isClutchTime) {
+  void _processTimeoutWithRules(
+    String teamId,
+    String minStr,
+    int period,
+    bool isClutchTime,
+  ) {
     List<String> currentList;
 
     if (period <= 2) {
-      currentList = List.from(teamId == 'A' ? state.teamATimeouts1 : state.teamBTimeouts1);
+      currentList = List.from(
+        teamId == 'A' ? state.teamATimeouts1 : state.teamBTimeouts1,
+      );
       if (currentList.length < 2) {
         currentList.add(minStr);
         _updateTimeoutList(teamId, 1, currentList);
       }
-    } 
-    else if (period == 3 || period == 4) {
-      currentList = List.from(teamId == 'A' ? state.teamATimeouts2 : state.teamBTimeouts2);
-      if (isClutchTime && currentList.isEmpty) currentList.add("X"); 
+    } else if (period == 3 || period == 4) {
+      currentList = List.from(
+        teamId == 'A' ? state.teamATimeouts2 : state.teamBTimeouts2,
+      );
+      if (isClutchTime && currentList.isEmpty) currentList.add("X");
 
       if (currentList.length < 3) {
         currentList.add(minStr);
         _updateTimeoutList(teamId, 2, currentList);
-      } 
-    } 
-    else {
-       currentList = List.from(teamId == 'A' ? state.teamAOTTimeouts : state.teamBOTTimeouts);
-       int currentOtCount = period - 4;
-       if (currentList.length < currentOtCount && currentList.length < 3) { 
-         currentList.add(minStr);
-         _updateTimeoutList(teamId, 3, currentList); 
-       }
+      }
+    } else {
+      currentList = List.from(
+        teamId == 'A' ? state.teamAOTTimeouts : state.teamBOTTimeouts,
+      );
+      int currentOtCount = period - 4;
+      if (currentList.length < currentOtCount && currentList.length < 3) {
+        currentList.add(minStr);
+        _updateTimeoutList(teamId, 3, currentList);
+      }
     }
   }
 
   void _updateTimeoutList(String teamId, int section, List<String> newList) {
     if (teamId == 'A') {
-      if (section == 1) {state = state.copyWith(teamATimeouts1: newList);}
-      else if (section == 2) {state = state.copyWith(teamATimeouts2: newList);}
-      else {state = state.copyWith(teamAOTTimeouts: newList);}
+      if (section == 1) {
+        state = state.copyWith(teamATimeouts1: newList);
+      } else if (section == 2) {
+        state = state.copyWith(teamATimeouts2: newList);
+      } else {
+        state = state.copyWith(teamAOTTimeouts: newList);
+      }
     } else {
-      if (section == 1) {state = state.copyWith(teamBTimeouts1: newList);}
-      else if (section == 2) {state = state.copyWith(teamBTimeouts2: newList);}
-      else {state = state.copyWith(teamBOTTimeouts: newList);}
+      if (section == 1) {
+        state = state.copyWith(teamBTimeouts1: newList);
+      } else if (section == 2) {
+        state = state.copyWith(teamBTimeouts2: newList);
+      } else {
+        state = state.copyWith(teamBOTTimeouts: newList);
+      }
     }
     _saveToDatabase();
   }
@@ -498,7 +534,8 @@ class MatchGameController extends StateNotifier<MatchState> {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (state.timeLeft.inSeconds > 0) {
         final newTime = state.timeLeft - const Duration(seconds: 1);
-        bool triggerAutoBurn = state.currentPeriod == 4 && newTime.inSeconds == 120;
+        bool triggerAutoBurn =
+            state.currentPeriod == 4 && newTime.inSeconds == 120;
 
         state = state.copyWith(timeLeft: newTime);
         if (triggerAutoBurn) _applyAutoBurn();
@@ -513,8 +550,14 @@ class MatchGameController extends StateNotifier<MatchState> {
     List<String> listA = List.from(state.teamATimeouts2);
     List<String> listB = List.from(state.teamBTimeouts2);
 
-    if (listA.isEmpty) { listA.add("X"); changed = true; }
-    if (listB.isEmpty) { listB.add("X"); changed = true; }
+    if (listA.isEmpty) {
+      listA.add("X");
+      changed = true;
+    }
+    if (listB.isEmpty) {
+      listB.add("X");
+      changed = true;
+    }
 
     if (changed) {
       _saveToHistory();
@@ -538,10 +581,16 @@ class MatchGameController extends StateNotifier<MatchState> {
     required String auxReferee,
     required String scorekeeper,
   }) {
-
-    _timer?.cancel(); 
+    _timer?.cancel();
     _timer = null;
-    _dao.updateMatchMetadata(matchId, teamAId, teamBId, mainReferee, auxReferee, scorekeeper);
+    _dao.updateMatchMetadata(
+      matchId,
+      teamAId,
+      teamBId,
+      mainReferee,
+      auxReferee,
+      scorekeeper,
+    );
     final Map<String, PlayerStats> initialStats = {};
     final List<String> courtA = [];
     final List<String> benchA = [];
@@ -550,30 +599,78 @@ class MatchGameController extends StateNotifier<MatchState> {
 
     for (var player in rosterA) {
       final isStarter = startersA.contains(player.id);
-      initialStats[player.name] = PlayerStats(dbId: player.id, isOnCourt: isStarter, isStarter: isStarter,hasPlayed: isStarter, playerNumber: player.defaultNumber.toString());
-      if (isStarter) { courtA.add(player.name); } else { benchA.add(player.name); }
+      initialStats[player.name] = PlayerStats(
+        dbId: player.id,
+        isOnCourt: isStarter,
+        isStarter: isStarter,
+        hasPlayed: isStarter,
+        playerNumber: player.defaultNumber.toString(),
+      );
+      if (isStarter) {
+        courtA.add(player.name);
+      } else {
+        benchA.add(player.name);
+      }
     }
 
     for (var player in rosterB) {
       final isStarter = startersB.contains(player.id);
-      initialStats[player.name] = PlayerStats(dbId: player.id, isOnCourt: isStarter, isStarter: isStarter,hasPlayed: isStarter, playerNumber: player.defaultNumber.toString());
-      if (isStarter) { courtB.add(player.name); } else { benchB.add(player.name); }
+      initialStats[player.name] = PlayerStats(
+        dbId: player.id,
+        isOnCourt: isStarter,
+        isStarter: isStarter,
+        hasPlayed: isStarter,
+        playerNumber: player.defaultNumber.toString(),
+      );
+      if (isStarter) {
+        courtB.add(player.name);
+      } else {
+        benchB.add(player.name);
+      }
     }
 
     state = state.copyWith(
-      matchId: matchId, fixtureId: fixtureId, playerStats: initialStats,
-      teamAOnCourt: courtA, teamABench: benchA, teamBOnCourt: courtB, teamBBench: benchB,
-      scoreA: 0, scoreB: 0, currentPeriod: 1, possession: '', timeLeft: const Duration(minutes: 10),
-      scoreLog: [], periodScores: { 1: [0, 0] }, tournamentId: tournamentId, venueId: venueId, teamAId: teamAId, teamBId: teamBId,
-      mainReferee: mainReferee, auxReferee: auxReferee, scorekeeper: scorekeeper,
-      teamATimeouts1: [], teamATimeouts2: [], teamAOTTimeouts: [], teamBTimeouts1: [], teamBTimeouts2: [], teamBOTTimeouts: [], 
+      matchId: matchId,
+      fixtureId: fixtureId,
+      playerStats: initialStats,
+      teamAOnCourt: courtA,
+      teamABench: benchA,
+      teamBOnCourt: courtB,
+      teamBBench: benchB,
+      scoreA: 0,
+      scoreB: 0,
+      currentPeriod: 1,
+      possession: '',
+      timeLeft: const Duration(minutes: 10),
+      scoreLog: [],
+      periodScores: {
+        1: [0, 0],
+      },
+      tournamentId: tournamentId,
+      venueId: venueId,
+      teamAId: teamAId,
+      teamBId: teamBId,
+      mainReferee: mainReferee,
+      auxReferee: auxReferee,
+      scorekeeper: scorekeeper,
+      teamATimeouts1: [],
+      teamATimeouts2: [],
+      teamAOTTimeouts: [],
+      teamBTimeouts1: [],
+      teamBTimeouts2: [],
+      teamBOTTimeouts: [],
+      forfeitStatus: 'NONE',         
+      observaciones: 'Sin novedad',
     );
   }
 
   void setPossession(String team) {
     _saveToHistory();
-    if (state.possession == team) {state = state.copyWith(possession: '');}
-    else {state = state.copyWith(possession: team);}
+    if (state.possession == team) {
+      state = state.copyWith(possession: '');
+    } else {
+      state = state.copyWith(possession: team);
+    }
   }
 
   void initMatch(String matchId) {}
@@ -586,7 +683,10 @@ class MatchGameController extends StateNotifier<MatchState> {
   void undo() {
     if (_history.isNotEmpty) {
       final previousState = _history.removeLast();
-      state = previousState.copyWith(timeLeft: state.timeLeft, isRunning: state.isRunning);
+      state = previousState.copyWith(
+        timeLeft: state.timeLeft,
+        isRunning: state.isRunning,
+      );
       _saveToDatabase();
     }
   }
@@ -604,29 +704,47 @@ class MatchGameController extends StateNotifier<MatchState> {
   void nextPeriod() {
     _saveToHistory();
     int nextPeriodIdx = state.currentPeriod + 1;
-    Duration newDuration = (nextPeriodIdx > 4) ? const Duration(minutes: 5) : const Duration(minutes: 10);
+    Duration newDuration = (nextPeriodIdx > 4)
+        ? const Duration(minutes: 5)
+        : const Duration(minutes: 10);
 
     final newPeriodScores = Map<int, List<int>>.from(state.periodScores);
-    if (!newPeriodScores.containsKey(nextPeriodIdx)) newPeriodScores[nextPeriodIdx] = [0, 0];
+    if (!newPeriodScores.containsKey(nextPeriodIdx))
+      newPeriodScores[nextPeriodIdx] = [0, 0];
 
-    state = state.copyWith(currentPeriod: nextPeriodIdx, timeLeft: newDuration, isRunning: false, periodScores: newPeriodScores);
+    state = state.copyWith(
+      currentPeriod: nextPeriodIdx,
+      timeLeft: newDuration,
+      isRunning: false,
+      periodScores: newPeriodScores,
+    );
     _saveToDatabase();
   }
 
   void setPeriod(int period) {
     _saveToHistory();
-    Duration newDuration = (period > 4) ? const Duration(minutes: 5) : const Duration(minutes: 10);
+    Duration newDuration = (period > 4)
+        ? const Duration(minutes: 5)
+        : const Duration(minutes: 10);
 
     final newPeriodScores = Map<int, List<int>>.from(state.periodScores);
     if (!newPeriodScores.containsKey(period)) newPeriodScores[period] = [0, 0];
 
-    state = state.copyWith(currentPeriod: period, timeLeft: newDuration, isRunning: false, periodScores: newPeriodScores);
+    state = state.copyWith(
+      currentPeriod: period,
+      timeLeft: newDuration,
+      isRunning: false,
+      periodScores: newPeriodScores,
+    );
     _saveToDatabase();
   }
 
   void toggleTimer() {
-    if (state.isRunning) {_pause();}
-    else {_start();}
+    if (state.isRunning) {
+      _pause();
+    } else {
+      _start();
+    }
   }
 
   void _pause() {
@@ -636,7 +754,13 @@ class MatchGameController extends StateNotifier<MatchState> {
     _saveToDatabase();
   }
 
-  void updateStats(String teamId, String playerId, {int points = 0, int fouls = 0, String? foulType}) {
+  void updateStats(
+    String teamId,
+    String playerId, {
+    int points = 0,
+    int fouls = 0,
+    String? foulType,
+  }) {
     final currentStats = state.playerStats[playerId] ?? const PlayerStats();
     if (currentStats.fouls >= 5 && (points > 0 || fouls > 0)) return;
 
@@ -646,15 +770,25 @@ class MatchGameController extends StateNotifier<MatchState> {
     int scoreAfter = 0;
 
     if (points > 0) {
-      if (teamId == 'A') { newScoreA += points; scoreAfter = newScoreA; } 
-      else { newScoreB += points; scoreAfter = newScoreB; }
+      if (teamId == 'A') {
+        newScoreA += points;
+        scoreAfter = newScoreA;
+      } else {
+        newScoreB += points;
+        scoreAfter = newScoreB;
+      }
     }
 
     final newPeriodScores = Map<int, List<int>>.from(state.periodScores);
-    List<int> currentPeriodScore = List.from(newPeriodScores[state.currentPeriod] ?? [0, 0]);
+    List<int> currentPeriodScore = List.from(
+      newPeriodScores[state.currentPeriod] ?? [0, 0],
+    );
     if (points > 0) {
-      if (teamId == 'A') {currentPeriodScore[0] += points;}
-      else {currentPeriodScore[1] += points;}
+      if (teamId == 'A') {
+        currentPeriodScore[0] += points;
+      } else {
+        currentPeriodScore[1] += points;
+      }
     }
     newPeriodScores[state.currentPeriod] = currentPeriodScore;
 
@@ -662,7 +796,11 @@ class MatchGameController extends StateNotifier<MatchState> {
     if (fouls > 0) newFoulDetails.add(foulType ?? "P");
 
     final newPlayerStatsMap = Map<String, PlayerStats>.from(state.playerStats);
-    newPlayerStatsMap[playerId] = currentStats.copyWith(points: currentStats.points + points, fouls: currentStats.fouls + fouls, foulDetails: newFoulDetails);
+    newPlayerStatsMap[playerId] = currentStats.copyWith(
+      points: currentStats.points + points,
+      fouls: currentStats.fouls + fouls,
+      foulDetails: newFoulDetails,
+    );
 
     List<ScoreEvent> newScoreLog = List.from(state.scoreLog);
     if (points > 0 || fouls > 0) {
@@ -670,10 +808,27 @@ class MatchGameController extends StateNotifier<MatchState> {
       String eventType = "UNKNOWN";
       if (fouls > 0) eventType = foulType ?? "FOUL";
 
-      newScoreLog.add(ScoreEvent(period: state.currentPeriod, teamId: teamId, playerId: playerId, dbPlayerId: currentStats.dbId, playerNumber: dorsal, points: points, scoreAfter: scoreAfter, type: eventType));
+      newScoreLog.add(
+        ScoreEvent(
+          period: state.currentPeriod,
+          teamId: teamId,
+          playerId: playerId,
+          dbPlayerId: currentStats.dbId,
+          playerNumber: dorsal,
+          points: points,
+          scoreAfter: scoreAfter,
+          type: eventType,
+        ),
+      );
     }
 
-    state = state.copyWith(scoreA: newScoreA, scoreB: newScoreB, periodScores: newPeriodScores, playerStats: newPlayerStatsMap, scoreLog: newScoreLog);
+    state = state.copyWith(
+      scoreA: newScoreA,
+      scoreB: newScoreB,
+      periodScores: newPeriodScores,
+      playerStats: newPlayerStatsMap,
+      scoreLog: newScoreLog,
+    );
     _saveToDatabase();
     _logEventToDb(currentStats.dbId.toString(), points, fouls, foulType);
   }
@@ -681,40 +836,85 @@ class MatchGameController extends StateNotifier<MatchState> {
   void substitutePlayer(String teamId, String playerOut, String playerIn) {
     _saveToHistory();
     final newStats = Map<String, PlayerStats>.from(state.playerStats);
-    if (newStats.containsKey(playerOut)) newStats[playerOut] = newStats[playerOut]!.copyWith(isOnCourt: false);
-    if (newStats.containsKey(playerIn)) newStats[playerIn] = newStats[playerIn]!.copyWith(isOnCourt: true, hasPlayed: true);
+    if (newStats.containsKey(playerOut))
+      newStats[playerOut] = newStats[playerOut]!.copyWith(isOnCourt: false);
+    if (newStats.containsKey(playerIn))
+      newStats[playerIn] = newStats[playerIn]!.copyWith(
+        isOnCourt: true,
+        hasPlayed: true,
+      );
 
     if (teamId == 'A') {
-      final newOnCourt = List<String>.from(state.teamAOnCourt)..remove(playerOut)..add(playerIn);
-      final newBench = List<String>.from(state.teamABench)..remove(playerIn)..add(playerOut);
-      state = state.copyWith(teamAOnCourt: newOnCourt, teamABench: newBench, playerStats: newStats);
+      final newOnCourt = List<String>.from(state.teamAOnCourt)
+        ..remove(playerOut)
+        ..add(playerIn);
+      final newBench = List<String>.from(state.teamABench)
+        ..remove(playerIn)
+        ..add(playerOut);
+      state = state.copyWith(
+        teamAOnCourt: newOnCourt,
+        teamABench: newBench,
+        playerStats: newStats,
+      );
     } else {
-      final newOnCourt = List<String>.from(state.teamBOnCourt)..remove(playerOut)..add(playerIn);
-      final newBench = List<String>.from(state.teamBBench)..remove(playerIn)..add(playerOut);
-      state = state.copyWith(teamBOnCourt: newOnCourt, teamBBench: newBench, playerStats: newStats);
+      final newOnCourt = List<String>.from(state.teamBOnCourt)
+        ..remove(playerOut)
+        ..add(playerIn);
+      final newBench = List<String>.from(state.teamBBench)
+        ..remove(playerIn)
+        ..add(playerOut);
+      state = state.copyWith(
+        teamBOnCourt: newOnCourt,
+        teamBBench: newBench,
+        playerStats: newStats,
+      );
     }
   }
 
   Future<void> _saveToDatabase() async {
     if (state.matchId.isEmpty) return;
-    final timeStr = "${state.timeLeft.inMinutes}:${(state.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}";
-    await _dao.updateMatchStatus(state.matchId, state.scoreA, state.scoreB, timeStr, "IN_PROGRESS");
+    final timeStr =
+        "${state.timeLeft.inMinutes}:${(state.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}";
+    await _dao.updateMatchStatus(
+      state.matchId,
+      state.scoreA,
+      state.scoreB,
+      timeStr,
+      "IN_PROGRESS",
+    );
   }
 
-  Future<void> _logEventToDb(String? playeridDb, int points, int fouls, String? customType) async {
+  Future<void> _logEventToDb(
+    String? playeridDb,
+    int points,
+    int fouls,
+    String? customType,
+  ) async {
     if (state.matchId.isEmpty) return;
     String type = "UNKNOWN";
-    if (points == 1) {type = "POINT_1";}
-    else if (points == 2) {type = "POINT_2";}
-    else if (points == 3) {type = "POINT_3";}
-    else if (customType != null) {type = customType;} 
-    else if (fouls > 0) {type = "FOUL"; }
+    if (points == 1) {
+      type = "POINT_1";
+    } else if (points == 2) {
+      type = "POINT_2";
+    } else if (points == 3) {
+      type = "POINT_3";
+    } else if (customType != null) {
+      type = customType;
+    } else if (fouls > 0) {
+      type = "FOUL";
+    }
 
-    final timeStr = "${state.timeLeft.inMinutes}:${(state.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}";
+    final timeStr =
+        "${state.timeLeft.inMinutes}:${(state.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}";
 
     await _dao.insertEvent(
       GameEventsCompanion.insert(
-        matchId: state.matchId, playerId: drift.Value(playeridDb), type: type, period: state.currentPeriod, clockTime: timeStr, isSynced: const drift.Value(false),
+        matchId: state.matchId,
+        playerId: drift.Value(playeridDb),
+        type: type,
+        period: state.currentPeriod,
+        clockTime: timeStr,
+        isSynced: const drift.Value(false),
       ),
     );
   }
@@ -728,14 +928,17 @@ class MatchGameController extends StateNotifier<MatchState> {
   void updateMatchPlayerInfo(String playerId, {String? newNumber}) {
     if (!state.playerStats.containsKey(playerId)) return;
     final currentStats = state.playerStats[playerId]!;
-    final newStats = currentStats.copyWith(playerNumber: newNumber ?? currentStats.playerNumber);
+    final newStats = currentStats.copyWith(
+      playerNumber: newNumber ?? currentStats.playerNumber,
+    );
     final newPlayerStatsMap = Map<String, PlayerStats>.from(state.playerStats);
     newPlayerStatsMap[playerId] = newStats;
     state = state.copyWith(playerStats: newPlayerStatsMap);
   }
 }
 
-final matchGameProvider = StateNotifierProvider<MatchGameController, MatchState>((ref) {
-  final dao = ref.watch(matchesDaoProvider);
-  return MatchGameController(dao);
-});
+final matchGameProvider =
+    StateNotifierProvider<MatchGameController, MatchState>((ref) {
+      final dao = ref.watch(matchesDaoProvider);
+      return MatchGameController(dao);
+    });

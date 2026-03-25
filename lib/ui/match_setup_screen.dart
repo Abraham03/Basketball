@@ -39,6 +39,18 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
   final _formKey = GlobalKey<FormState>();
 
   @override
+  void initState() {
+    super.initState();
+    // --- SOLUCIÓN DE CACHÉ ---
+    // Forzamos la recarga de datos al abrir la pantalla. 
+    // Esto asegura que cualquier jugador creado en la pantalla de Equipos
+    // aparezca inmediatamente aquí sin necesidad de sincronizar o reiniciar.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(tournamentDataByIdProvider(widget.tournamentId));
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final catalogAsync = ref.watch(tournamentDataByIdProvider(widget.tournamentId));
     final tournamentsListAsync = ref.watch(tournamentsListProvider);
@@ -53,9 +65,6 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
           
           // Asignamos el nombre correctamente
           currentTournamentName = t.name;
-          
-          // ELIMINAMOS la siguiente línea porque causaba que el código fallara y se fuera al catch:
-          // selectedTournament = t as model.Tournament?; 
           
         } catch (e) {
           currentTournamentName = "Torneo Desconocido";
@@ -649,8 +658,8 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
           auxReferee: ref2Name,
           scorekeeper: scorekName,
           tournamentName: tournamentName,
-          tournamentLogoUrl: resolvedTournLogo, // <--- ENVIAMOS EL LOGO REAL
-          categoryName: finalCategory,          // <--- ENVIAMOS LA CATEGORÍA REAL
+          tournamentLogoUrl: resolvedTournLogo, 
+          categoryName: finalCategory,          
           venueName: selectedVenue!.name,
         ),
       ),

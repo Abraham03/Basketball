@@ -566,7 +566,7 @@ class PdfGenerator {
                 ..._drawTimeouts(state),
 
                 // --- LÓGICA PARA EQUIPO A ---
-                if (state.forfeitStatus == 'TEAM_A' || state.forfeitStatus == 'TEAM_B' || state.forfeitStatus == 'BOTH') ...[
+                if (state.forfeitStatus == 'TEAM_A' || state.forfeitStatus == 'BOTH') ...[
                   ..._buildRosterList(
                     players: const [], 
                     stats: state.playerStats,
@@ -596,7 +596,7 @@ class PdfGenerator {
                 ],
 
                 // --- LÓGICA PARA EQUIPO B ---
-                if (state.forfeitStatus == 'TEAM_A' || state.forfeitStatus == 'TEAM_B' || state.forfeitStatus == 'BOTH') ...[
+                if (state.forfeitStatus == 'TEAM_B' || state.forfeitStatus == 'BOTH') ...[
                   ..._buildRosterList(
                     players: const [], 
                     stats: state.playerStats,
