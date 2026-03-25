@@ -278,7 +278,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                               trailing: const Icon(Icons.cloud_download, color: Colors.purpleAccent),
                               onTap: () {
                                 Navigator.pop(ctx);
-                                _syncData("0"); // "0" significa descargar todo
+                                _confirmSyncData("0", "Todos los Torneos"); // "0" significa descargar todo
                               },
                             ),
                             const Divider(color: Colors.white12),
@@ -294,7 +294,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                                   trailing: const Icon(Icons.download, color: Colors.white38),
                                   onTap: () {
                                     Navigator.pop(ctx);
-                                    _syncData(t['id'].toString());
+                                    _confirmSyncData(t['id'].toString(), t['name']);
                                   },
                                 )),
                           ],
@@ -984,40 +984,59 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
       final pendingVenues = await (db.select(db.venues)..where((tbl) => tbl.isSynced.equals(false))).get();
       for (var venue in pendingVenues) {
         try {
-          // Intentamos crear la sede en la nube (backend)
-          final realIdInt = await api.createVenue(venue.name, venue.address ?? '');
-          final String oldId = venue.id;
+          int? numericId = int.tryParse(venue.id);
+          bool isExisting = numericId != null && numericId > 0;
 
-          await db.transaction(() async {
-            // 1. Guardamos la sede con el ID real de la nube (usando la Clase Companion directo y convirtiendo a String)
-            await db.into(db.venues).insert(
-              VenuesCompanion.insert(
-                id: drift.Value(realIdInt.toString()), 
-                name: venue.name,
-                address: drift.Value(venue.address),
-                isSynced: const drift.Value(true),
-              ),
-              mode: drift.InsertMode.insertOrReplace
-            );
-            
-            // 2. Actualizamos cualquier fixture (partido programado) que usara la sede temporal
-            await (db.update(db.fixtures)..where((f) => f.venueId.equals(oldId))).write(
-              FixturesCompanion(venueId: drift.Value(realIdInt.toString())),
-            );
-            
-            // 3. Actualizamos cualquier match (partido jugado) que usara la sede temporal
-            // Usamos oldId directo porque es String, y pasamos el nuevo ID convertido a String.
-            await (db.update(db.matches)..where((m) => m.venueId.equals(oldId))).write(
-              MatchesCompanion(venueId: drift.Value(realIdInt.toString())),
-            );
+          // 1. Es un Borrado Lógico
+          if (venue.name.startsWith('[DEL]-')) {
+            if (isExisting) {
+              final success = await api.deleteVenue(numericId);
+              if (success) {
+                await (db.delete(db.venues)..where((v) => v.id.equals(venue.id))).go();
+              }
+            } else {
+              await (db.delete(db.venues)..where((v) => v.id.equals(venue.id))).go();
+            }
+            continue; // Terminamos con esta sede, saltamos a la siguiente
+          }
 
-            // 4. Borramos la sede temporal
-            await (db.delete(db.venues)..where((v) => v.id.equals(oldId))).go();
-          });
+          // 2. Es una Actualización de Sede Existente
+          if (isExisting) {
+            final success = await api.updateVenue(id: venue.id, name: venue.name, address: venue.address ?? '');
+            if (success) {
+              await (db.update(db.venues)..where((v) => v.id.equals(venue.id)))
+                  .write(const VenuesCompanion(isSynced: drift.Value(true)));
+              uploadedVenues++;
+            }
+          } 
+          // 3. Es una Sede Totalmente Nueva
+          else {
+             final realIdInt = await api.createVenue(venue.name, venue.address ?? '');
+             final String oldId = venue.id;
 
-          uploadedVenues++;
+             await db.transaction(() async {
+               await db.into(db.venues).insert(
+                 VenuesCompanion.insert(
+                   id: drift.Value(realIdInt.toString()), 
+                   name: venue.name,
+                   address: drift.Value(venue.address),
+                   isSynced: const drift.Value(true),
+                 ),
+                 mode: drift.InsertMode.insertOrReplace
+               );
+               
+               await (db.update(db.fixtures)..where((f) => f.venueId.equals(oldId))).write(
+                 FixturesCompanion(venueId: drift.Value(realIdInt.toString())),
+               );
+               await (db.update(db.matches)..where((m) => m.venueId.equals(oldId))).write(
+                 MatchesCompanion(venueId: drift.Value(realIdInt.toString())),
+               );
+               await (db.delete(db.venues)..where((v) => v.id.equals(oldId))).go();
+             });
+             uploadedVenues++;
+          }
         } catch (e) {
-          debugPrint("Error al subir sede: $e");
+          debugPrint("Error al sincronizar sede: $e");
         }
       }
       // ------------------------------------------
@@ -1288,30 +1307,57 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         }
       }
 
-      // Subir Oficiales
+      // --- 7. Subir Oficiales ---
       final pendingOfficials = await (db.select(db.officials)..where((tbl) => tbl.isSynced.equals(false))).get();
       for (var official in pendingOfficials) {
         try {
-          final realIdInt = await api.createOfficial(official.name, official.role);
-          final String oldId = official.id;
+          int? numericId = int.tryParse(official.id.toString());
+          bool isExisting = numericId != null && numericId > 0;
 
-          await db.transaction(() async {
-            await db.into(db.officials).insert(
-              OfficialsCompanion.insert(
-                id: realIdInt.toString(), 
-                name: official.name,
-                role: drift.Value(official.role),
-                active: const drift.Value(true),
-                isSynced: const drift.Value(true),
-              ),
-              mode: drift.InsertMode.insertOrReplace
-            );
-            await (db.delete(db.officials)..where((o) => o.id.equals(oldId))).go();
-          });
+          // Borrado Lógico
+          if (official.name.startsWith('[DEL]-')) {
+            if (isExisting) {
+              final success = await api.deleteOfficial(numericId);
+              if (success) {
+                await (db.delete(db.officials)..where((o) => o.id.equals(official.id.toString()))).go();
+              }
+            } else {
+              await (db.delete(db.officials)..where((o) => o.id.equals(official.id.toString()))).go();
+            }
+            continue; 
+          }
 
-          uploadedOfficials++;
+          // Actualización
+          if (isExisting) {
+             final success = await api.updateOfficial(id: official.id.toString(), name: official.name, role: official.role);
+             if (success) {
+               await (db.update(db.officials)..where((o) => o.id.equals(official.id.toString())))
+                   .write(const OfficialsCompanion(isSynced: drift.Value(true)));
+               uploadedOfficials++;
+             }
+          }
+          // Creación Nueva
+          else {
+             final realIdInt = await api.createOfficial(official.name, official.role);
+             final String oldId = official.id.toString();
+
+             await db.transaction(() async {
+               await db.into(db.officials).insert(
+                 OfficialsCompanion.insert(
+                   id: realIdInt.toString(), 
+                   name: official.name,
+                   role: drift.Value(official.role),
+                   active: const drift.Value(true),
+                   isSynced: const drift.Value(true),
+                 ),
+                 mode: drift.InsertMode.insertOrReplace
+               );
+               await (db.delete(db.officials)..where((o) => o.id.equals(oldId))).go();
+             });
+             uploadedOfficials++;
+          }
         } catch (e) {
-          debugPrint("Error al subir oficial: $e");
+          debugPrint("Error al sincronizar oficial: $e");
         }
       }
 
@@ -1382,5 +1428,40 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         );
       }
     }
+  }
+
+  void _confirmSyncData(String syncId, String name) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1F2B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent),
+            SizedBox(width: 10),
+            Text("Confirmar Descarga", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          "Estás a punto de descargar los datos de '$name'.\n\n⚠️ ¡Atención! Esto reemplazará toda tu base de datos local actual con la información de la nube. Cualquier dato no subido se perderá.\n\n¿Deseas continuar?", 
+          style: const TextStyle(color: Colors.white70, height: 1.4)
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx), 
+            child: const Text("Cancelar", style: TextStyle(color: Colors.grey))
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.orangeAccent),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _syncData(syncId);
+            },
+            child: const Text("Sí, descargar", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -297,6 +297,42 @@ class ApiService {
     }
   }
 
+  Future<bool> deleteVenue(int id) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl?action=delete_venue'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({"id": id}),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final body = jsonDecode(response.body);
+        return body['status'] == 'success';
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteOfficial(int id) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl?action=delete_official'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({"id": id}),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final body = jsonDecode(response.body);
+        return body['status'] == 'success';
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
   Future<bool> updateOfficial({
     required String id,
     required String name,

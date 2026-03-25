@@ -41,10 +41,6 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
   @override
   void initState() {
     super.initState();
-    // --- SOLUCIÓN DE CACHÉ ---
-    // Forzamos la recarga de datos al abrir la pantalla. 
-    // Esto asegura que cualquier jugador creado en la pantalla de Equipos
-    // aparezca inmediatamente aquí sin necesidad de sincronizar o reiniciar.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.invalidate(tournamentDataByIdProvider(widget.tournamentId));
     });
@@ -60,15 +56,10 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
     tournamentsListAsync.when(
       data: (list) {
         try {
-          // Aseguramos la comparación de IDs
           final t = list.firstWhere((element) => element.id.toString() == widget.tournamentId.toString());
-          
-          // Asignamos el nombre correctamente
           currentTournamentName = t.name;
-          
         } catch (e) {
           currentTournamentName = "Torneo Desconocido";
-          debugPrint("Error al cargar nombre del torneo: $e");
         }
       },
       loading: () => currentTournamentName = "Cargando...",
@@ -94,7 +85,6 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
           error: (err, stack) => Center(child: Text("Error: $err", style: const TextStyle(color: Colors.redAccent))),
           data: (catalogData) {
             
-            // LÓGICA DE AUTO-SELECCIÓN DESDE FIXTURE
             if (widget.preSelectedFixture != null && selectedTeamA == null) {
               try {
                 final fix = widget.preSelectedFixture!;
@@ -112,12 +102,14 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
 
             final bool isLocked = widget.preSelectedFixture != null;
 
-            // Filtrar oficiales por rol
-            final mainReferees = catalogData.officials.where((o) => o.role == 'ARBITRO_PRINCIPAL').toList();
-            final auxReferees = catalogData.officials.where((o) => o.role == 'ARBITRO_AUXILIAR').toList();
-            final scorekeepers = catalogData.officials.where((o) => o.role == 'ANOTADOR').toList();
+            // --- FILTRAR ELEMENTOS EN BORRADO LÓGICO ---
+            final activeVenues = catalogData.venues.where((v) => !v.name.startsWith('[DEL]-')).toList();
+            final activeOfficials = catalogData.officials.where((o) => !o.name.startsWith('[DEL]-')).toList();
 
-            // CAPA DE SEGURIDAD ABSOLUTA PARA DROPDOWNS
+            final mainReferees = activeOfficials.where((o) => o.role == 'ARBITRO_PRINCIPAL').toList();
+            final auxReferees = activeOfficials.where((o) => o.role == 'ARBITRO_AUXILIAR').toList();
+            final scorekeepers = activeOfficials.where((o) => o.role == 'ANOTADOR').toList();
+
             if (selectedTeamA != null) {
               selectedTeamA = catalogData.teams.where((t) => t.id == selectedTeamA!.id).firstOrNull;
             }
@@ -125,7 +117,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
               selectedTeamB = catalogData.teams.where((t) => t.id == selectedTeamB!.id).firstOrNull;
             }
             if (selectedVenue != null) {
-              selectedVenue = catalogData.venues.where((v) => v.id == selectedVenue!.id).firstOrNull;
+              selectedVenue = activeVenues.where((v) => v.id == selectedVenue!.id).firstOrNull;
             }
             if (selectedMainReferee != null) {
               selectedMainReferee = mainReferees.where((o) => o.id == selectedMainReferee!.id).firstOrNull;
@@ -193,16 +185,25 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                                     label: "Cancha",
                                     icon: Icons.location_on,
                                     value: selectedVenue,
-                                    items: catalogData.venues,
+                                    items: activeVenues, // <--- Usamos las activas
                                     isLocked: false,
                                     onChanged: (val) => setState(() => selectedVenue = val),
                                     displayText: (v) => v.name,
                                   ),
                                 ),
                                 if (selectedVenue != null)
-                                  IconButton(
-                                    icon: const Icon(Icons.edit, color: Colors.blueAccent),
-                                    onPressed: () => _showEditVenueDialog(selectedVenue!),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.edit, color: Colors.blueAccent),
+                                        onPressed: () => _showEditVenueDialog(selectedVenue!),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                        onPressed: () => _confirmDeleteVenue(selectedVenue!),
+                                      ),
+                                    ],
                                   ),
                               ],
                             ),
@@ -299,9 +300,18 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                                   ),
                                 ),
                                 if (selectedMainReferee != null)
-                                  IconButton(
-                                    icon: const Icon(Icons.edit, color: Colors.blueAccent),
-                                    onPressed: () => _showEditOfficialDialog(selectedMainReferee!),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.edit, color: Colors.blueAccent),
+                                        onPressed: () => _showEditOfficialDialog(selectedMainReferee!),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                        onPressed: () => _confirmDeleteOfficial(selectedMainReferee!),
+                                      ),
+                                    ],
                                   ),
                               ],
                             ),
@@ -323,9 +333,18 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                                   ),
                                 ),
                                 if (selectedAuxReferee != null)
-                                  IconButton(
-                                    icon: const Icon(Icons.edit, color: Colors.blueAccent),
-                                    onPressed: () => _showEditOfficialDialog(selectedAuxReferee!),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.edit, color: Colors.blueAccent),
+                                        onPressed: () => _showEditOfficialDialog(selectedAuxReferee!),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                        onPressed: () => _confirmDeleteOfficial(selectedAuxReferee!),
+                                      ),
+                                    ],
                                   ),
                               ],
                             ),
@@ -347,9 +366,18 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                                   ),
                                 ),
                                 if (selectedScorekeeper != null)
-                                  IconButton(
-                                    icon: const Icon(Icons.edit, color: Colors.blueAccent),
-                                    onPressed: () => _showEditOfficialDialog(selectedScorekeeper!),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.edit, color: Colors.blueAccent),
+                                        onPressed: () => _showEditOfficialDialog(selectedScorekeeper!),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                        onPressed: () => _confirmDeleteOfficial(selectedScorekeeper!),
+                                      ),
+                                    ],
                                   ),
                               ],
                             ),
@@ -390,10 +418,6 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
     );
   }
 
-  // ===========================================================================
-  // WIDGETS AUXILIARES PARA EL DISEÑO GLASSMORPHISM E INTERFAZ MODERNA
-  // ===========================================================================
-
   Widget _buildGlassCard({required Widget child}) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
@@ -431,7 +455,6 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
     );
   }
 
-  // --- NUEVO: SELECTOR TIPO MODAL BOTTOM SHEET ---
   Widget _buildBottomSheetSelector<T>({
     required String label,
     required IconData icon,
@@ -507,7 +530,6 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
     );
   }
 
-  // --- NUEVO: BOTTOM SHEET RENDERER ---
   void _showSelectorSheet<T>({
     required String title,
     required List<T> items,
@@ -597,10 +619,6 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
     );
   }
 
-  // ===========================================================================
-  // NAVEGACIÓN Y DIÁLOGOS
-  // ===========================================================================
-
   void _goToStarterSelection(model.CatalogData data, String tournamentName) {
     if (selectedTeamA == null || selectedTeamB == null || selectedVenue == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -609,7 +627,6 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
       return;
     }
 
-    // --- MAGIA: BUSCAMOS EL TORNEO DIRECTO EN LA BASE DE DATOS DE DRIFT ---
     final driftTournaments = ref.read(tournamentsListProvider).value ?? [];
     final currentTourn = driftTournaments.where((t) => t.id.toString() == widget.tournamentId).firstOrNull;
 
@@ -619,14 +636,10 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
     if (currentTourn != null) {
       finalCategory = currentTourn.category ?? 'LIBRE';
       
-      // Aquí obtenemos el logo fresco directamente de la tabla
       if (currentTourn.logoUrl != null && currentTourn.logoUrl!.isNotEmpty) {
         resolvedTournLogo = currentTourn.logoUrl!.replaceAll('../', 'https://basket.techsolutions.management/');
       }
     }
-    
-    // Imprimimos para confirmar que ahora sí tiene datos
-    print("NUEVA URL DEL LOGO: $resolvedTournLogo");
     
     String matchIdToUse;
     if (widget.preSelectedFixture != null && widget.preSelectedFixture!.matchId != null && widget.preSelectedFixture!.matchId!.isNotEmpty) {
@@ -665,10 +678,6 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
       ),
     );
   }
-
-  // ===========================================================================
-  // DIÁLOGOS DE SEDE (VENUE)
-  // ===========================================================================
   
   void _showAddVenueDialog() {
     final nameCtrl = TextEditingController();
@@ -870,6 +879,79 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
         ],
       ),
     );
+  }
+
+  void _confirmDeleteVenue(model.Venue venue) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1F2B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.delete_forever, color: Colors.redAccent),
+            SizedBox(width: 10),
+            Text("Eliminar Sede", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          "¿Estás seguro de que deseas eliminar la sede '${venue.name}'?", 
+          style: const TextStyle(color: Colors.white70)
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx), 
+            child: const Text("Cancelar", style: TextStyle(color: Colors.grey))
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _deleteVenue(venue);
+            },
+            child: const Text("Eliminar", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteVenue(model.Venue venue) async {
+    final database = ref.read(databaseProvider);
+    final api = ref.read(apiServiceProvider);
+    
+    try {
+      int? numericId = int.tryParse(venue.id.toString());
+      if (numericId != null && numericId > 0) {
+        try {
+          final success = await api.deleteVenue(numericId);
+          if (success) {
+            await (database.delete(database.venues)..where((v) => v.id.equals(venue.id.toString()))).go();
+          } else {
+            await (database.update(database.venues)..where((v) => v.id.equals(venue.id.toString()))).write(
+              db.VenuesCompanion(name: drift.Value('[DEL]-${venue.name}'), isSynced: const drift.Value(false))
+            );
+          }
+        } catch (e) {
+          await (database.update(database.venues)..where((v) => v.id.equals(venue.id.toString()))).write(
+             db.VenuesCompanion(name: drift.Value('[DEL]-${venue.name}'), isSynced: const drift.Value(false))
+          );
+        }
+      } else {
+        await (database.delete(database.venues)..where((v) => v.id.equals(venue.id.toString()))).go();
+      }
+      
+      if (selectedVenue?.id == venue.id) setState(() => selectedVenue = null);
+      ref.invalidate(tournamentDataByIdProvider(widget.tournamentId));
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Sede eliminada exitosamente"), backgroundColor: Colors.redAccent),
+        );
+      }
+    } catch (e) {
+      debugPrint("Error al eliminar sede: $e");
+    }
   }
 
   // ===========================================================================
@@ -1086,7 +1168,6 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                         debugPrint("Actualizado offline: $e");
                       }
                     } else {
-                      // Es un oficial creado offline (ID temporal)
                       isSyncedStatus = false;
                     }
 
@@ -1132,5 +1213,81 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
         }
       ),
     );
+  }
+
+  void _confirmDeleteOfficial(model.Official official) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1F2B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.delete_forever, color: Colors.redAccent),
+            SizedBox(width: 10),
+            Text("Eliminar Oficial", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          "¿Estás seguro de que deseas eliminar al oficial '${official.name}'?", 
+          style: const TextStyle(color: Colors.white70)
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx), 
+            child: const Text("Cancelar", style: TextStyle(color: Colors.grey))
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _deleteOfficial(official);
+            },
+            child: const Text("Eliminar", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteOfficial(model.Official official) async {
+    final database = ref.read(databaseProvider);
+    final api = ref.read(apiServiceProvider);
+    
+    try {
+      int? numericId = int.tryParse(official.id.toString());
+      if (numericId != null && numericId > 0) {
+        try {
+          final success = await api.deleteOfficial(numericId);
+          if (success) {
+            await (database.delete(database.officials)..where((o) => o.id.equals(official.id.toString()))).go();
+          } else {
+            await (database.update(database.officials)..where((o) => o.id.equals(official.id.toString()))).write(
+              db.OfficialsCompanion(name: drift.Value('[DEL]-${official.name}'), isSynced: const drift.Value(false))
+            );
+          }
+        } catch (e) {
+          await (database.update(database.officials)..where((o) => o.id.equals(official.id.toString()))).write(
+            db.OfficialsCompanion(name: drift.Value('[DEL]-${official.name}'), isSynced: const drift.Value(false))
+          );
+        }
+      } else {
+        await (database.delete(database.officials)..where((o) => o.id.equals(official.id.toString()))).go();
+      }
+      
+      if (selectedMainReferee?.id == official.id) setState(() => selectedMainReferee = null);
+      if (selectedAuxReferee?.id == official.id) setState(() => selectedAuxReferee = null);
+      if (selectedScorekeeper?.id == official.id) setState(() => selectedScorekeeper = null);
+
+      ref.invalidate(tournamentDataByIdProvider(widget.tournamentId));
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Oficial eliminado exitosamente"), backgroundColor: Colors.redAccent),
+        );
+      }
+    } catch (e) {
+      debugPrint("Error al eliminar oficial: $e");
+    }
   }
 }
