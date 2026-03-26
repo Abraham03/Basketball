@@ -709,8 +709,9 @@ class MatchGameController extends StateNotifier<MatchState> {
         : const Duration(minutes: 10);
 
     final newPeriodScores = Map<int, List<int>>.from(state.periodScores);
-    if (!newPeriodScores.containsKey(nextPeriodIdx))
+    if (!newPeriodScores.containsKey(nextPeriodIdx)) {
       newPeriodScores[nextPeriodIdx] = [0, 0];
+    }
 
     state = state.copyWith(
       currentPeriod: nextPeriodIdx,
@@ -800,6 +801,7 @@ class MatchGameController extends StateNotifier<MatchState> {
       points: currentStats.points + points,
       fouls: currentStats.fouls + fouls,
       foulDetails: newFoulDetails,
+      hasPlayed: true,
     );
 
     List<ScoreEvent> newScoreLog = List.from(state.scoreLog);
@@ -836,13 +838,15 @@ class MatchGameController extends StateNotifier<MatchState> {
   void substitutePlayer(String teamId, String playerOut, String playerIn) {
     _saveToHistory();
     final newStats = Map<String, PlayerStats>.from(state.playerStats);
-    if (newStats.containsKey(playerOut))
+    if (newStats.containsKey(playerOut)) {
       newStats[playerOut] = newStats[playerOut]!.copyWith(isOnCourt: false);
-    if (newStats.containsKey(playerIn))
+    }
+    if (newStats.containsKey(playerIn)) {
       newStats[playerIn] = newStats[playerIn]!.copyWith(
         isOnCourt: true,
         hasPlayed: true,
       );
+    }
 
     if (teamId == 'A') {
       final newOnCourt = List<String>.from(state.teamAOnCourt)

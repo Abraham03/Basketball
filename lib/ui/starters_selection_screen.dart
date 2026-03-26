@@ -1,7 +1,6 @@
 // lib/ui/screens/starters_selection_screen.dart
 // ignore_for_file: deprecated_member_use
 
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
@@ -166,7 +165,11 @@ class _StartersSelectionScreenState
                     if (isSelected) {
                       selectedIds.remove(player.id);
                       if (isCaptain) {
-                        if (isTeamA) _captainAId = null; else _captainBId = null;
+                        if (isTeamA) {
+                          _captainAId = null;
+                        } else {
+                          _captainBId = null;
+                        }
                       }
                     } else if (selectedIds.length < 5) {
                       selectedIds.add(player.id);
@@ -197,8 +200,11 @@ class _StartersSelectionScreenState
                         icon: Icon(isCaptain ? Icons.star : Icons.star_border, color: isCaptain ? Colors.amber : Colors.white30),
                         onPressed: () {
                           setState(() { 
-                            if (isTeamA) _captainAId = player.id; 
-                            else _captainBId = player.id; 
+                            if (isTeamA) {
+                              _captainAId = player.id;
+                            } else {
+                              _captainBId = player.id;
+                            } 
                           });
                           _syncWithProvider(); // Guardar cambio de capitán
                         },

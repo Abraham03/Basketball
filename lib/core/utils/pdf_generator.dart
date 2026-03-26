@@ -970,7 +970,7 @@ class PdfGenerator {
               child: pw.Container(
                 width: blockWidth + 1.0, // Anchura total desde el inicio hasta el fin de sus faltas
                 height: boxHeight,
-                decoration: pw.BoxDecoration(
+                decoration: const pw.BoxDecoration(
                   border: pw.Border(
                     top: pw.BorderSide(color: PdfColors.blue900, width: 1.5),
                     bottom: pw.BorderSide(color: PdfColors.blue900, width: 1.5),

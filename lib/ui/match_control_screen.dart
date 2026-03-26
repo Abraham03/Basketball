@@ -386,138 +386,244 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
     );
   }
 
-  Widget _buildTeamList(BuildContext context, String teamName, Color primaryColor, String teamId, List<String> onCourt, List<String> bench, MatchGameController controller, MatchState state, bool isWideScreen) {
+  Widget _buildTeamList(
+    BuildContext context,
+    String teamName,
+    Color primaryColor,
+    String teamId,
+    List<String> onCourt,
+    List<String> bench,
+    MatchGameController controller,
+    MatchState state,
+    bool isWideScreen,
+  ) {
+    // Ordenamos ambas listas por número de camiseta descendente
+    final sortedCourt = _sortPlayersByNumberDesc(onCourt, state);
+    final sortedBench = _sortPlayersByNumberDesc(bench, state);
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), 
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
-          decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), border: Border.all(color: Colors.white10), borderRadius: BorderRadius.circular(20)),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.4),
+            border: Border.all(color: Colors.white10),
+            borderRadius: BorderRadius.circular(20),
+          ),
           child: Column(
             children: [
+              // Header del equipo con botón de opciones y sustitución
               Container(
-                padding: EdgeInsets.symmetric(vertical: isWideScreen ? 12 : 8, horizontal: isWideScreen ? 16 : 8),
-                decoration: BoxDecoration(color: primaryColor.withOpacity(0.15), border: const Border(bottom: BorderSide(color: Colors.white24, width: 1))),
+                padding: EdgeInsets.symmetric(
+                    vertical: isWideScreen ? 12 : 8,
+                    horizontal: isWideScreen ? 16 : 8),
+                decoration: BoxDecoration(
+                  color: primaryColor.withOpacity(0.15),
+                  border: const Border(
+                      bottom: BorderSide(color: Colors.white24, width: 1)),
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                     Expanded(child: Text("EN CANCHA", style: TextStyle(color: primaryColor, fontWeight: FontWeight.w900, fontSize: isWideScreen ? 13 : 11, letterSpacing: 1.0), overflow: TextOverflow.ellipsis)),
-                     Row(
-                       mainAxisSize: MainAxisSize.min,
-                       children: [
-                         IconButton(onPressed: _isFinished ? null : () => _showTeamOptions(context, controller, teamId, teamName), icon: Icon(Icons.more_vert, color: _isFinished ? Colors.white24 : primaryColor, size: isWideScreen ? 28 : 24), padding: EdgeInsets.zero, constraints: const BoxConstraints()),
-                         SizedBox(width: isWideScreen ? 16 : 8),
-                         InkWell(onTap: _isFinished ? null : () => _showSubstitutionDialog(context, teamId, onCourt, bench, controller, state), borderRadius: BorderRadius.circular(20), child: Icon(Icons.swap_horizontal_circle, color: _isFinished ? Colors.white24 : primaryColor, size: isWideScreen ? 34 : 28))
-                       ],
-                     )
+                    Expanded(
+                      child: Text(
+                        teamName.toUpperCase(),
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: isWideScreen ? 13 : 11,
+                            letterSpacing: 1.0),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          onPressed: _isFinished
+                              ? null
+                              : () => _showTeamOptions(
+                                  context, controller, teamId, teamName),
+                          icon: Icon(Icons.more_vert,
+                              color: _isFinished ? Colors.white24 : primaryColor,
+                              size: isWideScreen ? 28 : 24),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                        SizedBox(width: isWideScreen ? 12 : 8),
+                        InkWell(
+                          onTap: _isFinished
+                              ? null
+                              : () => _showSubstitutionDialog(context, teamId,
+                                  onCourt, bench, controller, state),
+                          child: Icon(Icons.swap_horizontal_circle,
+                              color: _isFinished ? Colors.white24 : primaryColor,
+                              size: isWideScreen ? 30 : 26),
+                        )
+                      ],
+                    )
                   ],
                 ),
               ),
+              // Lista única de jugadores
               Expanded(
-                child: ListView.separated(
-                  padding: EdgeInsets.all(isWideScreen ? 12 : 8), physics: const BouncingScrollPhysics(), itemCount: onCourt.length, separatorBuilder: (_, __) => SizedBox(height: isWideScreen ? 8 : 6),
-                  itemBuilder: (context, index) {
-                    final playerName = onCourt[index];
-                    final stats = state.playerStats[playerName] ?? const PlayerStats();
-                    bool isDisqualified = stats.fouls >= 5;
-                    
-                    bool isCaptain = (teamId == 'A' && playerName == _captainAName) || (teamId == 'B' && playerName == _captainBName);
-
-                    return InkWell(
-                      onTap: _isFinished ? null : () => _showActionMenu(context, teamId, playerName, controller, stats.fouls, isWideScreen, state),
-                      onLongPress: _isFinished ? null : () => _showEditPlayerDialog(context, controller, playerName, stats.playerNumber, teamId),
-                      borderRadius: BorderRadius.circular(15),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(vertical: isWideScreen ? 14 : 10, horizontal: isWideScreen ? 12 : 8),
-                        decoration: BoxDecoration(color: isDisqualified ? Colors.redAccent.withOpacity(0.2) : Colors.white.withOpacity(0.08), borderRadius: BorderRadius.circular(15), border: Border.all(color: isDisqualified ? Colors.redAccent.withOpacity(0.5) : Colors.white12)),
-                        child: Row(
-                          children: [
-                            CircleAvatar(radius: isWideScreen ? 24 : 20, backgroundColor: isDisqualified ? Colors.redAccent.withOpacity(0.3) : primaryColor.withOpacity(0.2), child: Text(stats.playerNumber.isNotEmpty ? stats.playerNumber : "#", style: TextStyle(color: isDisqualified ? Colors.redAccent : primaryColor, fontWeight: FontWeight.w900, fontSize: isWideScreen ? 18 : 14))),
-                            SizedBox(width: isWideScreen ? 16 : 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Flexible(
-                                        child: Text(
-                                          playerName,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: isWideScreen ? 16 : 12,
-                                            color: Colors.white,
-                                            fontFamily: 'Roboto',
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis, 
-                                        ),
-                                      ),
-                                      if (isCaptain)
-                                        Padding(
-                                          padding: const EdgeInsets.only(left: 4.0),
-                                          child: Text(
-                                            " (C)",
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w900,
-                                              fontSize: isWideScreen ? 14 : 11, 
-                                              color: Colors.amberAccent,
-                                              fontFamily: 'Roboto',
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  SizedBox(height: isWideScreen ? 6 : 4),
-                                  Wrap(
-                                    crossAxisAlignment: WrapCrossAlignment.center,
-                                    spacing: 8,
-                                    runSpacing: 4,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white12,
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Text(
-                                          "${stats.points} PTS",
-                                          style: TextStyle(
-                                            fontSize: isWideScreen ? 11 : 9,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white70,
-                                          ),
-                                        ),
-                                      ),
-                                      Wrap(
-                                        spacing: 4,
-                                        children: List.generate(5, (i) {
-                                          Color dotColor = Colors.white24;
-                                          if (i < stats.fouls) {
-                                            dotColor = (i == 4) ? Colors.redAccent : Colors.orangeAccent;
-                                          }
-                                          return Container(
-                                            width: isWideScreen ? 10 : 8,
-                                            height: isWideScreen ? 10 : 8,
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              color: dotColor,
-                                            ),
-                                          );
-                                        }),
-                                      )
-                                    ],
-                                  )
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
+                child: ListView(
+                  padding: EdgeInsets.all(isWideScreen ? 10 : 6),
+                  physics: const BouncingScrollPhysics(),
+                  children: [
+                    // Sección: Titulares
+                    _buildListSectionHeader("EN CANCHA", primaryColor),
+                    ...sortedCourt.map((playerName) => _buildPlayerRow(
+                          context,
+                          playerName,
+                          teamId,
+                          primaryColor,
+                          true, // isOnCourt
+                          controller,
+                          state,
+                          isWideScreen,
+                        )),
+                    const SizedBox(height: 16),
+                    // Sección: Banca
+                    _buildListSectionHeader("BANCA", Colors.white38),
+                    ...sortedBench.map((playerName) => _buildPlayerRow(
+                          context,
+                          playerName,
+                          teamId,
+                          Colors.white30,
+                          false, // isOnCourt
+                          controller,
+                          state,
+                          isWideScreen,
+                        )),
+                  ],
                 ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Widget auxiliar para las cabeceras de sección dentro de la lista
+  Widget _buildListSectionHeader(String title, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, left: 4),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+                color: color,
+                fontSize: 9,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.1),
+          ),
+          const SizedBox(width: 8),
+          Expanded(child: Divider(color: color.withOpacity(0.2), height: 1)),
+        ],
+      ),
+    );
+  }
+
+  // Widget de fila de jugador individual (Funciona para Cancha y Banca)
+  Widget _buildPlayerRow(
+    BuildContext context,
+    String playerName,
+    String teamId,
+    Color color,
+    bool isOnCourt,
+    MatchGameController controller,
+    MatchState state,
+    bool isWideScreen,
+  ) {
+    final stats = state.playerStats[playerName] ?? const PlayerStats();
+    final bool isDisqualified = stats.fouls >= 5;
+    final bool isCaptain = (teamId == 'A' && playerName == _captainAName) ||
+        (teamId == 'B' && playerName == _captainBName);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: InkWell(
+        onTap: _isFinished
+            ? null
+            : () => _showActionMenu(context, teamId, playerName, controller,
+                stats.fouls, isWideScreen, state),
+        onLongPress: _isFinished
+            ? null
+            : () => _showEditPlayerDialog(
+                context, controller, playerName, stats.playerNumber, teamId),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: isOnCourt
+                ? color.withOpacity(0.1)
+                : Colors.white.withOpacity(0.03),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isDisqualified
+                  ? Colors.redAccent.withOpacity(0.5)
+                  : (isOnCourt ? color.withOpacity(0.3) : Colors.white10),
+              width: isOnCourt ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              // Número del jugador
+              SizedBox(
+                width: 28,
+                child: Text(
+                  stats.playerNumber,
+                  style: TextStyle(
+                    color: isOnCourt ? Colors.white : Colors.white38,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(width: 10),
+              // Nombre y estado
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      playerName + (isCaptain ? " (C)" : ""),
+                      style: TextStyle(
+                        color: isDisqualified
+                            ? Colors.redAccent
+                            : (isOnCourt ? Colors.white : Colors.white60),
+                        fontWeight: isOnCourt ? FontWeight.bold : FontWeight.normal,
+                        fontSize: 13,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (stats.points > 0)
+                      Text(
+                        "${stats.points} PTS",
+                        style: const TextStyle(
+                            color: Colors.greenAccent,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold),
+                      ),
+                  ],
+                ),
+              ),
+              // Faltas (puntos pequeños)
+              Wrap(
+                spacing: 3,
+                children: List.generate(5, (i) {
+                  return Icon(
+                    Icons.circle,
+                    size: 8,
+                    color: i < stats.fouls ? Colors.redAccent : Colors.white10,
+                  );
+                }),
               ),
             ],
           ),

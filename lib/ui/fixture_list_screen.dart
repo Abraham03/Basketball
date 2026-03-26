@@ -62,7 +62,7 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
       case 4: return "4to Encuentro";
       case 5: return "5to Encuentro";
       case 6: return "6to Encuentro";
-      default: return "${count}º Encuentro";
+      default: return "$countº Encuentro";
     }
   }
 
