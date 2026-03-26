@@ -641,13 +641,17 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
       }
     }
     
+    // --- CAMBIO AQUÍ: Generar un ID predecible para partidos manuales ---
     String matchIdToUse;
-    if (widget.preSelectedFixture != null && widget.preSelectedFixture!.matchId != null && widget.preSelectedFixture!.matchId!.isNotEmpty) {
-       matchIdToUse = widget.preSelectedFixture!.matchId!;
+    if (widget.preSelectedFixture != null && 
+        widget.preSelectedFixture!.matchId != null && 
+        widget.preSelectedFixture!.matchId!.isNotEmpty) {
+      matchIdToUse = widget.preSelectedFixture!.matchId!;
     } else {
-       matchIdToUse = (DateTime.now().millisecondsSinceEpoch).toString();
+      // Si es manual, creamos un ID que no cambie cada segundo mientras sean los mismos equipos
+      // Ejemplo: manual_1_15_22 (manual_torneoID_equipoA_equipoB)
+      matchIdToUse = "manual_${widget.tournamentId}_${selectedTeamA!.id}_${selectedTeamB!.id}";
     }
-
     final rosterA = data.players.where((p) => p.teamId == selectedTeamA!.id).toList();
     final rosterB = data.players.where((p) => p.teamId == selectedTeamB!.id).toList();
 
