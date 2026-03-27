@@ -5903,6 +5903,17 @@ class $OfficialsTable extends Officials
     requiredDuringInsert: false,
     defaultValue: const Constant('REFEREE'),
   );
+  static const VerificationMeta _signatureDataMeta = const VerificationMeta(
+    'signatureData',
+  );
+  @override
+  late final GeneratedColumn<String> signatureData = GeneratedColumn<String>(
+    'signature_data',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _activeMeta = const VerificationMeta('active');
   @override
   late final GeneratedColumn<bool> active = GeneratedColumn<bool>(
@@ -5924,6 +5935,7 @@ class $OfficialsTable extends Officials
     isSynced,
     name,
     role,
+    signatureData,
     active,
   ];
   @override
@@ -5975,6 +5987,15 @@ class $OfficialsTable extends Officials
         role.isAcceptableOrUnknown(data['role']!, _roleMeta),
       );
     }
+    if (data.containsKey('signature_data')) {
+      context.handle(
+        _signatureDataMeta,
+        signatureData.isAcceptableOrUnknown(
+          data['signature_data']!,
+          _signatureDataMeta,
+        ),
+      );
+    }
     if (data.containsKey('active')) {
       context.handle(
         _activeMeta,
@@ -6014,6 +6035,10 @@ class $OfficialsTable extends Officials
         DriftSqlType.string,
         data['${effectivePrefix}role'],
       )!,
+      signatureData: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}signature_data'],
+      ),
       active: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}active'],
@@ -6034,6 +6059,7 @@ class Official extends DataClass implements Insertable<Official> {
   final bool isSynced;
   final String name;
   final String role;
+  final String? signatureData;
   final bool active;
   const Official({
     required this.id,
@@ -6042,6 +6068,7 @@ class Official extends DataClass implements Insertable<Official> {
     required this.isSynced,
     required this.name,
     required this.role,
+    this.signatureData,
     required this.active,
   });
   @override
@@ -6055,6 +6082,9 @@ class Official extends DataClass implements Insertable<Official> {
     map['is_synced'] = Variable<bool>(isSynced);
     map['name'] = Variable<String>(name);
     map['role'] = Variable<String>(role);
+    if (!nullToAbsent || signatureData != null) {
+      map['signature_data'] = Variable<String>(signatureData);
+    }
     map['active'] = Variable<bool>(active);
     return map;
   }
@@ -6069,6 +6099,9 @@ class Official extends DataClass implements Insertable<Official> {
       isSynced: Value(isSynced),
       name: Value(name),
       role: Value(role),
+      signatureData: signatureData == null && nullToAbsent
+          ? const Value.absent()
+          : Value(signatureData),
       active: Value(active),
     );
   }
@@ -6085,6 +6118,7 @@ class Official extends DataClass implements Insertable<Official> {
       isSynced: serializer.fromJson<bool>(json['isSynced']),
       name: serializer.fromJson<String>(json['name']),
       role: serializer.fromJson<String>(json['role']),
+      signatureData: serializer.fromJson<String?>(json['signatureData']),
       active: serializer.fromJson<bool>(json['active']),
     );
   }
@@ -6098,6 +6132,7 @@ class Official extends DataClass implements Insertable<Official> {
       'isSynced': serializer.toJson<bool>(isSynced),
       'name': serializer.toJson<String>(name),
       'role': serializer.toJson<String>(role),
+      'signatureData': serializer.toJson<String?>(signatureData),
       'active': serializer.toJson<bool>(active),
     };
   }
@@ -6109,6 +6144,7 @@ class Official extends DataClass implements Insertable<Official> {
     bool? isSynced,
     String? name,
     String? role,
+    Value<String?> signatureData = const Value.absent(),
     bool? active,
   }) => Official(
     id: id ?? this.id,
@@ -6117,6 +6153,9 @@ class Official extends DataClass implements Insertable<Official> {
     isSynced: isSynced ?? this.isSynced,
     name: name ?? this.name,
     role: role ?? this.role,
+    signatureData: signatureData.present
+        ? signatureData.value
+        : this.signatureData,
     active: active ?? this.active,
   );
   Official copyWithCompanion(OfficialsCompanion data) {
@@ -6127,6 +6166,9 @@ class Official extends DataClass implements Insertable<Official> {
       isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
       name: data.name.present ? data.name.value : this.name,
       role: data.role.present ? data.role.value : this.role,
+      signatureData: data.signatureData.present
+          ? data.signatureData.value
+          : this.signatureData,
       active: data.active.present ? data.active.value : this.active,
     );
   }
@@ -6140,14 +6182,23 @@ class Official extends DataClass implements Insertable<Official> {
           ..write('isSynced: $isSynced, ')
           ..write('name: $name, ')
           ..write('role: $role, ')
+          ..write('signatureData: $signatureData, ')
           ..write('active: $active')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, createdAt, updatedAt, isSynced, name, role, active);
+  int get hashCode => Object.hash(
+    id,
+    createdAt,
+    updatedAt,
+    isSynced,
+    name,
+    role,
+    signatureData,
+    active,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -6158,6 +6209,7 @@ class Official extends DataClass implements Insertable<Official> {
           other.isSynced == this.isSynced &&
           other.name == this.name &&
           other.role == this.role &&
+          other.signatureData == this.signatureData &&
           other.active == this.active);
 }
 
@@ -6168,6 +6220,7 @@ class OfficialsCompanion extends UpdateCompanion<Official> {
   final Value<bool> isSynced;
   final Value<String> name;
   final Value<String> role;
+  final Value<String?> signatureData;
   final Value<bool> active;
   final Value<int> rowid;
   const OfficialsCompanion({
@@ -6177,6 +6230,7 @@ class OfficialsCompanion extends UpdateCompanion<Official> {
     this.isSynced = const Value.absent(),
     this.name = const Value.absent(),
     this.role = const Value.absent(),
+    this.signatureData = const Value.absent(),
     this.active = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -6187,6 +6241,7 @@ class OfficialsCompanion extends UpdateCompanion<Official> {
     this.isSynced = const Value.absent(),
     required String name,
     this.role = const Value.absent(),
+    this.signatureData = const Value.absent(),
     this.active = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -6198,6 +6253,7 @@ class OfficialsCompanion extends UpdateCompanion<Official> {
     Expression<bool>? isSynced,
     Expression<String>? name,
     Expression<String>? role,
+    Expression<String>? signatureData,
     Expression<bool>? active,
     Expression<int>? rowid,
   }) {
@@ -6208,6 +6264,7 @@ class OfficialsCompanion extends UpdateCompanion<Official> {
       if (isSynced != null) 'is_synced': isSynced,
       if (name != null) 'name': name,
       if (role != null) 'role': role,
+      if (signatureData != null) 'signature_data': signatureData,
       if (active != null) 'active': active,
       if (rowid != null) 'rowid': rowid,
     });
@@ -6220,6 +6277,7 @@ class OfficialsCompanion extends UpdateCompanion<Official> {
     Value<bool>? isSynced,
     Value<String>? name,
     Value<String>? role,
+    Value<String?>? signatureData,
     Value<bool>? active,
     Value<int>? rowid,
   }) {
@@ -6230,6 +6288,7 @@ class OfficialsCompanion extends UpdateCompanion<Official> {
       isSynced: isSynced ?? this.isSynced,
       name: name ?? this.name,
       role: role ?? this.role,
+      signatureData: signatureData ?? this.signatureData,
       active: active ?? this.active,
       rowid: rowid ?? this.rowid,
     );
@@ -6256,6 +6315,9 @@ class OfficialsCompanion extends UpdateCompanion<Official> {
     if (role.present) {
       map['role'] = Variable<String>(role.value);
     }
+    if (signatureData.present) {
+      map['signature_data'] = Variable<String>(signatureData.value);
+    }
     if (active.present) {
       map['active'] = Variable<bool>(active.value);
     }
@@ -6274,6 +6336,7 @@ class OfficialsCompanion extends UpdateCompanion<Official> {
           ..write('isSynced: $isSynced, ')
           ..write('name: $name, ')
           ..write('role: $role, ')
+          ..write('signatureData: $signatureData, ')
           ..write('active: $active, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -10594,6 +10657,7 @@ typedef $$OfficialsTableCreateCompanionBuilder =
       Value<bool> isSynced,
       required String name,
       Value<String> role,
+      Value<String?> signatureData,
       Value<bool> active,
       Value<int> rowid,
     });
@@ -10605,6 +10669,7 @@ typedef $$OfficialsTableUpdateCompanionBuilder =
       Value<bool> isSynced,
       Value<String> name,
       Value<String> role,
+      Value<String?> signatureData,
       Value<bool> active,
       Value<int> rowid,
     });
@@ -10645,6 +10710,11 @@ class $$OfficialsTableFilterComposer
 
   ColumnFilters<String> get role => $composableBuilder(
     column: $table.role,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get signatureData => $composableBuilder(
+    column: $table.signatureData,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10693,6 +10763,11 @@ class $$OfficialsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get signatureData => $composableBuilder(
+    column: $table.signatureData,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get active => $composableBuilder(
     column: $table.active,
     builder: (column) => ColumnOrderings(column),
@@ -10725,6 +10800,11 @@ class $$OfficialsTableAnnotationComposer
 
   GeneratedColumn<String> get role =>
       $composableBuilder(column: $table.role, builder: (column) => column);
+
+  GeneratedColumn<String> get signatureData => $composableBuilder(
+    column: $table.signatureData,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<bool> get active =>
       $composableBuilder(column: $table.active, builder: (column) => column);
@@ -10764,6 +10844,7 @@ class $$OfficialsTableTableManager
                 Value<bool> isSynced = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String> role = const Value.absent(),
+                Value<String?> signatureData = const Value.absent(),
                 Value<bool> active = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => OfficialsCompanion(
@@ -10773,6 +10854,7 @@ class $$OfficialsTableTableManager
                 isSynced: isSynced,
                 name: name,
                 role: role,
+                signatureData: signatureData,
                 active: active,
                 rowid: rowid,
               ),
@@ -10784,6 +10866,7 @@ class $$OfficialsTableTableManager
                 Value<bool> isSynced = const Value.absent(),
                 required String name,
                 Value<String> role = const Value.absent(),
+                Value<String?> signatureData = const Value.absent(),
                 Value<bool> active = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => OfficialsCompanion.insert(
@@ -10793,6 +10876,7 @@ class $$OfficialsTableTableManager
                 isSynced: isSynced,
                 name: name,
                 role: role,
+                signatureData: signatureData,
                 active: active,
                 rowid: rowid,
               ),

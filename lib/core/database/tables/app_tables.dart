@@ -66,7 +66,7 @@ class Officials extends Table with BaseTable {
   
   // Guardamos el rol: ARBITRO_PRINCIPAL, ARBITRO_AUXILIAR, ANOTADOR
   TextColumn get role => text().withDefault(const Constant('REFEREE'))();
-  
+  TextColumn get signatureData => text().nullable()();
   BoolColumn get active => boolean().withDefault(const Constant(true))();
   
   @override

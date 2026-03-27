@@ -274,7 +274,7 @@ class ApiService {
     }
   }
 
-  Future<int> createOfficial(String name, String role) async {
+  Future<int> createOfficial(String name, String role, String? signature) async {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl?action=create_official'),
@@ -282,6 +282,7 @@ class ApiService {
         body: jsonEncode({
           "name": name,
           "role": role,
+          "signature": signature,
         }),
       );
       

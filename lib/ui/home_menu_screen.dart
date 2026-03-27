@@ -1338,7 +1338,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
           }
           // Creación Nueva
           else {
-             final realIdInt = await api.createOfficial(official.name, official.role);
+             final realIdInt = await api.createOfficial(official.name, official.role, official.signatureData ?? '');
              final String oldId = official.id.toString();
 
              await db.transaction(() async {

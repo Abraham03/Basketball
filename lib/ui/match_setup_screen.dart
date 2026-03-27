@@ -1,9 +1,12 @@
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously
 
+import 'dart:convert';
+import 'dart:typed_data';
 import 'dart:ui';
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:myapp/ui/protest_signature_screen.dart';
 import '../core/database/app_database.dart' as db;
 import '../core/models/catalog_models.dart' as model;
 import '../logic/catalog_provider.dart';
@@ -641,7 +644,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
       }
     }
     
-    // --- CAMBIO AQUÍ: Generar un ID predecible para partidos manuales ---
+    // Generar un ID predecible para partidos manuales ---
     String matchIdToUse;
     if (widget.preSelectedFixture != null && 
         widget.preSelectedFixture!.matchId != null && 
@@ -964,12 +967,13 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
 
   void _showAddOfficialDialog() {
     final nameCtrl = TextEditingController();
-    String selectedRole = 'ARBITRO_PRINCIPAL'; 
+    String selectedRole = 'ARBITRO_PRINCIPAL';
+    Uint8List? signatureBytes;
     final formKey = GlobalKey<FormState>();
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder( 
+      builder: (context) => StatefulBuilder(
         builder: (context, setModalState) {
           return AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -980,40 +984,88 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                 Text("Nuevo Oficial", style: TextStyle(fontWeight: FontWeight.bold)),
               ],
             ),
-            content: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: nameCtrl,
-                    decoration: InputDecoration(
-                      labelText: "Nombre Completo",
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      prefixIcon: const Icon(Icons.person),
+            content: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: nameCtrl,
+                      textCapitalization: TextCapitalization.characters,
+                      decoration: InputDecoration(
+                        labelText: "Nombre Completo",
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        prefixIcon: const Icon(Icons.person),
+                      ),
+                      validator: (v) => v == null || v.isEmpty ? "Requerido" : null,
                     ),
-                    validator: (v) => v == null || v.isEmpty ? "Requerido" : null,
-                  ),
-                  const SizedBox(height: 15),
-                  DropdownButtonFormField<String>(
-                    value: selectedRole,
-                    decoration: InputDecoration(
-                      labelText: "Puesto / Rol",
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      prefixIcon: const Icon(Icons.work),
+                    const SizedBox(height: 15),
+                    DropdownButtonFormField<String>(
+                      value: selectedRole,
+                      decoration: InputDecoration(
+                        labelText: "Puesto / Rol",
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        prefixIcon: const Icon(Icons.work),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'ARBITRO_PRINCIPAL', child: Text('Árbitro Principal')),
+                        DropdownMenuItem(value: 'ARBITRO_AUXILIAR', child: Text('Árbitro Auxiliar')),
+                        DropdownMenuItem(value: 'ANOTADOR', child: Text('Anotador (Mesa)')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setModalState(() => selectedRole = val);
+                      },
                     ),
-                    items: const [
-                      DropdownMenuItem(value: 'ARBITRO_PRINCIPAL', child: Text('Árbitro Principal')),
-                      DropdownMenuItem(value: 'ARBITRO_AUXILIAR', child: Text('Árbitro Auxiliar')),
-                      DropdownMenuItem(value: 'ANOTADOR', child: Text('Anotador (Mesa)')),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        setModalState(() => selectedRole = val);
-                      }
-                    },
-                  ),
-                ],
+                    const SizedBox(height: 20),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text("Firma del Oficial:", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white70)),
+                    ),
+                    const SizedBox(height: 10),
+                    GestureDetector(
+                      onTap: () async {
+                        // Pasamos isOfficial: true para cambiar los textos
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ProtestSignatureScreen(
+                              teamName: nameCtrl.text.isEmpty ? "Nuevo" : nameCtrl.text,
+                              isOfficial: true,
+                            ),
+                          ),
+                        );
+                        if (result != null && result is Uint8List) {
+                          setModalState(() => signatureBytes = result);
+                        }
+                      },
+                      child: Container(
+                        height: 120,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: signatureBytes != null ? Colors.greenAccent : Colors.white24,
+                            width: 2,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.white.withOpacity(0.05),
+                        ),
+                        child: signatureBytes == null
+                            ? const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.edit_note, color: Colors.white54, size: 40),
+                                  Text("Toca aquí para firmar", style: TextStyle(color: Colors.white54, fontSize: 12)),
+                                ],
+                              )
+                            : ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.memory(signatureBytes!, fit: BoxFit.contain),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             actions: [
@@ -1028,51 +1080,51 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                 ),
                 onPressed: () async {
                   if (formKey.currentState!.validate()) {
+                    if (signatureBytes == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("La firma del oficial es obligatoria")),
+                      );
+                      return;
+                    }
+
                     final database = ref.read(databaseProvider);
                     final api = ref.read(apiServiceProvider);
                     
+                    // Convertimos la firma a String Base64 para guardarla
+                    final String signatureBase64 = base64Encode(signatureBytes!);
+
                     String officialId;
                     bool isSyncedStatus = false;
 
                     try {
-                      final realIdInt = await api.createOfficial(nameCtrl.text, selectedRole);
+                      // Llamada al API (Asegúrate de que tu ApiService acepte el parámetro signature)
+                      final realIdInt = await api.createOfficial(nameCtrl.text, selectedRole, signatureBase64);
                       officialId = realIdInt.toString();
-                      isSyncedStatus = true; 
+                      isSyncedStatus = true;
                     } catch (e) {
                       officialId = "-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}";
                       isSyncedStatus = false;
-                      debugPrint("Guardado offline: $e");
                     }
 
                     await database.into(database.officials).insert(
-                      db.OfficialsCompanion.insert(
-                        id: officialId, 
-                        name: nameCtrl.text,
-                        role: drift.Value(selectedRole),
-                        active: const drift.Value(true),
-                        isSynced: drift.Value(isSyncedStatus), 
-                      ),
-                      mode: drift.InsertMode.insertOrReplace,
-                    );
+                          db.OfficialsCompanion.insert(
+                            id: officialId,
+                            name: nameCtrl.text.toUpperCase(),
+                            role: drift.Value(selectedRole),
+                            signatureData: drift.Value(signatureBase64), // <--- Guardamos la firma
+                            active: const drift.Value(true),
+                            isSynced: drift.Value(isSyncedStatus),
+                          ),
+                          mode: drift.InsertMode.insertOrReplace,
+                        );
 
                     if (mounted) {
                       Navigator.pop(context);
                       ref.invalidate(tournamentDataByIdProvider(widget.tournamentId));
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Row(
-                            children: [
-                              Icon(isSyncedStatus ? Icons.cloud_done : Icons.save_alt, color: Colors.white),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(isSyncedStatus 
-                                  ? "Oficial guardado y sincronizado." 
-                                  : "Guardado offline. Recuerda sincronizar luego."
-                                ),
-                              ),
-                            ],
-                          ),
-                          backgroundColor: isSyncedStatus ? Colors.green.shade700 : Colors.orange.shade700,
+                          content: Text(isSyncedStatus ? "Oficial guardado y firmado en la nube." : "Guardado localmente."),
+                          backgroundColor: isSyncedStatus ? Colors.green : Colors.orange,
                         ),
                       );
                     }
@@ -1082,7 +1134,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
               ),
             ],
           );
-        }
+        },
       ),
     );
   }
