@@ -335,30 +335,32 @@ class ApiService {
   }
 
   Future<bool> updateOfficial({
-    required String id,
-    required String name,
-    required String role,
-  }) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl?action=update_official'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          "id": id,
-          "name": name,
-          "role": role,
-        }),
-      );
+  required String id,
+  required String name,
+  required String role,
+  String? signature, // <--- Parámetro opcional
+}) async {
+  try {
+    final response = await http.post(
+      Uri.parse('$_baseUrl?action=update_official'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        "id": id,
+        "name": name,
+        "role": role,
+        "signature": signature, // Se envía si existe, el servidor decidirá si actualizarla
+      }),
+    );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final body = jsonDecode(response.body);
-        return body['status'] == 'success';
-      }
-      return false;
-    } catch (e) {
-      return false;
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final body = jsonDecode(response.body);
+      return body['status'] == 'success';
     }
+    return false;
+  } catch (e) {
+    return false;
   }
+}
 
   Future<Map<String, dynamic>> fetchFixture(String tournamentId) async {
     try {

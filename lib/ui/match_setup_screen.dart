@@ -966,204 +966,33 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
   // ===========================================================================
 
   void _showAddOfficialDialog() {
-    final nameCtrl = TextEditingController();
-    String selectedRole = 'ARBITRO_PRINCIPAL';
-    Uint8List? signatureBytes;
-    final formKey = GlobalKey<FormState>();
+  final nameCtrl = TextEditingController();
+  String selectedRole = 'ARBITRO_PRINCIPAL';
+  Uint8List? signatureBytes;
+  final formKey = GlobalKey<FormState>();
 
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) {
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: const Row(
-              children: [
-                Icon(Icons.person_add_alt_1, color: Colors.orange),
-                SizedBox(width: 10),
-                Text("Nuevo Oficial", style: TextStyle(fontWeight: FontWeight.bold)),
-              ],
-            ),
-            content: SingleChildScrollView(
-              child: Form(
-                key: formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextFormField(
-                      controller: nameCtrl,
-                      textCapitalization: TextCapitalization.characters,
-                      decoration: InputDecoration(
-                        labelText: "Nombre Completo",
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        prefixIcon: const Icon(Icons.person),
-                      ),
-                      validator: (v) => v == null || v.isEmpty ? "Requerido" : null,
-                    ),
-                    const SizedBox(height: 15),
-                    DropdownButtonFormField<String>(
-                      value: selectedRole,
-                      decoration: InputDecoration(
-                        labelText: "Puesto / Rol",
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        prefixIcon: const Icon(Icons.work),
-                      ),
-                      items: const [
-                        DropdownMenuItem(value: 'ARBITRO_PRINCIPAL', child: Text('Árbitro Principal')),
-                        DropdownMenuItem(value: 'ARBITRO_AUXILIAR', child: Text('Árbitro Auxiliar')),
-                        DropdownMenuItem(value: 'ANOTADOR', child: Text('Anotador (Mesa)')),
-                      ],
-                      onChanged: (val) {
-                        if (val != null) setModalState(() => selectedRole = val);
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text("Firma del Oficial:", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white70)),
-                    ),
-                    const SizedBox(height: 10),
-                    GestureDetector(
-                      onTap: () async {
-                        // Pasamos isOfficial: true para cambiar los textos
-                        final result = await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ProtestSignatureScreen(
-                              teamName: nameCtrl.text.isEmpty ? "Nuevo" : nameCtrl.text,
-                              isOfficial: true,
-                            ),
-                          ),
-                        );
-                        if (result != null && result is Uint8List) {
-                          setModalState(() => signatureBytes = result);
-                        }
-                      },
-                      child: Container(
-                        height: 120,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: signatureBytes != null ? Colors.greenAccent : Colors.white24,
-                            width: 2,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          color: Colors.white.withOpacity(0.05),
-                        ),
-                        child: signatureBytes == null
-                            ? const Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.edit_note, color: Colors.white54, size: 40),
-                                  Text("Toca aquí para firmar", style: TextStyle(color: Colors.white54, fontSize: 12)),
-                                ],
-                              )
-                            : ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: Image.memory(signatureBytes!, fit: BoxFit.contain),
-                              ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange.shade600,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                onPressed: () async {
-                  if (formKey.currentState!.validate()) {
-                    if (signatureBytes == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("La firma del oficial es obligatoria")),
-                      );
-                      return;
-                    }
-
-                    final database = ref.read(databaseProvider);
-                    final api = ref.read(apiServiceProvider);
-                    
-                    // Convertimos la firma a String Base64 para guardarla
-                    final String signatureBase64 = base64Encode(signatureBytes!);
-
-                    String officialId;
-                    bool isSyncedStatus = false;
-
-                    try {
-                      // Llamada al API (Asegúrate de que tu ApiService acepte el parámetro signature)
-                      final realIdInt = await api.createOfficial(nameCtrl.text, selectedRole, signatureBase64);
-                      officialId = realIdInt.toString();
-                      isSyncedStatus = true;
-                    } catch (e) {
-                      officialId = "-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}";
-                      isSyncedStatus = false;
-                    }
-
-                    await database.into(database.officials).insert(
-                          db.OfficialsCompanion.insert(
-                            id: officialId,
-                            name: nameCtrl.text.toUpperCase(),
-                            role: drift.Value(selectedRole),
-                            signatureData: drift.Value(signatureBase64), // <--- Guardamos la firma
-                            active: const drift.Value(true),
-                            isSynced: drift.Value(isSyncedStatus),
-                          ),
-                          mode: drift.InsertMode.insertOrReplace,
-                        );
-
-                    if (mounted) {
-                      Navigator.pop(context);
-                      ref.invalidate(tournamentDataByIdProvider(widget.tournamentId));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(isSyncedStatus ? "Oficial guardado y firmado en la nube." : "Guardado localmente."),
-                          backgroundColor: isSyncedStatus ? Colors.green : Colors.orange,
-                        ),
-                      );
-                    }
-                  }
-                },
-                child: const Text("Guardar", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              ),
+  showDialog(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setModalState) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.person_add_alt_1, color: Colors.orange),
+              SizedBox(width: 10),
+              Text("Nuevo Oficial", style: TextStyle(fontWeight: FontWeight.bold)),
             ],
-          );
-        },
-      ),
-    );
-  }
-
-  void _showEditOfficialDialog(model.Official official) {
-    final nameCtrl = TextEditingController(text: official.name);
-    String selectedRole = official.role; 
-    final formKey = GlobalKey<FormState>();
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder( 
-        builder: (context, setModalState) {
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: const Row(
-              children: [
-                Icon(Icons.edit, color: Colors.blueAccent),
-                SizedBox(width: 10),
-                Text("Editar Oficial", style: TextStyle(fontWeight: FontWeight.bold)),
-              ],
-            ),
-            content: Form(
+          ),
+          content: SingleChildScrollView(
+            child: Form(
               key: formKey,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextFormField(
                     controller: nameCtrl,
+                    textCapitalization: TextCapitalization.characters,
                     decoration: InputDecoration(
                       labelText: "Nombre Completo",
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
@@ -1185,91 +1014,301 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                       DropdownMenuItem(value: 'ANOTADOR', child: Text('Anotador (Mesa)')),
                     ],
                     onChanged: (val) {
-                      if (val != null) {
-                        setModalState(() => selectedRole = val);
+                      if (val != null) setModalState(() => selectedRole = val);
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text("Firma del Oficial:", 
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87)
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  GestureDetector(
+                    onTap: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ProtestSignatureScreen(
+                            teamName: nameCtrl.text.isEmpty ? "Nuevo" : nameCtrl.text,
+                            isOfficial: true,
+                          ),
+                        ),
+                      );
+                      if (result != null && result is Uint8List) {
+                        setModalState(() => signatureBytes = result);
                       }
                     },
+                    child: Container(
+                      height: 120,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        // Fondo gris claro para que contraste con el texto e icono
+                        color: Colors.grey.shade200, 
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          // Si ya firmó, borde verde; si no, borde gris oscuro
+                          color: signatureBytes != null ? Colors.green.shade700 : Colors.grey.shade400,
+                          width: 2,
+                        ),
+                      ),
+                      child: signatureBytes == null
+                          ? const Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                // Icono en gris oscuro para que sea visible sobre el fondo claro
+                                Icon(Icons.draw, color: Colors.black45, size: 40),
+                                Text("Toca aquí para firmar", 
+                                  style: TextStyle(color: Colors.black45, fontSize: 13, fontWeight: FontWeight.w500)
+                                ),
+                              ],
+                            )
+                          : ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.memory(signatureBytes!, fit: BoxFit.contain),
+                            ),
+                    ),
                   ),
                 ],
               ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange.shade600,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueAccent,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                onPressed: () async {
-                  if (formKey.currentState!.validate()) {
-                    final database = ref.read(databaseProvider);
-                    final api = ref.read(apiServiceProvider);
-                    
-                    bool isSyncedStatus = false;
-                    int? numericId = int.tryParse(official.id.toString());
-                    
-                    if (numericId != null && numericId > 0) {
-                      try {
-                        final success = await api.updateOfficial(
-                          id: official.id.toString(),
-                          name: nameCtrl.text,
-                          role: selectedRole
-                        );
-                        isSyncedStatus = success; 
-                      } catch (e) {
-                        isSyncedStatus = false;
-                        debugPrint("Actualizado offline: $e");
+              onPressed: () async {
+                if (formKey.currentState!.validate()) {
+                  if (signatureBytes == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("La firma del oficial es obligatoria")),
+                    );
+                    return;
+                  }
+
+                  final database = ref.read(databaseProvider);
+                  final api = ref.read(apiServiceProvider);
+                  final String signatureBase64 = base64Encode(signatureBytes!);
+
+                  String officialId;
+                  bool isSyncedStatus = false;
+
+                  try {
+                    final realIdInt = await api.createOfficial(nameCtrl.text, selectedRole, signatureBase64);
+                    officialId = realIdInt.toString();
+                    isSyncedStatus = true;
+                  } catch (e) {
+                    officialId = "-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}";
+                    isSyncedStatus = false;
+                  }
+
+                  await database.into(database.officials).insert(
+                        db.OfficialsCompanion.insert(
+                          id: officialId,
+                          name: nameCtrl.text.toUpperCase(),
+                          role: drift.Value(selectedRole),
+                          signatureData: drift.Value(signatureBase64),
+                          active: const drift.Value(true),
+                          isSynced: drift.Value(isSyncedStatus),
+                        ),
+                        mode: drift.InsertMode.insertOrReplace,
+                      );
+
+                  if (mounted) {
+                    Navigator.pop(context);
+                    ref.invalidate(tournamentDataByIdProvider(widget.tournamentId));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(isSyncedStatus ? "Oficial guardado en la nube." : "Guardado localmente."),
+                        backgroundColor: isSyncedStatus ? Colors.green : Colors.orange,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text("Guardar", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    ),
+  );
+}
+
+  void _showEditOfficialDialog(model.Official official) {
+  final nameCtrl = TextEditingController(text: official.name);
+  String selectedRole = official.role;
+  Uint8List? newSignatureBytes; // Almacena la nueva firma si se captura
+  final formKey = GlobalKey<FormState>();
+
+  showDialog(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setModalState) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.edit, color: Colors.blueAccent),
+              SizedBox(width: 10),
+              Text("Editar Oficial", style: TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: nameCtrl,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: InputDecoration(
+                      labelText: "Nombre Completo",
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      prefixIcon: const Icon(Icons.person),
+                    ),
+                    validator: (v) => v == null || v.isEmpty ? "Requerido" : null,
+                  ),
+                  const SizedBox(height: 15),
+                  DropdownButtonFormField<String>(
+                    value: selectedRole,
+                    decoration: InputDecoration(
+                      labelText: "Puesto / Rol",
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      prefixIcon: const Icon(Icons.work),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'ARBITRO_PRINCIPAL', child: Text('Árbitro Principal')),
+                      DropdownMenuItem(value: 'ARBITRO_AUXILIAR', child: Text('Árbitro Auxiliar')),
+                      DropdownMenuItem(value: 'ANOTADOR', child: Text('Anotador (Mesa)')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) setModalState(() => selectedRole = val);
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text("Firma (Opcional - Toca para cambiar):", 
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black)),
+                  ),
+                  const SizedBox(height: 10),
+                  GestureDetector(
+                    onTap: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ProtestSignatureScreen(
+                            teamName: nameCtrl.text,
+                            isOfficial: true,
+                          ),
+                        ),
+                      );
+                      if (result != null && result is Uint8List) {
+                        setModalState(() => newSignatureBytes = result);
                       }
-                    } else {
+                    },
+                    child: Container(
+                      height: 100,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: newSignatureBytes != null ? Colors.orangeAccent : Colors.grey.shade300,
+                          width: 2,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.grey.shade100,
+                      ),
+                      child: newSignatureBytes != null
+                          ? Image.memory(newSignatureBytes!, fit: BoxFit.contain)
+                          : (official.signature != null && official.signature!.isNotEmpty
+                              ? Image.memory(base64Decode(official.signature!), fit: BoxFit.contain)
+                              : const Icon(Icons.edit_note, color: Colors.grey, size: 40)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blueAccent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () async {
+                if (formKey.currentState!.validate()) {
+                  final database = ref.read(databaseProvider);
+                  final api = ref.read(apiServiceProvider);
+                  
+                  String? signatureBase64;
+                  if (newSignatureBytes != null) {
+                    signatureBase64 = base64Encode(newSignatureBytes!);
+                  }
+
+                  bool isSyncedStatus = false;
+                  int? numericId = int.tryParse(official.id.toString());
+                  
+                  if (numericId != null && numericId > 0) {
+                    try {
+                      isSyncedStatus = await api.updateOfficial(
+                        id: official.id.toString(),
+                        name: nameCtrl.text.toUpperCase(),
+                        role: selectedRole,
+                        signature: signatureBase64, 
+                      );
+                    } catch (e) {
                       isSyncedStatus = false;
                     }
+                  }
 
-                    final updateStatement = database.update(database.officials)
-                      ..where((o) => o.id.equals(official.id.toString()));
-                      
-                    await updateStatement.write(
+                  // Actualización local en Drift
+                  // Usamos db.Value.absent() para NO sobreescribir la firma si el usuario no la cambió
+                  await (database.update(database.officials)
+                    ..where((o) => o.id.equals(official.id.toString())))
+                    .write(
                       db.OfficialsCompanion(
-                        name: drift.Value(nameCtrl.text),
+                        name: drift.Value(nameCtrl.text.toUpperCase()),
                         role: drift.Value(selectedRole),
-                        isSynced: drift.Value(isSyncedStatus), 
+                        isSynced: drift.Value(isSyncedStatus),
+                        signatureData: signatureBase64 != null 
+                            ? drift.Value(signatureBase64) 
+                            : const drift.Value.absent(), 
                       ),
                     );
 
-                    if (mounted) {
-                      Navigator.pop(context);
-                      ref.invalidate(tournamentDataByIdProvider(widget.tournamentId));
-                      
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Row(
-                            children: [
-                              Icon(isSyncedStatus ? Icons.cloud_done : Icons.save_alt, color: Colors.white),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(isSyncedStatus 
-                                  ? "Oficial actualizado y sincronizado." 
-                                  : "Actualizado offline. Se sincronizará luego."
-                                ),
-                              ),
-                            ],
-                          ),
-                          backgroundColor: isSyncedStatus ? Colors.blue.shade700 : Colors.orange.shade700,
-                        ),
-                      );
-                    }
+                  if (mounted) {
+                    Navigator.pop(context);
+                    ref.invalidate(tournamentDataByIdProvider(widget.tournamentId));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(isSyncedStatus ? "Oficial actualizado en la nube." : "Actualizado offline."),
+                        backgroundColor: isSyncedStatus ? Colors.blue.shade700 : Colors.orange.shade700,
+                      ),
+                    );
                   }
-                },
-                child: const Text("Actualizar", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              ),
-            ],
-          );
-        }
-      ),
-    );
-  }
+                }
+              },
+              child: const Text("Actualizar", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    ),
+  );
+}
 
   void _confirmDeleteOfficial(model.Official official) {
     showDialog(

@@ -103,11 +103,13 @@ class Official {
   final String id;
   final String name;
   final String role;
+  final String? signature;
 
   Official({
     required this.id,
     required this.name,
     required this.role,
+    this.signature,
   });
 
   factory Official.fromJson(Map<String, dynamic> json) {
@@ -115,6 +117,7 @@ class Official {
       id: json['id'].toString(),
       name: json['name'],
       role: json['role'] ?? 'REFEREE',
+      signature: json['signature_data'] ?? json['signature'],
     );
   }
 }

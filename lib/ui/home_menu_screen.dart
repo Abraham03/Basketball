@@ -1327,18 +1327,28 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
             continue; 
           }
 
-          // Actualización
+          // Actualización (Enviamos la firma actual en caso de que haya sido editada offline)
           if (isExisting) {
-             final success = await api.updateOfficial(id: official.id.toString(), name: official.name, role: official.role);
+             final success = await api.updateOfficial(
+               id: official.id.toString(), 
+               name: official.name, 
+               role: official.role,
+               signature: official.signatureData // <--- Agregado para actualización opcional
+             );
              if (success) {
                await (db.update(db.officials)..where((o) => o.id.equals(official.id.toString())))
                    .write(const OfficialsCompanion(isSynced: drift.Value(true)));
                uploadedOfficials++;
              }
-          }
+          } 
           // Creación Nueva
           else {
-             final realIdInt = await api.createOfficial(official.name, official.role, official.signatureData ?? '');
+             // Enviamos nombre, rol y el string Base64 de la firma
+             final realIdInt = await api.createOfficial(
+               official.name, 
+               official.role, 
+               official.signatureData ?? ''
+             );
              final String oldId = official.id.toString();
 
              await db.transaction(() async {
@@ -1347,6 +1357,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                    id: realIdInt.toString(), 
                    name: official.name,
                    role: drift.Value(official.role),
+                   signatureData: drift.Value(official.signatureData), // <--- Mantener la firma localmente con el nuevo ID
                    active: const drift.Value(true),
                    isSynced: const drift.Value(true),
                  ),
