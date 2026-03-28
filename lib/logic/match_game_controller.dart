@@ -289,6 +289,31 @@ class MatchGameController extends StateNotifier<MatchState> {
       await _dao.saveSignature(state.matchId, signatureBase64);
     }
 
+    // RECUPERAR FIRMAS DE OFICIALES ---
+    final database = _dao.db;
+    final mainRefObj = await (database.select(database.officials)
+      ..where((t) => t.name.equals(state.mainReferee))
+      ..where((t) => t.role.equals('ARBITRO_PRINCIPAL')))
+      .get().then((list) => list.firstOrNull);
+
+    final auxRefObj = await (database.select(database.officials)
+      ..where((t) => t.name.equals(state.auxReferee))
+      ..where((t) => t.role.equals('ARBITRO_AUXILIAR')))
+      .get().then((list) => list.firstOrNull);
+
+    // ignore: unused_local_variable
+    Uint8List? mainRefSignature;
+    // ignore: unused_local_variable
+    Uint8List? auxRefSignature;
+
+    if (mainRefObj?.signatureData != null) {
+      mainRefSignature = base64Decode(mainRefObj!.signatureData!);
+    }
+    if (auxRefObj?.signatureData != null) {
+      auxRefSignature = base64Decode(auxRefObj!.signatureData!);
+    }
+    // --------------------------------------------
+
     String? localPdfPath;
     if (pdfBytes != null) {
       try {
@@ -326,19 +351,15 @@ class MatchGameController extends StateNotifier<MatchState> {
       };
     }).toList();
 
-    // 1. Buscamos los rosters en la DB local usando _dao.db y el state
     final rosterRows = await (_dao.db.select(
       _dao.db.matchRosters,
     )..where((r) => r.matchId.equals(state.matchId))).get();
 
-    // 2. Mapeamos esos datos a una lista de JSON, agregando la lógica de "played"
     final rostersList = rosterRows.map((r) {
-      // Buscar las estadísticas de este jugador en el state usando su ID de DB
       final pStats = state.playerStats.values
           .where((p) => p.dbId.toString() == r.playerId)
           .firstOrNull;
 
-      // Consideramos que jugó si fue titular, si está en cancha ahora, o si tiene puntos/faltas.
       bool hasPlayed = false;
       if (pStats != null) {
         if (pStats.isStarter ||

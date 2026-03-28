@@ -22,6 +22,8 @@ class PdfPreviewScreen extends StatelessWidget {
   final int? captainAId;
   final int? captainBId;
   final DateTime? matchDate;
+  final Uint8List? mainRefSignature; // <--- AGREGAR
+  final Uint8List? auxRefSignature;
 
   const PdfPreviewScreen({
     super.key,
@@ -40,7 +42,9 @@ class PdfPreviewScreen extends StatelessWidget {
     this.coachB = "",
     this.captainAId,
     this.captainBId,
-    this.matchDate
+    this.matchDate,
+    this.mainRefSignature, 
+    this.auxRefSignature,
   });
 
   void _sharePdf(BuildContext context) async {
@@ -62,6 +66,8 @@ class PdfPreviewScreen extends StatelessWidget {
          captainAId: captainAId,
          captainBId: captainBId,
          matchDate: matchDate,
+         mainRefSignature: mainRefSignature,
+        auxRefSignature: auxRefSignature,
       );
     } catch (e) {
       if (context.mounted) {
@@ -92,6 +98,8 @@ class PdfPreviewScreen extends StatelessWidget {
          captainAId: captainAId,
          captainBId: captainBId,
          matchDate: matchDate,
+         mainRefSignature: mainRefSignature, 
+          auxRefSignature: auxRefSignature,
       );
     } catch (e) {
       if (context.mounted) {
@@ -139,6 +147,8 @@ class PdfPreviewScreen extends StatelessWidget {
           captainAId: captainAId,
           captainBId: captainBId,
           matchDate: matchDate,
+          mainRefSignature: mainRefSignature, // <--- PASAR AQUÍ
+          auxRefSignature: auxRefSignature,
         ),
         
         // --- AQUÍ ESTÁ LA MAGIA PARA OCULTAR LOS BOTONES DEFAULT ---

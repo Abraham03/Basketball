@@ -956,33 +956,194 @@ Widget _buildMiniFoulDots(int count) {
       );
   }
 
-  void _finishMatchProcess(BuildContext context, MatchState state, Uint8List? signature, {bool autoShow = true}) async {
-    showDialog(context: context, barrierDismissible: false, builder: (c) => const Center(child: CircularProgressIndicator(color: Colors.orangeAccent)));
+  void _finishMatchProcess(
+    BuildContext context,
+    MatchState state,
+    Uint8List? signature, {
+    bool autoShow = true,
+  }) async {
+    // 1. Mostrar diálogo de carga
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (c) => const Center(
+        child: CircularProgressIndicator(color: Colors.orangeAccent),
+      ),
+    );
+
     try {
-      final api = ref.read(apiServiceProvider); final controller = ref.read(matchGameProvider.notifier); final dbBase = ref.read(databaseProvider);
-      final pdfBytes = await PdfGenerator.generateBytes(state, widget.teamAName, widget.teamBName, tournamentName: widget.tournamentName, categoryName: widget.categoryName,tournamentLogoUrl: widget.tournamentLogoUrl, venueName: widget.venueName, mainReferee: widget.mainReferee, auxReferee: widget.auxReferee, scorekeeper: widget.scorekeeper, coachA: widget.coachA, coachB: widget.coachB, captainAId: widget.captainAId, captainBId: widget.captainBId, protestSignature: signature, matchDate: widget.matchDate ?? DateTime.now());
-      bool synced = await controller.finalizeAndSync(api, signature, pdfBytes, widget.teamAName, widget.teamBName);
+      final api = ref.read(apiServiceProvider);
+      final controller = ref.read(matchGameProvider.notifier);
+      final dbBase = ref.read(databaseProvider);
 
-      await (dbBase.update(dbBase.matches)..where((tbl) => tbl.id.equals(state.matchId))).write(const db.MatchesCompanion(status: drift.Value('FINISHED')));
-      if (state.fixtureId != null) await (dbBase.update(dbBase.fixtures)..where((tbl) => tbl.id.equals(state.fixtureId!))).write(db.FixturesCompanion(status: const drift.Value('FINISHED'), scoreA: drift.Value(state.scoreA), scoreB: drift.Value(state.scoreB)));
+      // --- 2. RECUPERAR FIRMAS DE OFICIALES (POR NOMBRE Y ROL) ---
+      // Usamos .get() y firstOrNull para evitar el error de "Too many elements"
+      final mainRefObj = await (dbBase.select(dbBase.officials)
+            ..where((t) => t.name.equals(widget.mainReferee))
+            ..where((t) => t.role.equals('ARBITRO_PRINCIPAL')))
+          .get()
+          .then((list) => list.firstOrNull);
 
+      final auxRefObj = await (dbBase.select(dbBase.officials)
+            ..where((t) => t.name.equals(widget.auxReferee))
+            ..where((t) => t.role.equals('ARBITRO_AUXILIAR')))
+          .get()
+          .then((list) => list.firstOrNull);
+
+      Uint8List? mainSignBytes;
+      Uint8List? auxSignBytes;
+
+      if (mainRefObj?.signatureData != null && mainRefObj!.signatureData!.isNotEmpty) {
+        mainSignBytes = base64Decode(mainRefObj.signatureData!);
+      }
+      if (auxRefObj?.signatureData != null && auxRefObj!.signatureData!.isNotEmpty) {
+        auxSignBytes = base64Decode(auxRefObj.signatureData!);
+      }
+
+      // --- 3. GENERAR BYTES DEL PDF (CON LAS FIRMAS INCLUIDAS) ---
+      final pdfBytes = await PdfGenerator.generateBytes(
+        state,
+        widget.teamAName,
+        widget.teamBName,
+        tournamentName: widget.tournamentName,
+        categoryName: widget.categoryName,
+        tournamentLogoUrl: widget.tournamentLogoUrl,
+        venueName: widget.venueName,
+        mainReferee: widget.mainReferee,
+        auxReferee: widget.auxReferee,
+        scorekeeper: widget.scorekeeper,
+        coachA: widget.coachA,
+        coachB: widget.coachB,
+        captainAId: widget.captainAId,
+        captainBId: widget.captainBId,
+        protestSignature: signature, // Firma de protesta (capitán)
+        matchDate: widget.matchDate ?? DateTime.now(),
+        mainRefSignature: mainSignBytes, // Firma Árbitro Principal
+        auxRefSignature: auxSignBytes,   // Firma Árbitro Auxiliar
+      );
+
+      // --- 4. FINALIZAR Y SINCRONIZAR A LA NUBE ---
+      bool synced = await controller.finalizeAndSync(
+        api,
+        signature,
+        pdfBytes,
+        widget.teamAName,
+        widget.teamBName,
+      );
+
+      // --- 5. ACTUALIZAR ESTADOS LOCALES ---
+      await (dbBase.update(dbBase.matches)
+            ..where((tbl) => tbl.id.equals(state.matchId)))
+          .write(const db.MatchesCompanion(status: drift.Value('FINISHED')));
+
+      if (state.fixtureId != null) {
+        await (dbBase.update(dbBase.fixtures)
+              ..where((tbl) => tbl.id.equals(state.fixtureId!)))
+            .write(
+          db.FixturesCompanion(
+            status: const drift.Value('FINISHED'),
+            scoreA: drift.Value(state.scoreA),
+            scoreB: drift.Value(state.scoreB),
+          ),
+        );
+      }
+
+      // --- 6. MANEJO DE UI FINAL ---
       if (context.mounted) {
         setState(() => _isFinished = true);
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(synced ? "Sincronizado correctamente" : "Guardado localmente (Sin conexión)"), behavior: SnackBarBehavior.floating, backgroundColor: synced ? Colors.green.shade700 : Colors.orange.shade700));
+        Navigator.pop(context); // Quitar CircularProgressIndicator
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              synced
+                  ? "Sincronizado correctamente"
+                  : "Guardado localmente (Sin conexión)",
+            ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: synced ? Colors.green.shade700 : Colors.orange.shade700,
+          ),
+        );
+
         if (autoShow) _goToPdfPreview(context, state, signature);
       }
     } catch (e) {
+      debugPrint("Error en _finishMatchProcess: $e");
       if (context.mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e"), backgroundColor: Colors.redAccent));
+        Navigator.pop(context); // Quitar CircularProgressIndicator
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error al finalizar: $e"),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
         if (autoShow) _goToPdfPreview(context, state, signature);
       }
     }
   }
   
-  void _goToPdfPreview(BuildContext context, MatchState state, Uint8List? signature) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => PdfPreviewScreen(state: state, teamAName: widget.teamAName, teamBName: widget.teamBName, tournamentName: widget.tournamentName, categoryName: widget.categoryName,tournamentLogoUrl: widget.tournamentLogoUrl, venueName: widget.venueName, mainReferee: widget.mainReferee, auxReferee: widget.auxReferee, scorekeeper: widget.scorekeeper, coachA: widget.coachA, coachB: widget.coachB, captainAId: widget.captainAId, captainBId: widget.captainBId, matchDate: widget.matchDate, protestSignature: signature)));
+  void _goToPdfPreview(BuildContext context, MatchState state, Uint8List? signature) async {
+    final database = ref.read(databaseProvider);
+
+    // Buscamos por NOMBRE y por el ROL específico del partido
+  final mainRefObj = await (database.select(database.officials)
+        ..where((t) => t.name.equals(state.mainReferee))
+        ..where((t) => t.role.equals('ARBITRO_PRINCIPAL'))) // <--- Filtro de rol
+        .get().then((list) => list.firstOrNull);
+
+  final auxRefObj = await (database.select(database.officials)
+        ..where((t) => t.name.equals(state.auxReferee))
+        ..where((t) => t.role.equals('ARBITRO_AUXILIAR'))) // <--- Filtro de rol
+        .get().then((list) => list.firstOrNull);
+
+    Uint8List? mainSignBytes;
+    Uint8List? auxSignBytes;
+
+    // 2. Decodificar de Base64 a Uint8List
+    if (mainRefObj?.signatureData != null && mainRefObj!.signatureData!.isNotEmpty) {
+      try {
+        mainSignBytes = base64Decode(mainRefObj.signatureData!);
+      } catch (e) {
+        debugPrint("Error decodificando firma principal: $e");
+      }
+    }
+    
+    if (auxRefObj?.signatureData != null && auxRefObj!.signatureData!.isNotEmpty) {
+      try {
+        auxSignBytes = base64Decode(auxRefObj.signatureData!);
+      } catch (e) {
+        debugPrint("Error decodificando firma auxiliar: $e");
+      }
+    }
+
+    // 3. Navegar
+    if (context.mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PdfPreviewScreen(
+            state: state,
+            teamAName: widget.teamAName,
+            teamBName: widget.teamBName,
+            tournamentName: widget.tournamentName,
+            categoryName: widget.categoryName,
+            tournamentLogoUrl: widget.tournamentLogoUrl,
+            venueName: widget.venueName,
+            mainReferee: widget.mainReferee,
+            auxReferee: widget.auxReferee,
+            scorekeeper: widget.scorekeeper,
+            coachA: widget.coachA,
+            coachB: widget.coachB,
+            captainAId: widget.captainAId,
+            captainBId: widget.captainBId,
+            matchDate: widget.matchDate,
+            protestSignature: signature,
+            mainRefSignature: mainSignBytes, 
+            auxRefSignature: auxSignBytes,   
+          ),
+        ),
+      );
+    }
   }
   
   void _showFinalOptionsDialog(BuildContext context, MatchState currentState) {

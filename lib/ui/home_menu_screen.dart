@@ -838,6 +838,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
               id: off.id.toString(), 
               name: off.name,
               role: drift.Value(off.role),
+              signatureData: drift.Value(off.signature),
               active: const drift.Value(true), 
               isSynced: const drift.Value(true),
             ),

@@ -29,7 +29,7 @@ class PdfCoords {
   static const double referee2X = 495.0;
   static const double referee2Y = 105.0;
 
-  static const double footerY = 795.0;
+  static const double footerY = 785.0;
   static const double footerReferee1X = 72.0;
   static const double footerReferee2X = 210.0;
   static const double footerScorekeeperY = 695.0;
@@ -163,6 +163,8 @@ class PdfGenerator {
     int? captainBId,
     Uint8List? protestSignature,
     DateTime? matchDate,
+    Uint8List? mainRefSignature,
+    Uint8List? auxRefSignature,
   }) async {
     final pdf = await _buildDocument(
       state,
@@ -181,6 +183,8 @@ class PdfGenerator {
       captainBId,
       protestSignature,
       matchDate,
+      mainRefSignature,
+      auxRefSignature
     );
     return pdf.save();
   }
@@ -202,6 +206,8 @@ class PdfGenerator {
     int? captainBId,
     Uint8List? protestSignature,
     DateTime? matchDate,
+    Uint8List? mainRefSignature,
+    Uint8List? auxRefSignature,
   }) async {
     final pdf = await _buildDocument(
       state,
@@ -220,6 +226,8 @@ class PdfGenerator {
       captainBId,
       protestSignature,
       matchDate,
+      mainRefSignature,
+      auxRefSignature
     );
     final fileName = _createFileName(teamAName, teamBName);
     await Printing.layoutPdf(
@@ -245,6 +253,8 @@ class PdfGenerator {
     int? captainBId,
     Uint8List? protestSignature,
     DateTime? matchDate,
+    Uint8List? mainRefSignature,
+    Uint8List? auxRefSignature,
   }) async {
     final pdf = await _buildDocument(
       state,
@@ -263,6 +273,8 @@ class PdfGenerator {
       captainBId,
       protestSignature,
       matchDate,
+      mainRefSignature,
+      auxRefSignature
     );
     final fileName = _createFileName(teamAName, teamBName);
     await Printing.sharePdf(bytes: await pdf.save(), filename: fileName);
@@ -285,6 +297,8 @@ class PdfGenerator {
     int? captainBId,
     Uint8List? protestSignature,
     DateTime? matchDate,
+    Uint8List? mainRefSignature,
+    Uint8List? auxRefSignature,
   ) async {
     final pdf = pw.Document();
 
@@ -304,21 +318,16 @@ class PdfGenerator {
         ? "${matchDate.hour.toString().padLeft(2, '0')}:${matchDate.minute.toString().padLeft(2, '0')}"
         : "";
 
-    // --- MAGIA DEL LOGO: INTENTAMOS DESCARGARLO ---
     pw.ImageProvider? tournLogoProvider;
     if (tournamentLogoUrl.isNotEmpty) {
       try {
-        // 1. Formateamos la URL para que sea un link web válido
         String finalUrl = tournamentLogoUrl;
         if (finalUrl.startsWith('../')) {
           finalUrl = finalUrl.replaceAll('../', 'https://basket.techsolutions.management/');
         }
-
-        // 2. Descargamos la imagen usando la URL completa
         tournLogoProvider = await networkImage(finalUrl);
-      } catch (e) {
-        // Si falla la descarga, no pasa nada, se imprime el acta sin logo
-      }
+      // ignore: empty_catches
+      } catch (e) {}
     }    
 
     try {
@@ -338,8 +347,8 @@ class PdfGenerator {
 
                 if (tournLogoProvider != null)
                   pw.Positioned(
-                    left: PdfCoords.tournamentLogoX, // Recuerda haber creado esto en PdfCoords
-                    top: PdfCoords.tournamentLogoY,  // Recuerda haber creado esto en PdfCoords
+                    left: PdfCoords.tournamentLogoX, 
+                    top: PdfCoords.tournamentLogoY,  
                     child: pw.Image(
                       tournLogoProvider,
                       width: 53, 
@@ -347,14 +356,12 @@ class PdfGenerator {
                     ),
                   ),
 
-
-                  // 2do LOGO (ABAJO / FOOTER)
-                  if (tournLogoProvider != null) // <--- 1. AGREGAMOS LA VALIDACIÓN
+                  if (tournLogoProvider != null) 
                     pw.Positioned(
                       left: PdfCoords.derechatournamentLogoX,
                       top: PdfCoords.derechatournamentLogoY,  
                       child: pw.Image(
-                        tournLogoProvider, // <--- 2. QUITAMOS EL SIGNO DE EXCLAMACIÓN
+                        tournLogoProvider, 
                         width: 53, 
                         height: 53, 
                         fit: pw.BoxFit.contain,
@@ -368,20 +375,13 @@ class PdfGenerator {
                   fontSize: 9,
                   color: PdfColors.blue900,
                 ),
-                // --- 2. CATEGORÍA / RAMA ---
                 _drawText(
                   categoryName,
-                  x: PdfCoords.categoryX, // Ahora usa 390.0 (donde antes estaba competencia)
+                  x: PdfCoords.categoryX, 
                   y: PdfCoords.headerY,
                   fontSize: 9,
                   color: PdfColors.blue900,
                 ),
-              /*  _drawText(
-                  "001",
-                  x: PdfCoords.gameNoX,
-                  y: PdfCoords.placeY,
-                  fontSize: 9,
-                ),*/
                 _drawText(
                   dateStr,
                   x: PdfCoords.dateX,
@@ -403,6 +403,32 @@ class PdfGenerator {
                   fontSize: 9,
                   color: PdfColors.blue900,
                 ),
+
+                // --- NUEVO: FIRMAS DE OFICIALES EN EL ACTA ---
+                if (mainRefSignature != null)
+                  pw.Positioned(
+                    left: PdfCoords.footerReferee1X,
+                    top: PdfCoords.footerY, // Ajuste para que quede sobre el nombre
+                    child: pw.Image(
+                      pw.MemoryImage(mainRefSignature),
+                      width: 55,
+                      height: 30,
+                      fit: pw.BoxFit.contain,
+                    ),
+                  ),
+                
+                if (auxRefSignature != null)
+                  pw.Positioned(
+                    left: PdfCoords.footerReferee2X,
+                    top: PdfCoords.footerY, // Ajuste para que quede sobre el nombre
+                    child: pw.Image(
+                      pw.MemoryImage(auxRefSignature),
+                      width: 55,
+                      height: 30,
+                      fit: pw.BoxFit.contain,
+                    ),
+                  ),
+                // --------------------------------------------
 
                 if (protestSignature != null)
                   pw.Positioned(
@@ -433,22 +459,6 @@ class PdfGenerator {
                     x: PdfCoords.referee2X,
                     y: PdfCoords.referee2Y,
                     fontSize: 8,
-                    color: PdfColors.blue900,
-                  ),
-                if (mainReferee.isNotEmpty)
-                  _drawText(
-                    mainReferee,
-                    x: PdfCoords.footerReferee1X,
-                    y: PdfCoords.footerY,
-                    fontSize: 9,
-                    color: PdfColors.blue900,
-                  ),
-                if (auxReferee.isNotEmpty)
-                  _drawText(
-                    auxReferee,
-                    x: PdfCoords.footerReferee2X,
-                    y: PdfCoords.footerY,
-                    fontSize: 9,
                     color: PdfColors.blue900,
                   ),
                 if (scorekeeper.isNotEmpty)
@@ -565,7 +575,6 @@ class PdfGenerator {
 
                 ..._drawTimeouts(state),
 
-                // --- LÓGICA PARA EQUIPO A ---
                 if (state.forfeitStatus == 'TEAM_A' || state.forfeitStatus == 'BOTH') ...[
                   ..._buildRosterList(
                     players: const [], 
@@ -581,7 +590,6 @@ class PdfGenerator {
                   ),
                 ] else ...[
                   ..._buildRosterList(
-                    // EXTRAEMOS DIRECTO DE LOS STATS PARA ASEGURAR QUE SE IMPRIMAN
                     players: _getSortedRosterFromStats(state, 'A'),
                     stats: state.playerStats,
                     scoreLog: state.scoreLog,
@@ -595,7 +603,6 @@ class PdfGenerator {
                   ),
                 ],
 
-                // --- LÓGICA PARA EQUIPO B ---
                 if (state.forfeitStatus == 'TEAM_B' || state.forfeitStatus == 'BOTH') ...[
                   ..._buildRosterList(
                     players: const [], 
@@ -611,7 +618,6 @@ class PdfGenerator {
                   ),
                 ] else ...[
                   ..._buildRosterList(
-                     // EXTRAEMOS DIRECTO DE LOS STATS PARA ASEGURAR QUE SE IMPRIMAN
                     players: _getSortedRosterFromStats(state, 'B'),
                     stats: state.playerStats,
                     scoreLog: state.scoreLog,
@@ -683,7 +689,7 @@ class PdfGenerator {
                   _drawText(
                     "OBSERVACIONES: ${state.observaciones}",
                     x: 60.0,
-                    y: 10.0, // Posicionado al pie del PDF
+                    y: 10.0, 
                     fontSize: 9,
                     isBold: true,
                     color: PdfColors.red900,
