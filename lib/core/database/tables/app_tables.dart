@@ -88,6 +88,7 @@ class Tournaments extends Table with BaseTable {
   TextColumn get name => text().withLength(min: 1, max: 150)();
   TextColumn get category => text().nullable()();
   TextColumn get logoUrl => text().nullable()();
+  TextColumn get refereeLogoUrl => text().nullable()();
   // Estado: ACTIVE, FINISHED
   TextColumn get status => text().withDefault(const Constant('ACTIVE'))();
   

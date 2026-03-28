@@ -12,6 +12,7 @@ class PdfPreviewScreen extends StatelessWidget {
   final String tournamentName;
   final String categoryName;
   final String tournamentLogoUrl;
+  final String refereeLogoUrl;
   final String venueName;
   final String mainReferee;
   final String auxReferee;
@@ -33,6 +34,7 @@ class PdfPreviewScreen extends StatelessWidget {
     required this.tournamentName,
     required this.categoryName,
     required this.tournamentLogoUrl,
+    required this.refereeLogoUrl,
     required this.venueName,
     required this.mainReferee,
     required this.auxReferee,
@@ -56,6 +58,7 @@ class PdfPreviewScreen extends StatelessWidget {
          tournamentName: tournamentName,
          categoryName: categoryName,
          tournamentLogoUrl: tournamentLogoUrl,
+         refereeLogoUrl: refereeLogoUrl,
          venueName: venueName,
          mainReferee: mainReferee,
          auxReferee: auxReferee,
@@ -88,6 +91,7 @@ class PdfPreviewScreen extends StatelessWidget {
          tournamentName: tournamentName,
          categoryName: categoryName,
          tournamentLogoUrl: tournamentLogoUrl,
+         refereeLogoUrl: refereeLogoUrl,
          venueName: venueName,
          mainReferee: mainReferee,
          auxReferee: auxReferee,
@@ -137,6 +141,7 @@ class PdfPreviewScreen extends StatelessWidget {
           tournamentName: tournamentName,
           categoryName: categoryName,
           tournamentLogoUrl: tournamentLogoUrl,
+          refereeLogoUrl: refereeLogoUrl,
           venueName: venueName,
           mainReferee: mainReferee,
           auxReferee: auxReferee,

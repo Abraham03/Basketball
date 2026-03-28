@@ -3424,6 +3424,17 @@ class $TournamentsTable extends Tournaments
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _refereeLogoUrlMeta = const VerificationMeta(
+    'refereeLogoUrl',
+  );
+  @override
+  late final GeneratedColumn<String> refereeLogoUrl = GeneratedColumn<String>(
+    'referee_logo_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
   late final GeneratedColumn<String> status = GeneratedColumn<String>(
@@ -3465,6 +3476,7 @@ class $TournamentsTable extends Tournaments
     name,
     category,
     logoUrl,
+    refereeLogoUrl,
     status,
     startDate,
     endDate,
@@ -3522,6 +3534,15 @@ class $TournamentsTable extends Tournaments
         logoUrl.isAcceptableOrUnknown(data['logo_url']!, _logoUrlMeta),
       );
     }
+    if (data.containsKey('referee_logo_url')) {
+      context.handle(
+        _refereeLogoUrlMeta,
+        refereeLogoUrl.isAcceptableOrUnknown(
+          data['referee_logo_url']!,
+          _refereeLogoUrlMeta,
+        ),
+      );
+    }
     if (data.containsKey('status')) {
       context.handle(
         _statusMeta,
@@ -3577,6 +3598,10 @@ class $TournamentsTable extends Tournaments
         DriftSqlType.string,
         data['${effectivePrefix}logo_url'],
       ),
+      refereeLogoUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}referee_logo_url'],
+      ),
       status: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}status'],
@@ -3606,6 +3631,7 @@ class Tournament extends DataClass implements Insertable<Tournament> {
   final String name;
   final String? category;
   final String? logoUrl;
+  final String? refereeLogoUrl;
   final String status;
   final DateTime? startDate;
   final DateTime? endDate;
@@ -3617,6 +3643,7 @@ class Tournament extends DataClass implements Insertable<Tournament> {
     required this.name,
     this.category,
     this.logoUrl,
+    this.refereeLogoUrl,
     required this.status,
     this.startDate,
     this.endDate,
@@ -3636,6 +3663,9 @@ class Tournament extends DataClass implements Insertable<Tournament> {
     }
     if (!nullToAbsent || logoUrl != null) {
       map['logo_url'] = Variable<String>(logoUrl);
+    }
+    if (!nullToAbsent || refereeLogoUrl != null) {
+      map['referee_logo_url'] = Variable<String>(refereeLogoUrl);
     }
     map['status'] = Variable<String>(status);
     if (!nullToAbsent || startDate != null) {
@@ -3662,6 +3692,9 @@ class Tournament extends DataClass implements Insertable<Tournament> {
       logoUrl: logoUrl == null && nullToAbsent
           ? const Value.absent()
           : Value(logoUrl),
+      refereeLogoUrl: refereeLogoUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(refereeLogoUrl),
       status: Value(status),
       startDate: startDate == null && nullToAbsent
           ? const Value.absent()
@@ -3685,6 +3718,7 @@ class Tournament extends DataClass implements Insertable<Tournament> {
       name: serializer.fromJson<String>(json['name']),
       category: serializer.fromJson<String?>(json['category']),
       logoUrl: serializer.fromJson<String?>(json['logoUrl']),
+      refereeLogoUrl: serializer.fromJson<String?>(json['refereeLogoUrl']),
       status: serializer.fromJson<String>(json['status']),
       startDate: serializer.fromJson<DateTime?>(json['startDate']),
       endDate: serializer.fromJson<DateTime?>(json['endDate']),
@@ -3701,6 +3735,7 @@ class Tournament extends DataClass implements Insertable<Tournament> {
       'name': serializer.toJson<String>(name),
       'category': serializer.toJson<String?>(category),
       'logoUrl': serializer.toJson<String?>(logoUrl),
+      'refereeLogoUrl': serializer.toJson<String?>(refereeLogoUrl),
       'status': serializer.toJson<String>(status),
       'startDate': serializer.toJson<DateTime?>(startDate),
       'endDate': serializer.toJson<DateTime?>(endDate),
@@ -3715,6 +3750,7 @@ class Tournament extends DataClass implements Insertable<Tournament> {
     String? name,
     Value<String?> category = const Value.absent(),
     Value<String?> logoUrl = const Value.absent(),
+    Value<String?> refereeLogoUrl = const Value.absent(),
     String? status,
     Value<DateTime?> startDate = const Value.absent(),
     Value<DateTime?> endDate = const Value.absent(),
@@ -3726,6 +3762,9 @@ class Tournament extends DataClass implements Insertable<Tournament> {
     name: name ?? this.name,
     category: category.present ? category.value : this.category,
     logoUrl: logoUrl.present ? logoUrl.value : this.logoUrl,
+    refereeLogoUrl: refereeLogoUrl.present
+        ? refereeLogoUrl.value
+        : this.refereeLogoUrl,
     status: status ?? this.status,
     startDate: startDate.present ? startDate.value : this.startDate,
     endDate: endDate.present ? endDate.value : this.endDate,
@@ -3739,6 +3778,9 @@ class Tournament extends DataClass implements Insertable<Tournament> {
       name: data.name.present ? data.name.value : this.name,
       category: data.category.present ? data.category.value : this.category,
       logoUrl: data.logoUrl.present ? data.logoUrl.value : this.logoUrl,
+      refereeLogoUrl: data.refereeLogoUrl.present
+          ? data.refereeLogoUrl.value
+          : this.refereeLogoUrl,
       status: data.status.present ? data.status.value : this.status,
       startDate: data.startDate.present ? data.startDate.value : this.startDate,
       endDate: data.endDate.present ? data.endDate.value : this.endDate,
@@ -3755,6 +3797,7 @@ class Tournament extends DataClass implements Insertable<Tournament> {
           ..write('name: $name, ')
           ..write('category: $category, ')
           ..write('logoUrl: $logoUrl, ')
+          ..write('refereeLogoUrl: $refereeLogoUrl, ')
           ..write('status: $status, ')
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate')
@@ -3771,6 +3814,7 @@ class Tournament extends DataClass implements Insertable<Tournament> {
     name,
     category,
     logoUrl,
+    refereeLogoUrl,
     status,
     startDate,
     endDate,
@@ -3786,6 +3830,7 @@ class Tournament extends DataClass implements Insertable<Tournament> {
           other.name == this.name &&
           other.category == this.category &&
           other.logoUrl == this.logoUrl &&
+          other.refereeLogoUrl == this.refereeLogoUrl &&
           other.status == this.status &&
           other.startDate == this.startDate &&
           other.endDate == this.endDate);
@@ -3799,6 +3844,7 @@ class TournamentsCompanion extends UpdateCompanion<Tournament> {
   final Value<String> name;
   final Value<String?> category;
   final Value<String?> logoUrl;
+  final Value<String?> refereeLogoUrl;
   final Value<String> status;
   final Value<DateTime?> startDate;
   final Value<DateTime?> endDate;
@@ -3811,6 +3857,7 @@ class TournamentsCompanion extends UpdateCompanion<Tournament> {
     this.name = const Value.absent(),
     this.category = const Value.absent(),
     this.logoUrl = const Value.absent(),
+    this.refereeLogoUrl = const Value.absent(),
     this.status = const Value.absent(),
     this.startDate = const Value.absent(),
     this.endDate = const Value.absent(),
@@ -3824,6 +3871,7 @@ class TournamentsCompanion extends UpdateCompanion<Tournament> {
     required String name,
     this.category = const Value.absent(),
     this.logoUrl = const Value.absent(),
+    this.refereeLogoUrl = const Value.absent(),
     this.status = const Value.absent(),
     this.startDate = const Value.absent(),
     this.endDate = const Value.absent(),
@@ -3837,6 +3885,7 @@ class TournamentsCompanion extends UpdateCompanion<Tournament> {
     Expression<String>? name,
     Expression<String>? category,
     Expression<String>? logoUrl,
+    Expression<String>? refereeLogoUrl,
     Expression<String>? status,
     Expression<DateTime>? startDate,
     Expression<DateTime>? endDate,
@@ -3850,6 +3899,7 @@ class TournamentsCompanion extends UpdateCompanion<Tournament> {
       if (name != null) 'name': name,
       if (category != null) 'category': category,
       if (logoUrl != null) 'logo_url': logoUrl,
+      if (refereeLogoUrl != null) 'referee_logo_url': refereeLogoUrl,
       if (status != null) 'status': status,
       if (startDate != null) 'start_date': startDate,
       if (endDate != null) 'end_date': endDate,
@@ -3865,6 +3915,7 @@ class TournamentsCompanion extends UpdateCompanion<Tournament> {
     Value<String>? name,
     Value<String?>? category,
     Value<String?>? logoUrl,
+    Value<String?>? refereeLogoUrl,
     Value<String>? status,
     Value<DateTime?>? startDate,
     Value<DateTime?>? endDate,
@@ -3878,6 +3929,7 @@ class TournamentsCompanion extends UpdateCompanion<Tournament> {
       name: name ?? this.name,
       category: category ?? this.category,
       logoUrl: logoUrl ?? this.logoUrl,
+      refereeLogoUrl: refereeLogoUrl ?? this.refereeLogoUrl,
       status: status ?? this.status,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
@@ -3909,6 +3961,9 @@ class TournamentsCompanion extends UpdateCompanion<Tournament> {
     if (logoUrl.present) {
       map['logo_url'] = Variable<String>(logoUrl.value);
     }
+    if (refereeLogoUrl.present) {
+      map['referee_logo_url'] = Variable<String>(refereeLogoUrl.value);
+    }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
@@ -3934,6 +3989,7 @@ class TournamentsCompanion extends UpdateCompanion<Tournament> {
           ..write('name: $name, ')
           ..write('category: $category, ')
           ..write('logoUrl: $logoUrl, ')
+          ..write('refereeLogoUrl: $refereeLogoUrl, ')
           ..write('status: $status, ')
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
@@ -8919,6 +8975,7 @@ typedef $$TournamentsTableCreateCompanionBuilder =
       required String name,
       Value<String?> category,
       Value<String?> logoUrl,
+      Value<String?> refereeLogoUrl,
       Value<String> status,
       Value<DateTime?> startDate,
       Value<DateTime?> endDate,
@@ -8933,6 +8990,7 @@ typedef $$TournamentsTableUpdateCompanionBuilder =
       Value<String> name,
       Value<String?> category,
       Value<String?> logoUrl,
+      Value<String?> refereeLogoUrl,
       Value<String> status,
       Value<DateTime?> startDate,
       Value<DateTime?> endDate,
@@ -9030,6 +9088,11 @@ class $$TournamentsTableFilterComposer
 
   ColumnFilters<String> get logoUrl => $composableBuilder(
     column: $table.logoUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get refereeLogoUrl => $composableBuilder(
+    column: $table.refereeLogoUrl,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9143,6 +9206,11 @@ class $$TournamentsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get refereeLogoUrl => $composableBuilder(
+    column: $table.refereeLogoUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get status => $composableBuilder(
     column: $table.status,
     builder: (column) => ColumnOrderings(column),
@@ -9188,6 +9256,11 @@ class $$TournamentsTableAnnotationComposer
 
   GeneratedColumn<String> get logoUrl =>
       $composableBuilder(column: $table.logoUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get refereeLogoUrl => $composableBuilder(
+    column: $table.refereeLogoUrl,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
@@ -9284,6 +9357,7 @@ class $$TournamentsTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<String?> category = const Value.absent(),
                 Value<String?> logoUrl = const Value.absent(),
+                Value<String?> refereeLogoUrl = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<DateTime?> startDate = const Value.absent(),
                 Value<DateTime?> endDate = const Value.absent(),
@@ -9296,6 +9370,7 @@ class $$TournamentsTableTableManager
                 name: name,
                 category: category,
                 logoUrl: logoUrl,
+                refereeLogoUrl: refereeLogoUrl,
                 status: status,
                 startDate: startDate,
                 endDate: endDate,
@@ -9310,6 +9385,7 @@ class $$TournamentsTableTableManager
                 required String name,
                 Value<String?> category = const Value.absent(),
                 Value<String?> logoUrl = const Value.absent(),
+                Value<String?> refereeLogoUrl = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<DateTime?> startDate = const Value.absent(),
                 Value<DateTime?> endDate = const Value.absent(),
@@ -9322,6 +9398,7 @@ class $$TournamentsTableTableManager
                 name: name,
                 category: category,
                 logoUrl: logoUrl,
+                refereeLogoUrl: refereeLogoUrl,
                 status: status,
                 startDate: startDate,
                 endDate: endDate,

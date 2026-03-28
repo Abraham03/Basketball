@@ -554,6 +554,7 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
                          tournamentName: "Torneo Activo", 
                          categoryName: "LIBRE",
                          tournamentLogoUrl: "",
+                         refereeLogoUrl: "",
                          venueName: match.venueName ?? '',
                          mainReferee: currentState.mainReferee,
                          auxReferee: currentState.auxReferee,

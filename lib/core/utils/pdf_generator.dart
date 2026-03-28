@@ -11,7 +11,7 @@ class PdfCoords {
   static const double tournamentLogoX = 10.0; 
   static const double tournamentLogoY = 8.0;
 
-  // Coordenada para el logo (A la derecha del nombre del torneo)
+  // Coordenada para el logo del arbitro (A la derecha del nombre del torneo)
   static const double derechatournamentLogoX = 550.0; 
   static const double derechatournamentLogoY = 8.0;
 
@@ -153,6 +153,7 @@ class PdfGenerator {
     String tournamentName = "",
     String categoryName = "",
     String tournamentLogoUrl = "",
+    String refereeLogoUrl = "",
     String venueName = "",
     String mainReferee = "",
     String auxReferee = "",
@@ -173,6 +174,7 @@ class PdfGenerator {
       tournamentName,
       categoryName,
       tournamentLogoUrl,
+      refereeLogoUrl,
       venueName,
       mainReferee,
       auxReferee,
@@ -196,6 +198,7 @@ class PdfGenerator {
     String tournamentName = "",
     String categoryName = "",
     String tournamentLogoUrl = "",
+    String refereeLogoUrl = "",
     String venueName = "",
     String mainReferee = "",
     String auxReferee = "",
@@ -216,6 +219,7 @@ class PdfGenerator {
       tournamentName,
       categoryName,
       tournamentLogoUrl,
+      refereeLogoUrl,
       venueName,
       mainReferee,
       auxReferee,
@@ -243,6 +247,7 @@ class PdfGenerator {
     String tournamentName = "",
     String categoryName = "",
     String tournamentLogoUrl = "",
+    String refereeLogoUrl = "",
     String venueName = "",
     String mainReferee = "",
     String auxReferee = "",
@@ -263,6 +268,7 @@ class PdfGenerator {
       tournamentName,
       categoryName,
       tournamentLogoUrl,
+      refereeLogoUrl,
       venueName,
       mainReferee,
       auxReferee,
@@ -287,6 +293,7 @@ class PdfGenerator {
     String tournamentName,
     String categoryName,
     String tournamentLogoUrl,
+    String refereeLogoUrl,
     String venueName,
     String mainReferee,
     String auxReferee,
@@ -318,6 +325,7 @@ class PdfGenerator {
         ? "${matchDate.hour.toString().padLeft(2, '0')}:${matchDate.minute.toString().padLeft(2, '0')}"
         : "";
 
+    //  CARGA DE LOGO TORNEO 
     pw.ImageProvider? tournLogoProvider;
     if (tournamentLogoUrl.isNotEmpty) {
       try {
@@ -328,7 +336,22 @@ class PdfGenerator {
         tournLogoProvider = await networkImage(finalUrl);
       // ignore: empty_catches
       } catch (e) {}
-    }    
+    }  
+
+    //  CARGA DE LOGO ÁRBITRO (DERECHA) ---
+    // --- NUEVO: CARGA DE LOGO ÁRBITRO (DERECHA) ---
+    pw.ImageProvider? refereeLogoProvider;
+    
+    // Si pasas el objeto tournament completo o la URL por parámetro:
+    if (refereeLogoUrl.isNotEmpty) {
+      try {
+        String finalUrl = refereeLogoUrl.startsWith('../') 
+          ? refereeLogoUrl.replaceAll('../', 'https://basket.techsolutions.management/') 
+          : refereeLogoUrl;
+        refereeLogoProvider = await networkImage(finalUrl);
+      // ignore: empty_catches
+      } catch (e) {}
+    }
 
     try {
       final imageBytes = await rootBundle.load(
@@ -345,6 +368,7 @@ class PdfGenerator {
               children: [
                 pw.Positioned.fill(child: pw.Image(image, fit: pw.BoxFit.fill)),
 
+                // LOGO DEL TORNEO (Izquierda)
                 if (tournLogoProvider != null)
                   pw.Positioned(
                     left: PdfCoords.tournamentLogoX, 
@@ -356,12 +380,13 @@ class PdfGenerator {
                     ),
                   ),
 
-                  if (tournLogoProvider != null) 
+                // LOGO DEL ÁRBITRO (Derecha)
+                  if (refereeLogoProvider != null) 
                     pw.Positioned(
                       left: PdfCoords.derechatournamentLogoX,
                       top: PdfCoords.derechatournamentLogoY,  
                       child: pw.Image(
-                        tournLogoProvider, 
+                        refereeLogoProvider, 
                         width: 53, 
                         height: 53, 
                         fit: pw.BoxFit.contain,

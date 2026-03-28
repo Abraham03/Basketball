@@ -634,6 +634,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
     final currentTourn = driftTournaments.where((t) => t.id.toString() == widget.tournamentId).firstOrNull;
 
     String resolvedTournLogo = "";
+    String resolvedRefereeLogo = "";
     String finalCategory = "LIBRE";
 
     if (currentTourn != null) {
@@ -642,7 +643,15 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
       if (currentTourn.logoUrl != null && currentTourn.logoUrl!.isNotEmpty) {
         resolvedTournLogo = currentTourn.logoUrl!.replaceAll('../', 'https://basket.techsolutions.management/');
       }
+
+      // 2. Procesar Logo del Árbitro (MOVIDO AQUÍ ADENTRO)
+    if (currentTourn.refereeLogoUrl != null && currentTourn.refereeLogoUrl!.isNotEmpty) {
+      resolvedRefereeLogo = currentTourn.refereeLogoUrl!
+          .replaceAll('../', 'https://basket.techsolutions.management/');
     }
+    }
+
+    
     
     // Generar un ID predecible para partidos manuales ---
     String matchIdToUse;
@@ -679,6 +688,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
           scorekeeper: scorekName,
           tournamentName: tournamentName,
           tournamentLogoUrl: resolvedTournLogo, 
+          refereeLogoUrl: resolvedRefereeLogo,
           categoryName: finalCategory,          
           venueName: selectedVenue!.name,
         ),

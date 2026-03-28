@@ -33,6 +33,7 @@ class MatchControlScreen extends ConsumerStatefulWidget {
   final String tournamentName;
   final String categoryName;
   final String tournamentLogoUrl;
+  final String refereeLogoUrl;
   final String venueName;
   final List<Player> fullRosterA;
   final List<Player> fullRosterB;
@@ -60,6 +61,7 @@ class MatchControlScreen extends ConsumerStatefulWidget {
     required this.tournamentName,
     required this.categoryName,
     required this.tournamentLogoUrl,
+    required this.refereeLogoUrl,
     required this.venueName,
     required this.fullRosterA,
     required this.fullRosterB,
@@ -976,6 +978,14 @@ Widget _buildMiniFoulDots(int count) {
       final controller = ref.read(matchGameProvider.notifier);
       final dbBase = ref.read(databaseProvider);
 
+      // --- 1. RECUPERAR DATOS DEL TORNEO (PARA EL LOGO DEL ÁRBITRO) ---
+      final tournamentObj = await (dbBase.select(dbBase.tournaments)
+            ..where((t) => t.id.equals(widget.tournamentId.toString())))
+          .getSingleOrNull();
+
+      // Asumimos que agregaste 'refereeLogoUrl' a tu tabla Tournaments en Drift
+      final String refereeLogoUrl = tournamentObj?.refereeLogoUrl ?? "";    
+
       // --- 2. RECUPERAR FIRMAS DE OFICIALES (POR NOMBRE Y ROL) ---
       // Usamos .get() y firstOrNull para evitar el error de "Too many elements"
       final mainRefObj = await (dbBase.select(dbBase.officials)
@@ -1008,6 +1018,7 @@ Widget _buildMiniFoulDots(int count) {
         tournamentName: widget.tournamentName,
         categoryName: widget.categoryName,
         tournamentLogoUrl: widget.tournamentLogoUrl,
+        refereeLogoUrl: refereeLogoUrl,
         venueName: widget.venueName,
         mainReferee: widget.mainReferee,
         auxReferee: widget.auxReferee,
@@ -1128,6 +1139,7 @@ Widget _buildMiniFoulDots(int count) {
             tournamentName: widget.tournamentName,
             categoryName: widget.categoryName,
             tournamentLogoUrl: widget.tournamentLogoUrl,
+            refereeLogoUrl: widget.refereeLogoUrl,
             venueName: widget.venueName,
             mainReferee: widget.mainReferee,
             auxReferee: widget.auxReferee,

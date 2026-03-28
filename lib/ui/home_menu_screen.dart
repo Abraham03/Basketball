@@ -743,6 +743,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                   category: drift.Value(t.category),
                   status: drift.Value(t.status ?? 'ACTIVE'),
                   logoUrl: drift.Value(t.logoUrl),
+                  refereeLogoUrl: drift.Value(t.refereeLogoUrl),
                   isSynced: const drift.Value(true),
                 ),
                 mode: drift.InsertMode.insertOrReplace,
