@@ -331,7 +331,7 @@ class PdfGenerator {
       try {
         String finalUrl = tournamentLogoUrl;
         if (finalUrl.startsWith('../')) {
-          finalUrl = finalUrl.replaceAll('../', 'https://basket.techsolutions.management/');
+          finalUrl = finalUrl.replaceAll('../', 'https://vanball.com.mx/');
         }
         tournLogoProvider = await networkImage(finalUrl);
       // ignore: empty_catches
@@ -346,7 +346,7 @@ class PdfGenerator {
     if (refereeLogoUrl.isNotEmpty) {
       try {
         String finalUrl = refereeLogoUrl.startsWith('../') 
-          ? refereeLogoUrl.replaceAll('../', 'https://basket.techsolutions.management/') 
+          ? refereeLogoUrl.replaceAll('../', 'https://vanball.com.mx/') 
           : refereeLogoUrl;
         refereeLogoProvider = await networkImage(finalUrl);
       // ignore: empty_catches

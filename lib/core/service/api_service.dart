@@ -8,7 +8,7 @@ import '../models/catalog_models.dart';
 
 class ApiService {
   
-  static const String _baseUrl = 'https://basket.techsolutions.management/api.php';
+  static const String _baseUrl = 'https://vanball.com.mx/api.php';
 
   Future<bool> saveTournamentRules({
     required String tournamentId,

@@ -641,13 +641,13 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
       finalCategory = currentTourn.category ?? 'LIBRE';
       
       if (currentTourn.logoUrl != null && currentTourn.logoUrl!.isNotEmpty) {
-        resolvedTournLogo = currentTourn.logoUrl!.replaceAll('../', 'https://basket.techsolutions.management/');
+        resolvedTournLogo = currentTourn.logoUrl!.replaceAll('../', 'https://vanball.com.mx/');
       }
 
       // 2. Procesar Logo del Árbitro (MOVIDO AQUÍ ADENTRO)
     if (currentTourn.refereeLogoUrl != null && currentTourn.refereeLogoUrl!.isNotEmpty) {
       resolvedRefereeLogo = currentTourn.refereeLogoUrl!
-          .replaceAll('../', 'https://basket.techsolutions.management/');
+          .replaceAll('../', 'https://vanball.com.mx/');
     }
     }
 

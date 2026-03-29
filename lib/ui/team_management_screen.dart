@@ -362,7 +362,7 @@ class _TeamCard extends ConsumerWidget {
     if (path.startsWith('http')) return path;
     String cleanPath = path.replaceAll('../', '').replaceAll('./', '');
     if (cleanPath.startsWith('/')) cleanPath = cleanPath.substring(1);
-    return 'https://basket.techsolutions.management/$cleanPath';
+    return 'https://vanball.com.mx/$cleanPath';
   }
 
   @override

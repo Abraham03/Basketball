@@ -50,7 +50,7 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
   String _resolveLogoUrl(String? path) {
     if (path == null || path.isEmpty) return '';
     if (path.startsWith('http')) return path;
-    return path.replaceAll('../', 'https://basket.techsolutions.management/');
+    return path.replaceAll('../', 'https://vanball.com.mx/');
   }
 
   // --- HELPER PARA TEXTO DE ENFRENTAMIENTO ---
