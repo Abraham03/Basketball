@@ -4,11 +4,11 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift; 
-
+import '../core/models/catalog_models.dart' as catalog;
 import '../core/database/app_database.dart';
 import '../core/di/dependency_injection.dart';
-import 'match_setup_screen.dart';
 import '../logic/match_game_controller.dart';
+import 'match_setup_screen.dart';
 import 'match_control_screen.dart';
 import '../ui/widgets/app_background.dart';
 import '../ui/manual_fixture_builder_screen.dart';
@@ -520,233 +520,210 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
   }
 
   // --- DISEÑO DE TARJETA DE PARTIDO PROFESIONAL ---
-  Widget _buildMatchCard(BuildContext context, Fixture match, int encounterNumber) {
-    final isPlayable = match.status == 'SCHEDULED' || 
-                       match.status == 'PENDING' || 
-                       match.status == 'IN_PROGRESS' || 
-                       match.status == 'PLAYING';
+ Widget _buildMatchCard(BuildContext context, Fixture match, int encounterNumber) {
+  final isPlayable = match.status == 'SCHEDULED' || 
+                     match.status == 'PENDING' || 
+                     match.status == 'IN_PROGRESS' || 
+                     match.status == 'PLAYING';
 
-    final isFinished = match.status == 'FINISHED';
+  final isFinished = match.status == 'FINISHED';
 
-    String dateFormatted = "Horario por definir";
-    if (match.scheduledDatetime != null) {
-      final dt = match.scheduledDatetime!;
-      dateFormatted = "${dt.day.toString().padLeft(2,'0')}/${dt.month.toString().padLeft(2,'0')}/${dt.year}  •  ${dt.hour.toString().padLeft(2,'0')}:${dt.minute.toString().padLeft(2,'0')} hrs";
-    }
+  String dateFormatted = "Horario por definir";
+  if (match.scheduledDatetime != null) {
+    final dt = match.scheduledDatetime!;
+    dateFormatted = "${dt.day.toString().padLeft(2,'0')}/${dt.month.toString().padLeft(2,'0')}/${dt.year}  •  ${dt.hour.toString().padLeft(2,'0')}:${dt.minute.toString().padLeft(2,'0')} hrs";
+  }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15), 
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: isPlayable ? () {
-                 if (match.status == 'IN_PROGRESS' || match.status == 'PLAYING') {
-                   final currentState = ref.read(matchGameProvider);
-                   if (currentState.matchId == match.matchId && currentState.matchId.isNotEmpty) {
-                     Navigator.push(context, MaterialPageRoute(builder: (_) => MatchControlScreen(
-                         matchId: currentState.matchId,
-                         teamAName: match.teamAName,
-                         teamBName: match.teamBName,
-                         tournamentName: "Torneo Activo", 
-                         categoryName: "LIBRE",
-                         tournamentLogoUrl: "",
-                         refereeLogoUrl: "",
-                         venueName: match.venueName ?? '',
-                         mainReferee: currentState.mainReferee,
-                         auxReferee: currentState.auxReferee,
-                         scorekeeper: currentState.scorekeeper,
-                         fullRosterA: const [], 
-                         fullRosterB: const [], 
-                         startersAIds: const {},
-                         startersBIds: const {},
-                         tournamentId: currentState.tournamentId ?? int.tryParse(widget.tournamentId) ?? 0,
-                         venueId: currentState.venueId ?? 0,
-                         teamAId: currentState.teamAId ?? 0,
-                         teamBId: currentState.teamBId ?? 0,
-                         coachA: '',
-                         coachB: '',
-                       )));
-                     return; 
-                   }
-                 }
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15), 
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: isPlayable ? () async {
+              final dbBase = ref.read(databaseProvider);
+              final currentState = ref.read(matchGameProvider);
+              final String idABuscar = match.matchId ?? match.id;
 
-                 Navigator.push(context, MaterialPageRoute(builder: (_) => MatchSetupScreen(
-                     tournamentId: widget.tournamentId,
-                     preSelectedFixture: match,
-                   ),
-                 ));
-              } : () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("ℹ️ Partido en estado: ${match.status}"), backgroundColor: Colors.blueGrey)
-                  );
-              },
-              splashColor: Colors.orange.withValues(alpha: 0.3),
-              highlightColor: Colors.orange.withValues(alpha: 0.1),
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearBinding.linear(
-                    Colors.white.withValues(alpha: 0.15), 
-                    Colors.white.withValues(alpha: 0.03)
-                  ),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildStatusBadge(match.status),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.calendar_month, size: 14, color: Colors.orangeAccent),
-                                    const SizedBox(width: 5),
-                                    Flexible(
-                                      child: Text(
-                                        dateFormatted, 
-                                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.location_on, size: 13, color: Colors.white54),
-                                    const SizedBox(width: 5),
-                                    Flexible(
-                                      child: Text(
-                                        match.venueName ?? 'Sede TBD', 
-                                        style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w500),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          )
-                        ],
-                      ),
-                      
-                      const SizedBox(height: 20),
-                      
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            flex: 3,
-                            child: Column(
-                              children: [
-                                _buildTeamLogo(match.logoA, match.teamAName),
-                                const SizedBox(height: 8),
-                                Text(
-                                  match.teamAName, 
-                                  textAlign: TextAlign.center, 
-                                  maxLines: 2,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white),
-                                  overflow: TextOverflow.ellipsis,
-                                )
-                              ],
-                            ),
-                          ),
-
-                          Expanded(
-                            flex: 4,
-                            child: Column(
-                              children: [
-                                Text(
-                                  isFinished && match.scoreA != null && match.scoreB != null 
-                                      ? "${match.scoreA} - ${match.scoreB}" 
-                                      : "VS", 
-                                  style: TextStyle(
-                                    color: isFinished ? Colors.white : Colors.orangeAccent, 
-                                    fontSize: 28, 
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 2.0
-                                  )
-                                ),
-                                const SizedBox(height: 4),
-                                
-                                // --- NUEVO: ETIQUETA DE NÚMERO DE ENFRENTAMIENTO ---
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    _getEncounterText(encounterNumber).toUpperCase(), 
-                                    style: const TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.8)
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                
-                                Container(
-                                  width: 45,
-                                  height: 45,
-                                  decoration: BoxDecoration(
-                                    color: isPlayable ? Colors.orangeAccent : Colors.white.withValues(alpha: 0.05), 
-                                    shape: BoxShape.circle,
-                                    boxShadow: isPlayable ? [BoxShadow(color: Colors.orangeAccent.withValues(alpha: 0.4), blurRadius: 10, spreadRadius: 1)] : []
-                                  ),
-                                  child: Icon(
-                                    (match.status == 'IN_PROGRESS' || match.status == 'PLAYING') 
-                                        ? Icons.restore 
-                                        : isPlayable 
-                                            ? Icons.play_arrow_rounded 
-                                            : Icons.lock_outline_rounded,
-                                    color: isPlayable ? Colors.black : Colors.white38, 
-                                    size: 26
-                                  )
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          Expanded(
-                            flex: 3,
-                            child: Column(
-                              children: [
-                                _buildTeamLogo(match.logoB, match.teamBName),
-                                const SizedBox(height: 8),
-                                Text(
-                                  match.teamBName, 
-                                  textAlign: TextAlign.center, 
-                                  maxLines: 2,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white),
-                                  overflow: TextOverflow.ellipsis,
-                                )
-                              ],
-                            ),
-                          ),
-                        ],
+              // --- 1. VALIDACIÓN DE PARTIDO ACTIVO ÚNICO ---
+              if (currentState.matchId.isNotEmpty && currentState.matchId != idABuscar) {
+                final bool? confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    backgroundColor: const Color(0xFF1A1F2B),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    title: const Row(
+                      children: [
+                        Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent),
+                        SizedBox(width: 10),
+                        Text("Partido en curso", style: TextStyle(color: Colors.white)),
+                      ],
+                    ),
+                    content: const Text(
+                      "Ya existe un partido activo en la mesa de control. Si continúas, se cerrará el actual para abrir el seleccionado. ¿Estás seguro?",
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("CANCELAR", style: TextStyle(color: Colors.grey))),
+                      FilledButton(
+                        style: FilledButton.styleFrom(backgroundColor: Colors.orangeAccent),
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text("SÍ, CONTINUAR", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
+                );
+                if (confirm != true) return;
+                ref.invalidate(matchGameProvider); // Limpiamos la RAM
+              }
+
+              // --- 2. BUSCAR EN BD PARA REANUDAR ---
+              final localMatch = await (dbBase.select(dbBase.matches)
+                    ..where((t) => t.id.equals(idABuscar))).getSingleOrNull();
+
+              if (localMatch != null && (localMatch.status == 'IN_PROGRESS' || localMatch.status == 'PLAYING')) {
+                
+                // --- NUEVO: RECUPERAR LOGOS DESDE LA TABLA TOURNAMENTS ---
+                final tournamentData = await (dbBase.select(dbBase.tournaments)
+                      ..where((t) => t.id.equals(localMatch.tournamentId ?? ''))).getSingleOrNull();
+
+                final allDbPlayers = await dbBase.select(dbBase.players).get();
+                final rosterA = allDbPlayers.where((p) => p.teamId.toString() == match.teamAId)
+                    .map((p) => catalog.Player(id: int.tryParse(p.id) ?? -1, name: p.name, teamId: p.teamId, defaultNumber: p.defaultNumber)).toList();
+                final rosterB = allDbPlayers.where((p) => p.teamId.toString() == match.teamBId)
+                    .map((p) => catalog.Player(id: int.tryParse(p.id) ?? -1, name: p.name, teamId: p.teamId, defaultNumber: p.defaultNumber)).toList();
+
+                final dbRosters = await (dbBase.select(dbBase.matchRosters)..where((t) => t.matchId.equals(localMatch.id))).get();
+                final capA = dbRosters.where((r) => r.teamSide == 'A' && r.isCaptain).firstOrNull;
+                final capB = dbRosters.where((r) => r.teamSide == 'B' && r.isCaptain).firstOrNull;
+
+                if (context.mounted) {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => MatchControlScreen(
+                    matchId: localMatch.id,
+                    fixtureId: match.id,
+                    teamAName: localMatch.teamAName,
+                    teamBName: localMatch.teamBName,
+                    mainReferee: localMatch.mainReferee ?? '',
+                    auxReferee: localMatch.auxReferee ?? '',
+                    scorekeeper: localMatch.scorekeeper ?? '',
+                    tournamentName: tournamentData?.name ?? "Torneo Activo",
+                    categoryName: tournamentData?.category ?? "LIBRE",
+                    // LOGOS RECUPERADOS EXITOSAMENTE
+                    tournamentLogoUrl: tournamentData?.logoUrl ?? "", 
+                    refereeLogoUrl: tournamentData?.refereeLogoUrl ?? "",
+                    venueName: match.venueName ?? '',
+                    fullRosterA: rosterA,
+                    fullRosterB: rosterB,
+                    startersAIds: const {}, 
+                    startersBIds: const {},
+                    tournamentId: int.tryParse(localMatch.tournamentId ?? '0') ?? 0,
+                    venueId: int.tryParse(localMatch.venueId ?? '0') ?? 0,
+                    teamAId: localMatch.teamAId ?? 0,
+                    teamBId: localMatch.teamBId ?? 0,
+                    coachA: '', coachB: '',
+                    captainAId: capA != null ? int.tryParse(capA.playerId) : null,
+                    captainBId: capB != null ? int.tryParse(capB.playerId) : null,
+                  )));
+                }
+                return;
+              }
+
+              // --- 3. SI ES PARTIDO NUEVO, IR A SETUP ---
+              if (context.mounted) {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => MatchSetupScreen(
+                  tournamentId: widget.tournamentId,
+                  preSelectedFixture: match,
+                )));
+              }
+            } : () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("ℹ️ Partido en estado: ${match.status}"), backgroundColor: Colors.blueGrey)
+              );
+            },
+            splashColor: Colors.orange.withOpacity(0.3),
+            highlightColor: Colors.orange.withValues(alpha: 0.1),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Colors.white.withOpacity(0.15), Colors.white.withOpacity(0.03)],
+                ),
+                border: Border.all(color: Colors.white.withOpacity(0.15)),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildStatusBadge(match.status),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.calendar_month, size: 14, color: Colors.orangeAccent),
+                                  const SizedBox(width: 5),
+                                  Flexible(child: Text(dateFormatted, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.location_on, size: 13, color: Colors.white54),
+                                  const SizedBox(width: 5),
+                                  Flexible(child: Text(match.venueName ?? 'Sede TBD', style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
+                                ],
+                              ),
+                            ],
+                          ),
+                        )
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(flex: 3, child: Column(children: [_buildTeamLogo(match.logoA, match.teamAName), const SizedBox(height: 8), Text(match.teamAName, textAlign: TextAlign.center, maxLines: 2, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white), overflow: TextOverflow.ellipsis)])),
+                        Expanded(
+                          flex: 4, 
+                          child: Column(
+                            children: [
+                              Text(isFinished && match.scoreA != null ? "${match.scoreA} - ${match.scoreB}" : "VS", style: const TextStyle(color: Colors.orangeAccent, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: 2.0)),
+                              const SizedBox(height: 4),
+                              Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(6)), child: Text(_getEncounterText(encounterNumber).toUpperCase(), style: const TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.bold))),
+                              const SizedBox(height: 12),
+                              Container(
+                                width: 45, height: 45, 
+                                decoration: BoxDecoration(color: isPlayable ? Colors.orangeAccent : Colors.white10, shape: BoxShape.circle), 
+                                child: Icon((match.status == 'IN_PROGRESS' || match.status == 'PLAYING') ? Icons.restore : Icons.play_arrow_rounded, color: Colors.black, size: 26)
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(flex: 3, child: Column(children: [_buildTeamLogo(match.logoB, match.teamBName), const SizedBox(height: 8), Text(match.teamBName, textAlign: TextAlign.center, maxLines: 2, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white), overflow: TextOverflow.ellipsis)])),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildStatusBadge(String status) {
     Color bgColor;

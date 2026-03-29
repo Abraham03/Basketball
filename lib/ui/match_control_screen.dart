@@ -95,47 +95,69 @@ class _MatchControlScreenState extends ConsumerState<MatchControlScreen> {
   String? _teamOfSubstitution;  // Guarda el equipo 'A' o 'B'
 
   @override
-  void initState() {
-    super.initState();
-    
-    if (widget.captainAId != null) {
-      final capA = widget.fullRosterA.where((p) => p.id == widget.captainAId).firstOrNull;
-      _captainAName = capA?.name;
-    }
-    if (widget.captainBId != null) {
-      final capB = widget.fullRosterB.where((p) => p.id == widget.captainBId).firstOrNull;
-      _captainBName = capB?.name;
-    }
-
-    LocalWebSocketServer.instance.startServer();
-    _checkExternalDisplays(); 
-    _fetchLocalIp();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final oldState = ref.read(matchGameProvider);
-
-      if (oldState.matchId != widget.matchId) {
-        ref.read(matchGameProvider.notifier).initializeNewMatch(
-              matchId: widget.matchId,
-              fixtureId: widget.fixtureId,
-              rosterA: widget.fullRosterA,
-              rosterB: widget.fullRosterB,
-              startersA: widget.startersAIds,
-              startersB: widget.startersBIds,
-              tournamentId: widget.tournamentId,
-              venueId: widget.venueId,
-              teamAId: widget.teamAId,
-              teamBId: widget.teamBId,
-              mainReferee: widget.mainReferee,
-              auxReferee: widget.auxReferee,
-              scorekeeper: widget.scorekeeper,
-            );
-      }
-      
-      final newState = ref.read(matchGameProvider);
-      _broadcastFastUpdate(newState, ref.read(matchGameProvider.notifier));
-    });
+void initState() {
+  super.initState();
+  
+  // 1. Buscamos nombres de capitanes por IDs recibidos por constructor
+  if (widget.captainAId != null) {
+    final capA = widget.fullRosterA.where((p) => p.id == widget.captainAId).firstOrNull;
+    _captainAName = capA?.name;
   }
+  if (widget.captainBId != null) {
+    final capB = widget.fullRosterB.where((p) => p.id == widget.captainBId).firstOrNull;
+    _captainBName = capB?.name;
+  }
+
+  LocalWebSocketServer.instance.startServer();
+  _checkExternalDisplays(); 
+  _fetchLocalIp();
+
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    final controller = ref.read(matchGameProvider.notifier);
+    final oldState = ref.read(matchGameProvider);
+
+    // ESCENARIO: El partido no está en memoria o es uno diferente
+    if (oldState.matchId != widget.matchId) {
+      
+      // Intentamos ver si tiene eventos en la BD para restaurar
+      // (Aquí llamamos al método que creamos en el controlador)
+      await controller.restoreFromDatabase(
+        matchId: widget.matchId,
+        fixtureId: widget.fixtureId,
+        rosterA: widget.fullRosterA,
+        rosterB: widget.fullRosterB,
+        startersA: widget.startersAIds,
+        startersB: widget.startersBIds,
+        tournamentId: widget.tournamentId,
+        venueId: widget.venueId,
+        teamAId: widget.teamAId,
+        teamBId: widget.teamBId,
+        mainReferee: widget.mainReferee,
+        auxReferee: widget.auxReferee,
+        scorekeeper: widget.scorekeeper,
+      );
+
+      // Sincronizamos nombres de capitanes nuevamente por si el restore cambió algo
+      final newState = ref.read(matchGameProvider);
+      String? nameA;
+      String? nameB;
+      newState.playerStats.forEach((name, stats) {
+        if (stats.dbId == widget.captainAId) nameA = name;
+        if (stats.dbId == widget.captainBId) nameB = name;
+      });
+
+      if (mounted) {
+        setState(() {
+          _captainAName = nameA ?? _captainAName;
+          _captainBName = nameB ?? _captainBName;
+        });
+      }
+    }
+    
+    final finalState = ref.read(matchGameProvider);
+    _broadcastFastUpdate(finalState, controller);
+  });
+}
 
   void _broadcastFastUpdate(MatchState state, MatchGameController controller) {
     try {
@@ -1077,6 +1099,7 @@ Widget _buildMiniFoulDots(int count) {
         );
 
         if (autoShow) _goToPdfPreview(context, state, signature);
+        ref.invalidate(matchGameProvider); // Esto destruye el estado viejo de memoria
       }
     } catch (e) {
       debugPrint("Error en _finishMatchProcess: $e");

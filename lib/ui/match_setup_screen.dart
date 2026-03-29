@@ -661,8 +661,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
       matchIdToUse = widget.preSelectedFixture!.matchId!;
     } else {
       // Si es manual, creamos un ID que no cambie cada segundo mientras sean los mismos equipos
-      // Ejemplo: manual_1_15_22 (manual_torneoID_equipoA_equipoB)
-      matchIdToUse = "manual_${widget.tournamentId}_${selectedTeamA!.id}_${selectedTeamB!.id}";
+      matchIdToUse = DateTime.now().millisecondsSinceEpoch.toString();
     }
     final rosterA = data.players.where((p) => p.teamId == selectedTeamA!.id).toList();
     final rosterB = data.players.where((p) => p.teamId == selectedTeamB!.id).toList();

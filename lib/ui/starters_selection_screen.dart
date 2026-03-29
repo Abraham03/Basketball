@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
+import 'package:uuid/uuid.dart';
 
 import '../core/database/app_database.dart' as db;
 import '../core/di/dependency_injection.dart';
@@ -70,24 +71,26 @@ class _StartersSelectionScreenState
   @override
   void initState() {
     super.initState();
+    // Clonamos las listas iniciales
     _orderedRosterA = List.from(widget.rosterA);
     _orderedRosterB = List.from(widget.rosterB);
-    _orderedRosterA.sort((a, b) => b.defaultNumber.compareTo(a.defaultNumber));
-    _orderedRosterB.sort((a, b) => b.defaultNumber.compareTo(a.defaultNumber));
+    _sortRosters();
 
     final currentStarters = ref.read(selectedStartersProvider(widget.matchId));
     final currentCaptains = ref.read(selectedCaptainsProvider(widget.matchId));
 
-    // Clonamos para que las variables locales no muten el provider sin pasar por _syncWithProvider
     _startersA = Set<int>.from(currentStarters['A'] ?? {});
     _startersB = Set<int>.from(currentStarters['B'] ?? {});
     _captainAId = currentCaptains['A'];
     _captainBId = currentCaptains['B'];
   }
 
-  // CRITICO: Creamos objetos nuevos para que Riverpod detecte el cambio de estado
+  void _sortRosters() {
+    _orderedRosterA.sort((a, b) => a.defaultNumber.compareTo(b.defaultNumber));
+    _orderedRosterB.sort((a, b) => a.defaultNumber.compareTo(b.defaultNumber));
+  }
+
   void _syncWithProvider() {
-    // Forzamos la creación de nuevos objetos de mapa y sets (nuevas referencias)
     ref.read(selectedStartersProvider(widget.matchId).notifier).state = {
       'A': Set<int>.from(_startersA),
       'B': Set<int>.from(_startersB),
@@ -99,47 +102,192 @@ class _StartersSelectionScreenState
     };
   }
 
+  // FALLO 1: Descarga y sincronización automática si hay internet
+  Future<void> _refreshRosters() async {
+    final dbBase = ref.read(databaseProvider);
+    final api = ref.read(apiServiceProvider);
+
+    // Intentar subir pendientes a la nube si hay internet
+    try {
+      final pending = await (dbBase.select(dbBase.players)..where((p) => p.isSynced.equals(false))).get();
+      for (var p in pending) {
+        final realId = await api.addPlayer(p.teamId, p.name, p.defaultNumber);
+        await dbBase.transaction(() async {
+           // Actualizar localmente con ID real y marcar como sincronizado
+           await (dbBase.update(dbBase.players)..where((tbl) => tbl.id.equals(p.id))).write(
+             db.PlayersCompanion(id: drift.Value(realId.toString()), isSynced: const drift.Value(true))
+           );
+        });
+      }
+    } catch (e) {
+      debugPrint("Sincronización en segundo plano falló (Modo Offline activo): $e");
+    }
+
+    // Recargar listas de la base de datos local
+    final playersA = await (dbBase.select(dbBase.players)..where((p) => p.teamId.equals(widget.teamA.id))).get();
+    final playersB = await (dbBase.select(dbBase.players)..where((p) => p.teamId.equals(widget.teamB.id))).get();
+
+    setState(() {
+      _orderedRosterA = playersA.map((p) => catalog.Player(
+        id: int.tryParse(p.id) ?? -1,
+        name: p.name,
+        teamId: p.teamId,
+        defaultNumber: p.defaultNumber,
+      )).toList();
+      
+      _orderedRosterB = playersB.map((p) => catalog.Player(
+        id: int.tryParse(p.id) ?? -1,
+        name: p.name,
+        teamId: p.teamId,
+        defaultNumber: p.defaultNumber,
+      )).toList();
+      _sortRosters();
+    });
+  }
+
+  void _showAddPlayerDialog(bool isTeamA) {
+    final nameController = TextEditingController();
+    final numberController = TextEditingController();
+    final teamId = isTeamA ? widget.teamA.id : widget.teamB.id;
+    final currentRoster = isTeamA ? _orderedRosterA : _orderedRosterB;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1F2B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text("Nuevo Jugador - ${isTeamA ? 'Local' : 'Visita'}", 
+                   style: const TextStyle(color: Colors.white, fontSize: 18)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              style: const TextStyle(color: Colors.white),
+              decoration: _inputStyle("Nombre Completo"),
+              textCapitalization: TextCapitalization.characters,
+            ),
+            const SizedBox(height: 15),
+            TextField(
+              controller: numberController,
+              style: const TextStyle(color: Colors.white),
+              decoration: _inputStyle("Número de Jersey"),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.orangeAccent),
+            onPressed: () async {
+              final name = nameController.text.trim().toUpperCase();
+              final number = int.tryParse(numberController.text) ?? -1;
+
+              if (name.isEmpty || number == -1) return;
+
+              // FALLO 3: Validar que no se repita el número
+              final exists = currentRoster.any((p) => p.defaultNumber == number);
+              if (exists) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("El número $number ya está asignado en este equipo."))
+                );
+                return;
+              }
+              
+              final dbBase = ref.read(databaseProvider);
+              final tempId = const Uuid().v4();
+
+              await dbBase.into(dbBase.players).insert(
+                db.PlayersCompanion.insert(
+                  id: drift.Value(tempId),
+                  name: name,
+                  teamId: teamId, 
+                  defaultNumber: drift.Value(number),
+                  isSynced: const drift.Value(false),
+                )
+              );
+
+              await _refreshRosters();
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text("Guardar", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  InputDecoration _inputStyle(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(color: Colors.white54),
+      filled: true,
+      fillColor: Colors.black26,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      focusedBorder: OutlineInputBorder(
+        borderSide: const BorderSide(color: Colors.orangeAccent),
+        borderRadius: BorderRadius.circular(12),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        extendBodyBehindAppBar: true,
-        backgroundColor: Colors.transparent,
+        extendBodyBehindAppBar: false, 
+        backgroundColor: const Color(0xFF0D1117),
         appBar: AppBar(
-          title: const Text("Elegir 5 Titulares", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-          backgroundColor: Colors.black.withOpacity(0.5),
-          elevation: 0,
           centerTitle: true,
+          elevation: 0,
+          backgroundColor: const Color(0xFF1A1F2B),
+          title: const Text("Titulares", style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
           iconTheme: const IconThemeData(color: Colors.white),
           bottom: TabBar(
             indicatorColor: Colors.orangeAccent,
+            indicatorWeight: 3,
             labelColor: Colors.orangeAccent,
-            unselectedLabelColor: Colors.white54,
+            unselectedLabelColor: Colors.white38,
             tabs: [
-              Tab(text: widget.teamA.name.toUpperCase()),
-              Tab(text: widget.teamB.name.toUpperCase()),
+              _buildTabItem(widget.teamA.name, true),
+              _buildTabItem(widget.teamB.name, false),
             ],
           ),
         ),
         body: AppBackground(
-          opacity: 0.6,
-          child: SafeArea(
-            child: Column(
-              children: [
-                Expanded(
-                  child: TabBarView(
-                    children: [
-                      _buildSelectionList(_orderedRosterA, _startersA, Colors.orangeAccent, true),
-                      _buildSelectionList(_orderedRosterB, _startersB, Colors.lightBlueAccent, false),
-                    ],
-                  ),
+          opacity: 0.4,
+          child: Column(
+            children: [
+              Expanded(
+                child: TabBarView(
+                  // FALLO 2: Evitar selección múltiple involuntaria (física)
+                  physics: const NeverScrollableScrollPhysics(), 
+                  children: [
+                    _buildSelectionList(_orderedRosterA, _startersA, Colors.orangeAccent, true),
+                    _buildSelectionList(_orderedRosterB, _startersB, Colors.lightBlueAccent, false),
+                  ],
                 ),
-                _buildBottomControlPanel(),
-              ],
-            ),
+              ),
+              _buildBottomControlPanel(),
+            ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTabItem(String name, bool isTeamA) {
+    return Tab(
+      height: 60,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Flexible(child: Text(name.toUpperCase(), textAlign: TextAlign.center, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11))),
+          const SizedBox(width: 4),
+          IconButton(icon: const Icon(Icons.person_add_alt_1, size: 18), onPressed: () => _showAddPlayerDialog(isTeamA)),
+        ],
       ),
     );
   }
@@ -157,63 +305,50 @@ class _StartersSelectionScreenState
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 12.0),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Material(
-              color: isSelected ? themeColor.withOpacity(0.2) : Colors.white.withOpacity(0.05),
-              child: InkWell(
-                onTap: () {
-                  setState(() {
-                    if (isSelected) {
-                      selectedIds.remove(player.id);
-                      if (isCaptain) {
-                        if (isTeamA) {
-                          _captainAId = null;
-                        } else {
-                          _captainBId = null;
-                        }
-                      }
-                    } else if (selectedIds.length < 5) {
-                      selectedIds.add(player.id);
-                    }
-                  });
-                  _syncWithProvider(); // Guardar cambio en Riverpod
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: isSelected ? themeColor : Colors.white24, width: isSelected ? 2 : 1),
-                    borderRadius: BorderRadius.circular(16)
+          child: InkWell(
+            onTap: () {
+              setState(() {
+                if (isSelected) {
+                  selectedIds.remove(player.id);
+                  if (isCaptain) {
+                    if (isTeamA) _captainAId = null; else _captainBId = null;
+                  }
+                } else if (selectedIds.length < 5) {
+                  selectedIds.add(player.id);
+                }
+              });
+              _syncWithProvider();
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: isSelected ? themeColor.withOpacity(0.2) : Colors.white.withOpacity(0.05),
+                border: Border.all(color: isSelected ? themeColor : Colors.white24, width: isSelected ? 2 : 1),
+                borderRadius: BorderRadius.circular(16)
+              ),
+              child: Row(
+                children: [
+                  Icon(isSelected ? Icons.check_circle : Icons.circle_outlined, color: isSelected ? themeColor : Colors.white54),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(player.name, style: TextStyle(color: isSelected ? Colors.white : Colors.white70, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                        Text("Camiseta #${player.defaultNumber}", style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                      ],
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      Icon(isSelected ? Icons.check_circle : Icons.circle_outlined, color: isSelected ? themeColor : Colors.white54),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(player.name, style: TextStyle(color: isSelected ? Colors.white : Colors.white70, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
-                            Text("Camiseta #${player.defaultNumber}", style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                          ],
-                        ),
-                      ),
-                      if (isSelected) IconButton(
-                        icon: Icon(isCaptain ? Icons.star : Icons.star_border, color: isCaptain ? Colors.amber : Colors.white30),
-                        onPressed: () {
-                          setState(() { 
-                            if (isTeamA) {
-                              _captainAId = player.id;
-                            } else {
-                              _captainBId = player.id;
-                            } 
-                          });
-                          _syncWithProvider(); // Guardar cambio de capitán
-                        },
-                      ),
-                    ],
+                  if (isSelected) IconButton(
+                    icon: Icon(isCaptain ? Icons.star : Icons.star_border, color: isCaptain ? Colors.amber : Colors.white30),
+                    onPressed: () {
+                      setState(() { 
+                        if (isTeamA) _captainAId = player.id; else _captainBId = player.id;
+                      });
+                      _syncWithProvider();
+                    },
                   ),
-                ),
+                ],
               ),
             ),
           ),
@@ -243,7 +378,7 @@ class _StartersSelectionScreenState
             height: 55,
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade600, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
-              icon: _isCreating ? const CircularProgressIndicator(color: Colors.white) : const Icon(Icons.sports_basketball),
+              icon: _isCreating ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.sports_basketball),
               label: Text(_isCreating ? "INICIANDO..." : "COMENZAR PARTIDO"),
               onPressed: (canProceed && !_isCreating) ? _startGame : null,
             ),
@@ -294,7 +429,6 @@ class _StartersSelectionScreenState
         );
       }
 
-      // Limpiar providers al iniciar el juego
       ref.invalidate(selectedStartersProvider(widget.matchId));
       ref.invalidate(selectedCaptainsProvider(widget.matchId));
 
@@ -316,8 +450,8 @@ class _StartersSelectionScreenState
         tournamentLogoUrl: widget.tournamentLogoUrl,
         refereeLogoUrl: widget.refereeLogoUrl,
         venueName: widget.venueName,
-        fullRosterA: widget.rosterA,
-        fullRosterB: widget.rosterB,
+        fullRosterA: _orderedRosterA, // Usar las listas actualizadas
+        fullRosterB: _orderedRosterB,
         startersAIds: _startersA,
         startersBIds: _startersB,
         coachA: widget.teamA.coachName,
@@ -334,10 +468,10 @@ class _StartersSelectionScreenState
 
   Future<void> _saveRostersToDb(dynamic dao, db.AppDatabase dbBase) async {
     List<db.MatchRostersCompanion> entries = [];
-    for (var p in widget.rosterA) {
+    for (var p in _orderedRosterA) {
       entries.add(db.MatchRostersCompanion.insert(matchId: widget.matchId, playerId: p.id.toString(), teamSide: 'A', jerseyNumber: p.defaultNumber, isCaptain: drift.Value(p.id == _captainAId)));
     }
-    for (var p in widget.rosterB) {
+    for (var p in _orderedRosterB) {
       entries.add(db.MatchRostersCompanion.insert(matchId: widget.matchId, playerId: p.id.toString(), teamSide: 'B', jerseyNumber: p.defaultNumber, isCaptain: drift.Value(p.id == _captainBId)));
     }
     await dao.addRosterToMatch(widget.matchId, entries);

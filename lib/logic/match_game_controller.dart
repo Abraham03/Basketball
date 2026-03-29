@@ -271,6 +271,152 @@ class MatchGameController extends StateNotifier<MatchState> {
     }).length;
   }
 
+Future<void> restoreFromDatabase({
+  required String matchId,
+  String? fixtureId,
+  required List<models.Player> rosterA,
+  required List<models.Player> rosterB,
+  required Set<int> startersA, // <--- Estos son los que el usuario eligió originalmente
+  required Set<int> startersB,
+  required int tournamentId,
+  required int venueId,
+  required int teamAId,
+  required int teamBId,
+  required String mainReferee,
+  required String auxReferee,
+  required String scorekeeper,
+}) async {
+  
+  // 1. Inicializar usando los starters que vienen del widget (los que elegiste en la pantalla de selección)
+  // Si startersA viene vacío desde el calendario, entonces el problema está en el paso de datos del FixtureList.
+  initializeNewMatch(
+    matchId: matchId,
+    fixtureId: fixtureId,
+    rosterA: rosterA,
+    rosterB: rosterB,
+    startersA: startersA, 
+    startersB: startersB,
+    tournamentId: tournamentId,
+    venueId: venueId,
+    teamAId: teamAId,
+    teamBId: teamBId,
+    mainReferee: mainReferee,
+    auxReferee: auxReferee,
+    scorekeeper: scorekeeper,
+  );
+
+  // 2. RECUPERAR CAPITANES Y MARCAR "HAS PLAYED"
+  final dbRosters = await (_dao.db.select(_dao.db.matchRosters)
+        ..where((tbl) => tbl.matchId.equals(matchId))).get();
+
+  Map<String, PlayerStats> statsWithCaptains = Map.from(state.playerStats);
+  for (var row in dbRosters) {
+    if (row.isCaptain) {
+      statsWithCaptains.forEach((name, pStat) {
+        if (pStat.dbId.toString() == row.playerId) {
+          statsWithCaptains[name] = pStat.copyWith(hasPlayed: true);
+        }
+      });
+    }
+  }
+  state = state.copyWith(playerStats: statsWithCaptains);
+
+  // 3. PROCESAR EVENTOS (Aquí es donde los jugadores "suben" a cancha si hubo cambios o puntos)
+  final events = await (_dao.db.select(_dao.db.gameEvents)
+        ..where((tbl) => tbl.matchId.equals(matchId))
+        ..orderBy([(t) => drift.OrderingTerm.asc(t.createdAt)]))
+      .get();
+
+  // 4. Procesar eventos acumulativamente
+  for (var event in events) {
+    String teamId = 'A';
+    String? pName;
+    String pNumber = "00";
+    int dbId = 0;
+
+    if (event.playerId != null && event.playerId != "-1") {
+      final pA = rosterA.where((p) => p.id.toString() == event.playerId).firstOrNull;
+      final pB = rosterB.where((p) => p.id.toString() == event.playerId).firstOrNull;
+      if (pB != null) { teamId = 'B'; pName = pB.name; pNumber = pB.defaultNumber.toString(); dbId = pB.id; }
+      else if (pA != null) { pName = pA.name; pNumber = pA.defaultNumber.toString(); dbId = pA.id; }
+    } else if (event.type.endsWith('_B')) { 
+      teamId = 'B'; 
+    }
+
+    int pts = 0;
+    if (event.type == 'POINT_1') pts = 1;
+    else if (event.type == 'POINT_2') pts = 2;
+    else if (event.type == 'POINT_3') pts = 3;
+
+    int fls = (pts == 0 && (event.type.contains('FOUL') || event.type.length <= 2) && !event.type.contains('TIMEOUT')) ? 1 : 0;
+
+    _applyRestoreEvent(
+      teamId: teamId,
+      playerName: pName ?? (event.type.contains('TIMEOUT') ? "TIMEOUT" : "OTROS"),
+      points: pts,
+      fouls: fls,
+      type: event.type,
+      period: event.period,
+      pNumber: pNumber,
+      dbPlayerId: dbId,
+      clockTime: event.clockTime,
+    );
+  }
+}
+
+// Método auxiliar necesario para el restore (sin llaves según tu estilo previo, 
+// pero agregadas donde el linter lo exigía)
+void _applyRestoreEvent({
+  required String teamId,
+  required String playerName,
+  required int points,
+  required int fouls,
+  required String type,
+  required int period,
+  required String pNumber,
+  required int dbPlayerId,
+  String clockTime = "0:00",
+}) {
+  final currentStats = state.playerStats[playerName] ?? const PlayerStats();
+  final newPlayerStatsMap = Map<String, PlayerStats>.from(state.playerStats);
+
+  List<String> newFoulDetails = List.from(currentStats.foulDetails);
+  if (fouls > 0) {
+    newFoulDetails.add(type);
+  }
+
+  newPlayerStatsMap[playerName] = currentStats.copyWith(
+    points: currentStats.points + points,
+    fouls: currentStats.fouls + fouls,
+    foulDetails: newFoulDetails,
+    hasPlayed: true,
+  );
+
+  int newScoreA = state.scoreA + (teamId == 'A' ? points : 0);
+  int newScoreB = state.scoreB + (teamId == 'B' ? points : 0);
+
+  final newScoreLog = List<ScoreEvent>.from(state.scoreLog);
+  newScoreLog.add(ScoreEvent(
+    period: period, teamId: teamId, playerId: playerName, dbPlayerId: dbPlayerId,
+    playerNumber: pNumber, points: points, scoreAfter: teamId == 'A' ? newScoreA : newScoreB, type: type,
+  ));
+
+  final newPeriodScores = Map<int, List<int>>.from(state.periodScores);
+  if (!newPeriodScores.containsKey(period)) {
+    newPeriodScores[period] = [0, 0];
+  }
+  newPeriodScores[period]![teamId == 'A' ? 0 : 1] += points;
+
+  state = state.copyWith(
+    playerStats: newPlayerStatsMap,
+    scoreA: newScoreA,
+    scoreB: newScoreB,
+    scoreLog: newScoreLog,
+    periodScores: newPeriodScores,
+    currentPeriod: period,
+  );
+}
+
   void setObservaciones(String text) {
     state = state.copyWith(observaciones: text);
     _saveToDatabase();
