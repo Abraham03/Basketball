@@ -35,6 +35,7 @@ class ScoreEvent {
 
 class PlayerStats {
   final int dbId;
+  final String playerName;
   final int points;
   final int fouls;
   final bool isOnCourt;
@@ -45,6 +46,7 @@ class PlayerStats {
 
   const PlayerStats({
     this.dbId = 0,
+    this.playerName = "",
     this.points = 0,
     this.fouls = 0,
     this.isOnCourt = false,
@@ -56,6 +58,7 @@ class PlayerStats {
 
   PlayerStats copyWith({
     int? dbId,
+    String? playerName,
     int? points,
     int? fouls,
     bool? isOnCourt,
@@ -66,6 +69,7 @@ class PlayerStats {
   }) {
     return PlayerStats(
       dbId: dbId ?? this.dbId,
+      playerName: playerName ?? this.playerName,
       points: points ?? this.points,
       fouls: fouls ?? this.fouls,
       isOnCourt: isOnCourt ?? this.isOnCourt,
@@ -764,35 +768,39 @@ void _applyRestoreEvent({
     final List<String> courtB = [];
     final List<String> benchB = [];
 
+    // Para equipo A
     for (var player in rosterA) {
       final isStarter = startersA.contains(player.id);
-      initialStats[player.name] = PlayerStats(
+      // USAMOS player.id.toString() como LLAVE en lugar de player.name
+      initialStats[player.id.toString()] = PlayerStats(
         dbId: player.id,
+        playerName: player.name,
         isOnCourt: isStarter,
         isStarter: isStarter,
         hasPlayed: isStarter,
         playerNumber: player.defaultNumber.toString(),
       );
       if (isStarter) {
-        courtA.add(player.name);
+        courtA.add(player.id.toString()); // Guardamos ID, no nombre
       } else {
-        benchA.add(player.name);
+        benchA.add(player.id.toString());
       }
     }
 
     for (var player in rosterB) {
       final isStarter = startersB.contains(player.id);
-      initialStats[player.name] = PlayerStats(
+      initialStats[player.id.toString()] = PlayerStats(
         dbId: player.id,
+        playerName: player.name,
         isOnCourt: isStarter,
         isStarter: isStarter,
         hasPlayed: isStarter,
         playerNumber: player.defaultNumber.toString(),
       );
       if (isStarter) {
-        courtB.add(player.name);
+        courtB.add(player.id.toString());
       } else {
-        benchB.add(player.name);
+        benchB.add(player.id.toString());
       }
     }
 
@@ -929,8 +937,18 @@ void _applyRestoreEvent({
     int fouls = 0,
     String? foulType,
   }) {
-    final currentStats = state.playerStats[playerId] ?? const PlayerStats();
-    if (currentStats.fouls >= 5 && (points > 0 || fouls > 0)) return;
+    // 1. Obtenemos las estadísticas usando el ID ÚNICO
+  final currentStats = state.playerStats[playerId];
+  if (currentStats == null) return;
+
+  // 2. VALIDACIÓN DE EQUIPO: Verificamos que el jugador pertenezca al equipo correcto
+  final bool isLocal = state.teamAOnCourt.contains(playerId) || state.teamABench.contains(playerId);
+  final bool isVisit = state.teamBOnCourt.contains(playerId) || state.teamBBench.contains(playerId);
+  
+  if (teamId == 'A' && !isLocal) return;
+  if (teamId == 'B' && !isVisit) return;
+
+  if (currentStats.fouls >= 5 && (points > 0 || fouls > 0)) return;
 
     _saveToHistory();
     int newScoreA = state.scoreA;
@@ -1002,14 +1020,16 @@ void _applyRestoreEvent({
     _logEventToDb(currentStats.dbId.toString(), points, fouls, foulType);
   }
 
-  void substitutePlayer(String teamId, String playerOut, String playerIn) {
+  void substitutePlayer(String teamId, String playerOutId, String playerInId) {
     _saveToHistory();
     final newStats = Map<String, PlayerStats>.from(state.playerStats);
-    if (newStats.containsKey(playerOut)) {
-      newStats[playerOut] = newStats[playerOut]!.copyWith(isOnCourt: false);
+
+    if (newStats.containsKey(playerOutId)) {
+      newStats[playerOutId] = newStats[playerOutId]!.copyWith(isOnCourt: false);
     }
-    if (newStats.containsKey(playerIn)) {
-      newStats[playerIn] = newStats[playerIn]!.copyWith(
+
+    if (newStats.containsKey(playerInId)) {
+      newStats[playerInId] = newStats[playerInId]!.copyWith(
         isOnCourt: true,
         hasPlayed: true,
       );
@@ -1017,11 +1037,11 @@ void _applyRestoreEvent({
 
     if (teamId == 'A') {
       final newOnCourt = List<String>.from(state.teamAOnCourt)
-        ..remove(playerOut)
-        ..add(playerIn);
+        ..remove(playerOutId)
+        ..add(playerInId);
       final newBench = List<String>.from(state.teamABench)
-        ..remove(playerIn)
-        ..add(playerOut);
+        ..remove(playerInId)
+        ..add(playerOutId);
       state = state.copyWith(
         teamAOnCourt: newOnCourt,
         teamABench: newBench,
@@ -1029,18 +1049,149 @@ void _applyRestoreEvent({
       );
     } else {
       final newOnCourt = List<String>.from(state.teamBOnCourt)
-        ..remove(playerOut)
-        ..add(playerIn);
+        ..remove(playerOutId)
+        ..add(playerInId);
       final newBench = List<String>.from(state.teamBBench)
-        ..remove(playerIn)
-        ..add(playerOut);
+        ..remove(playerInId)
+        ..add(playerOutId);
       state = state.copyWith(
         teamBOnCourt: newOnCourt,
         teamBBench: newBench,
         playerStats: newStats,
       );
     }
+    _saveToDatabase();
+
+
+    // Registramos un evento especial en el ScoreLog para poder deshacerlo selectivamente
+  final newScoreLog = List<ScoreEvent>.from(state.scoreLog);
+  newScoreLog.add(ScoreEvent(
+    period: state.currentPeriod,
+    teamId: teamId,
+    playerId: playerOutId, // Quién salió
+    playerNumber: playerInId, // Quién entró (usamos este campo para guardar el ID del entrante)
+    points: 0,
+    scoreAfter: 0,
+    type: 'SUB', // Tipo especial
+  ));
+
+    state = state.copyWith(scoreLog: newScoreLog); 
+    _logEventToDb(null, 0, 0, 'SUB_${teamId}_OUT_${playerOutId}_IN_$playerInId');
   }
+
+  // --- LÓGICA DE UNDO SELECTIVO ---
+
+
+// Añade el undo de Tiempo Fuera (Opcional pero recomendado)
+void undoLastTimeout() {
+  // 1. Buscar el último tiempo fuera en el log
+  final lastTO = state.scoreLog.where((e) => e.type.contains('TIMEOUT')).lastOrNull;
+  if (lastTO == null) return;
+  
+  _saveToHistory();
+
+  // 2. Identificar qué lista de la memoria RAM debemos limpiar
+  List<String> to1A = List.from(state.teamATimeouts1);
+  List<String> to2A = List.from(state.teamATimeouts2);
+  List<String> toOTA = List.from(state.teamAOTTimeouts);
+  
+  List<String> to1B = List.from(state.teamBTimeouts1);
+  List<String> to2B = List.from(state.teamBTimeouts2);
+  List<String> toOTB = List.from(state.teamBOTTimeouts);
+
+  if (lastTO.teamId == 'A') {
+    if (lastTO.period <= 2) {
+      if (to1A.isNotEmpty) to1A.removeLast();
+    } else if (lastTO.period <= 4) {
+      if (to2A.isNotEmpty) to2A.removeLast();
+    } else {
+      if (toOTA.isNotEmpty) toOTA.removeLast();
+    }
+  } else {
+    if (lastTO.period <= 2) {
+      if (to1B.isNotEmpty) to1B.removeLast();
+    } else if (lastTO.period <= 4) {
+      if (to2B.isNotEmpty) to2B.removeLast();
+    } else {
+      if (toOTB.isNotEmpty) toOTB.removeLast();
+    }
+  }
+
+  // 3. Actualizar el estado: Limpiar la lista del equipo y remover del log
+  state = state.copyWith(
+    teamATimeouts1: to1A,
+    teamATimeouts2: to2A,
+    teamAOTTimeouts: toOTA,
+    teamBTimeouts1: to1B,
+    teamBTimeouts2: to2B,
+    teamBOTTimeouts: toOTB,
+    scoreLog: state.scoreLog.where((e) => e != lastTO).toList(),
+  );
+
+  _saveToDatabase();
+}
+
+void undoLastPoint() {
+  final lastPoint = state.scoreLog.where((e) => e.points > 0).lastOrNull;
+  if (lastPoint == null) return;
+  _saveToHistory();
+
+  final currentStats = state.playerStats[lastPoint.playerId]!;
+  
+  // 1. Revertir puntos del jugador
+  final newStats = currentStats.copyWith(
+    points: currentStats.points - lastPoint.points,
+  );
+
+  // 2. Revertir marcador global y de periodo
+  final newPeriodScores = Map<int, List<int>>.from(state.periodScores);
+  newPeriodScores[lastPoint.period]![lastPoint.teamId == 'A' ? 0 : 1] -= lastPoint.points;
+
+  state = state.copyWith(
+    scoreA: lastPoint.teamId == 'A' ? state.scoreA - lastPoint.points : state.scoreA,
+    scoreB: lastPoint.teamId == 'B' ? state.scoreB - lastPoint.points : state.scoreB,
+    playerStats: {...state.playerStats, lastPoint.playerId: newStats},
+    scoreLog: state.scoreLog.where((e) => e != lastPoint).toList(), // Eliminar del log
+    periodScores: newPeriodScores,
+  );
+  _saveToDatabase();
+}
+
+void undoLastFoul() {
+  final lastFoul = state.scoreLog.where((e) => e.type.contains("FOUL") || e.type.length <= 2).lastOrNull;
+  if (lastFoul == null) return;
+  _saveToHistory();
+
+  final currentStats = state.playerStats[lastFoul.playerId]!;
+  List<String> newFoulDetails = List.from(currentStats.foulDetails)..remove(lastFoul.type);
+
+  state = state.copyWith(
+    playerStats: {
+      ...state.playerStats,
+      lastFoul.playerId: currentStats.copyWith(
+        fouls: currentStats.fouls - 1,
+        foulDetails: newFoulDetails,
+      )
+    },
+    scoreLog: state.scoreLog.where((e) => e != lastFoul).toList(),
+  );
+  _saveToDatabase();
+}
+
+void undoLastSubstitution() {
+  final lastSub = state.scoreLog.where((e) => e.type == 'SUB').lastOrNull;
+  if (lastSub == null) return;
+
+  // El truco aquí es simplemente llamar a substitutePlayer pero al revés
+  // lastSub.playerId es el que salió, lastSub.playerNumber es el que entró
+  substitutePlayer(lastSub.teamId, lastSub.playerNumber, lastSub.playerId);
+  
+  // Limpiamos los dos eventos de sustitución (el original y el de reversión) del log
+  // para que no ensucien el acta PDF final
+  state = state.copyWith(
+    scoreLog: state.scoreLog.where((e) => e.type != 'SUB').toList()
+  );
+}
 
   Future<void> _saveToDatabase() async {
     if (state.matchId.isEmpty) return;

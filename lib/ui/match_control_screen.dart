@@ -137,22 +137,17 @@ void initState() {
         scorekeeper: widget.scorekeeper,
       );
 
-      // Sincronizamos nombres de capitanes nuevamente por si el restore cambió algo
-      final newState = ref.read(matchGameProvider);
-      String? nameA;
-      String? nameB;
-      newState.playerStats.forEach((name, stats) {
-        if (stats.dbId == widget.captainAId) nameA = name;
-        if (stats.dbId == widget.captainBId) nameB = name;
-      });
-
+      final updatedState = ref.read(matchGameProvider);
       if (mounted) {
         setState(() {
-          _captainAName = nameA ?? _captainAName;
-          _captainBName = nameB ?? _captainBName;
+          updatedState.playerStats.forEach((key, stats) {
+            if (stats.dbId == widget.captainAId) _captainAName = stats.playerName;
+            if (stats.dbId == widget.captainBId) _captainBName = stats.playerName;
+          });
         });
       }
     }
+    
     
     final finalState = ref.read(matchGameProvider);
     _broadcastFastUpdate(finalState, controller);
@@ -346,7 +341,66 @@ void initState() {
           onPressed: () => _confirmExit(context),
         ),
         actions: [
-          IconButton(icon: const Icon(Icons.undo), tooltip: "Deshacer", onPressed: _isFinished ? null : controller.undo),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.undo, color: Colors.white),
+            tooltip: "Deshacer acciones",
+            enabled: !_isFinished && gameState.scoreLog.isNotEmpty,
+            color: const Color(0xFF1E2432),
+            shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12), 
+            side: const BorderSide(color: Colors.white10),
+            ),
+            onSelected: (value) {
+              switch (value) {
+                case 'POINT':
+                  controller.undoLastPoint();
+                  break;
+                case 'FOUL':
+                  controller.undoLastFoul();
+                  break;
+                case 'SUB':
+                  controller.undoLastSubstitution();
+                  break;
+                case 'STATE':
+                  controller.undo(); // Undo general (historial)
+                  break;
+              }
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Acción revertida correctamente"),
+                  duration: Duration(seconds: 1),
+                  backgroundColor: Colors.blueGrey,
+                ),
+              );
+            },
+            itemBuilder: (context) => [
+              _buildUndoMenuItem(
+                value: 'POINT',
+                icon: Icons.exposure_minus_1,
+                text: "Último Punto",
+                color: Colors.greenAccent,
+              ),
+              _buildUndoMenuItem(
+                value: 'FOUL',
+                icon: Icons.warning_amber_rounded,
+                text: "Última Falta",
+                color: Colors.orangeAccent,
+              ),
+              _buildUndoMenuItem(
+                value: 'SUB',
+                icon: Icons.swap_horiz,
+                text: "Último Cambio",
+                color: Colors.blueAccent,
+              ),
+              const PopupMenuDivider(height: 1),
+              _buildUndoMenuItem(
+                value: 'STATE',
+                icon: Icons.history,
+                text: "Revertir Estado General",
+                color: Colors.white54,
+              ),
+            ],
+          ),
           IconButton(icon: const Icon(Icons.visibility_outlined), tooltip: "Ver Acta", onPressed: () => _goToPdfPreview(context, gameState, _capturedSignature)),
           IconButton(icon: const Icon(Icons.save_alt), tooltip: "Finalizar Partido", onPressed: _isFinished ? null : () => _showFinalOptionsDialog(context, gameState)),
         ],
@@ -411,6 +465,25 @@ void initState() {
       ),
     );
   }
+
+  // --- FUNCIÓN HELPER PARA EL MENÚ (Añadir fuera del build) ---
+PopupMenuItem<String> _buildUndoMenuItem({
+  required String value,
+  required IconData icon,
+  required String text,
+  required Color color,
+}) {
+  return PopupMenuItem(
+    value: value,
+    child: Row(
+      children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(width: 12),
+        Text(text, style: const TextStyle(color: Colors.white, fontSize: 14)),
+      ],
+    ),
+  );
+}
 
   Widget _buildTeamList(
   BuildContext context,
@@ -504,7 +577,7 @@ void initState() {
 
   Widget _buildPlayerRow(
   BuildContext context,
-  String playerName,
+  String playerKey,
   String teamId,
   Color color,
   bool isOnCourt,
@@ -513,37 +586,43 @@ void initState() {
   bool isWideScreen,
   List<String> playersOnCourt, // <--- 1. Recibimos la lista aquí
 ) {
-  final stats = state.playerStats[playerName] ?? const PlayerStats();
+  // Ahora obtenemos las stats por ID
+  final stats = state.playerStats[playerKey] ?? const PlayerStats();
+  
+  // Usamos el nombre real que guardamos en PlayerStats
+  final String nameToDisplay = stats.playerName.isNotEmpty ? stats.playerName : playerKey;
+  
   final bool isDisqualified = stats.fouls >= 5;
-  final bool isCaptain = (teamId == 'A' && playerName == _captainAName) ||
-      (teamId == 'B' && playerName == _captainBName);
-  final bool isSelectedForSwap = _playerToSubstituteId == playerName;
+  final bool isCaptain = (teamId == 'A' && nameToDisplay == _captainAName) ||
+                         (teamId == 'B' && nameToDisplay == _captainBName);
+
+  final bool isSelectedForSwap = _playerToSubstituteId == playerKey;
 
   return Padding(
     padding: const EdgeInsets.only(bottom: 8.0),
     child: InkWell(
       onLongPress: _isFinished ? null : () {
         setState(() {
-          _playerToSubstituteId = playerName;
+          _playerToSubstituteId = playerKey;
           _teamOfSubstitution = teamId;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Seleccionado para cambio"), duration: Duration(seconds: 1))
+          SnackBar(content: Text("Seleccionado: $nameToDisplay"), duration: const Duration(seconds: 1))
         );
       },
       onTap: () {
         if (_playerToSubstituteId != null && _teamOfSubstitution == teamId) {
-          if (_playerToSubstituteId != playerName) {
+          if (_playerToSubstituteId != playerKey) {
             
-            // 2. CORRECCIÓN LÓGICA: Verificar estados para evitar duplicados
-            // Comprobamos si el jugador seleccionado previamente estaba en cancha
+            // Verificamos estados en la lista de IDs (playersOnCourt ahora contiene IDs)
             bool selectionWasOnCourt = playersOnCourt.contains(_playerToSubstituteId);
             bool targetIsOnCourt = isOnCourt;
 
             // SOLO permitimos el cambio si uno está en banca y el otro en cancha
             if (selectionWasOnCourt != targetIsOnCourt) {
-              String pOut = targetIsOnCourt ? playerName : _playerToSubstituteId!;
-              String pIn = targetIsOnCourt ? _playerToSubstituteId! : playerName;
+              // Definimos quién sale y quién entra basándonos en sus IDs
+              String pOut = targetIsOnCourt ? playerKey : _playerToSubstituteId!;
+              String pIn = targetIsOnCourt ? _playerToSubstituteId! : playerKey;
               controller.substitutePlayer(teamId, pOut, pIn);
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -551,12 +630,13 @@ void initState() {
               );
             }
           }
+          // Limpiamos la selección
           setState(() {
             _playerToSubstituteId = null;
             _teamOfSubstitution = null;
           });
         } else {
-          if (!_isFinished) _showActionMenu(context, teamId, playerName, controller, stats.fouls, isWideScreen, state);
+          if (!_isFinished) _showActionMenu(context, teamId, playerKey, controller, stats.fouls, isWideScreen, state);
         }
       },
       borderRadius: BorderRadius.circular(12),
@@ -610,7 +690,7 @@ void initState() {
                         children: [
                           Expanded(
                             child: Text(
-                              playerName,
+                              nameToDisplay,
                               style: TextStyle(
                                 color: isDisqualified ? Colors.redAccent : (isOnCourt ? Colors.white : Colors.white60),
                                 fontWeight: isOnCourt ? FontWeight.bold : FontWeight.w500,
@@ -667,7 +747,7 @@ void initState() {
             child: Center(
               child: IconButton(
                 icon: const Icon(Icons.more_vert, size: 18, color: Colors.white24),
-                onPressed: () => _showEditPlayerDialog(context, controller, playerName, stats.playerNumber, teamId),
+                onPressed: () => _showEditPlayerDialog(context, controller, nameToDisplay, stats.playerNumber, teamId),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 35, minHeight: 35),
               ),
@@ -744,7 +824,10 @@ Widget _buildMiniFoulDots(int count) {
     );
   }
 
-  void _showFoulOptionsDialog(BuildContext context, MatchGameController controller, String teamId, String playerName) {
+  void _showFoulOptionsDialog(BuildContext context, MatchGameController controller, String teamId, String playerKey) {
+    final state = ref.read(matchGameProvider);
+    final stats = state.playerStats[playerKey] ?? const PlayerStats();
+    final String displayName = stats.playerName;
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -760,7 +843,7 @@ Widget _buildMiniFoulDots(int count) {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text("REGISTRAR FALTA", style: TextStyle(fontSize: 10, color: Colors.white54, fontWeight: FontWeight.bold, letterSpacing: 1.2)), Text(playerName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white), overflow: TextOverflow.ellipsis)])),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text("REGISTRAR FALTA", style: TextStyle(fontSize: 10, color: Colors.white54, fontWeight: FontWeight.bold, letterSpacing: 1.2)), Text(displayName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white), overflow: TextOverflow.ellipsis)])),
                     IconButton(icon: const Icon(Icons.close, color: Colors.white54), onPressed: () => Navigator.pop(ctx))
                   ],
                 ),
@@ -768,10 +851,10 @@ Widget _buildMiniFoulDots(int count) {
                 _buildFoulSectionHeader("PERSONAL (P)", Icons.person, Colors.blueGrey.shade200),
                 const SizedBox(height: 8),
                 Wrap(spacing: 8, runSpacing: 8, children: [
-                    _buildFoulChip(ctx, controller, teamId, playerName, "Lateral", "P", Colors.white10, Colors.white),
-                    _buildFoulChip(ctx, controller, teamId, playerName, "1 Tiro", "P1", Colors.white10, Colors.white),
-                    _buildFoulChip(ctx, controller, teamId, playerName, "2 Tiros", "P2", Colors.white10, Colors.white),
-                    _buildFoulChip(ctx, controller, teamId, playerName, "3 Tiros", "P3", Colors.white10, Colors.white),
+                    _buildFoulChip(ctx, controller, teamId, playerKey, "Lateral", "P", Colors.white10, Colors.white),
+                    _buildFoulChip(ctx, controller, teamId, playerKey, "1 Tiro", "P1", Colors.white10, Colors.white),
+                    _buildFoulChip(ctx, controller, teamId, playerKey, "2 Tiros", "P2", Colors.white10, Colors.white),
+                    _buildFoulChip(ctx, controller, teamId, playerKey, "3 Tiros", "P3", Colors.white10, Colors.white),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -779,17 +862,17 @@ Widget _buildMiniFoulDots(int count) {
                 const SizedBox(height: 8),
                 Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 8, children: [
                     _buildCompactCategoryLabel("TÉCNICA", Colors.orangeAccent),
-                    _buildFoulChip(ctx, controller, teamId, playerName, "Simple", "T", Colors.orangeAccent.withOpacity(0.1), Colors.orangeAccent, isCompact: true),
-                    _buildFoulChip(ctx, controller, teamId, playerName, "1 Tiro", "T1", Colors.orangeAccent.withOpacity(0.1), Colors.orangeAccent, isCompact: true),
-                    _buildFoulChip(ctx, controller, teamId, playerName, "2 Tiros", "T2", Colors.orangeAccent.withOpacity(0.1), Colors.orangeAccent, isCompact: true),
+                    _buildFoulChip(ctx, controller, teamId, playerKey, "Simple", "T", Colors.orangeAccent.withOpacity(0.1), Colors.orangeAccent, isCompact: true),
+                    _buildFoulChip(ctx, controller, teamId, playerKey, "1 Tiro", "T1", Colors.orangeAccent.withOpacity(0.1), Colors.orangeAccent, isCompact: true),
+                    _buildFoulChip(ctx, controller, teamId, playerKey, "2 Tiros", "T2", Colors.orangeAccent.withOpacity(0.1), Colors.orangeAccent, isCompact: true),
                   ],
                 ),
                 const SizedBox(height: 12),
                 Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 8, children: [
                     _buildCompactCategoryLabel("ANTIDEP.", Colors.deepOrangeAccent),
-                    _buildFoulChip(ctx, controller, teamId, playerName, "Simple", "U", Colors.deepOrangeAccent.withOpacity(0.1), Colors.deepOrangeAccent, isCompact: true),
-                    _buildFoulChip(ctx, controller, teamId, playerName, "1 Tiro", "U1", Colors.deepOrangeAccent.withOpacity(0.1), Colors.deepOrangeAccent, isCompact: true),
-                    _buildFoulChip(ctx, controller, teamId, playerName, "2 Tiros", "U2", Colors.deepOrangeAccent.withOpacity(0.1), Colors.deepOrangeAccent, isCompact: true),
+                    _buildFoulChip(ctx, controller, teamId, playerKey, "Simple", "U", Colors.deepOrangeAccent.withOpacity(0.1), Colors.deepOrangeAccent, isCompact: true),
+                    _buildFoulChip(ctx, controller, teamId, playerKey, "1 Tiro", "U1", Colors.deepOrangeAccent.withOpacity(0.1), Colors.deepOrangeAccent, isCompact: true),
+                    _buildFoulChip(ctx, controller, teamId, playerKey, "2 Tiros", "U2", Colors.deepOrangeAccent.withOpacity(0.1), Colors.deepOrangeAccent, isCompact: true),
                   ],
                 ),
                 const SizedBox(height: 24),
@@ -798,7 +881,7 @@ Widget _buildMiniFoulDots(int count) {
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent.withOpacity(0.2), foregroundColor: Colors.redAccent, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: const BorderSide(color: Colors.redAccent))),
                     icon: const Icon(Icons.gavel_rounded, size: 18), label: const FittedBox(fit: BoxFit.scaleDown, child: Text("DESCALIFICANTE (D)", style: TextStyle(fontWeight: FontWeight.bold))),
-                    onPressed: () { controller.updateStats(teamId, playerName, fouls: 5, foulType: "D"); Navigator.pop(ctx); },
+                    onPressed: () { controller.updateStats(teamId, playerKey, fouls: 5, foulType: "D"); Navigator.pop(ctx); },
                   ),
                 )
               ],
@@ -828,7 +911,9 @@ Widget _buildMiniFoulDots(int count) {
     );
   }
 
-  void _showActionMenu(BuildContext context, String teamId, String playerName, MatchGameController controller, int currentFouls, bool isWideScreen, MatchState state) {
+  void _showActionMenu(BuildContext context, String teamId, String playerKey, MatchGameController controller, int currentFouls, bool isWideScreen, MatchState state) {
+    final stats = state.playerStats[playerKey] ?? const PlayerStats();
+    final String displayName = stats.playerName.isNotEmpty ? stats.playerName : "Jugador $playerKey";
     bool isDisqualified = currentFouls >= 5;
     
     showDialog(
@@ -847,21 +932,21 @@ Widget _buildMiniFoulDots(int count) {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(playerName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white), textAlign: TextAlign.center), 
+                  Text(displayName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white), textAlign: TextAlign.center), 
                   const SizedBox(height: 4), 
                   Text(isDisqualified ? "JUGADOR DESCALIFICADO" : "Selecciona una acción", style: TextStyle(color: isDisqualified ? Colors.redAccent : Colors.white54, fontWeight: isDisqualified ? FontWeight.bold : FontWeight.normal), textAlign: TextAlign.center), 
                   const SizedBox(height: 24),
                   if (isDisqualified) ...[
                     const Icon(Icons.block, size: 50, color: Colors.redAccent), const SizedBox(height: 10), const Text("No se pueden agregar más eventos a este jugador.", textAlign: TextAlign.center, style: TextStyle(color: Colors.white54)), const SizedBox(height: 20),
-                    SizedBox(width: double.infinity, child: ElevatedButton.icon(style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 15)), icon: const Icon(Icons.swap_horiz), label: const Text("REALIZAR SUSTITUCIÓN AHORA"), onPressed: () { Navigator.pop(context); final onCourt = teamId == 'A' ? state.teamAOnCourt : state.teamBOnCourt; final bench = teamId == 'A' ? state.teamABench : state.teamBBench; _showSubstitutionDialog(context, teamId, onCourt, bench, controller, state, preSelectedOut: playerName); }))
+                    SizedBox(width: double.infinity, child: ElevatedButton.icon(style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 15)), icon: const Icon(Icons.swap_horiz), label: const Text("REALIZAR SUSTITUCIÓN AHORA"), onPressed: () { Navigator.pop(context); final onCourt = teamId == 'A' ? state.teamAOnCourt : state.teamBOnCourt; final bench = teamId == 'A' ? state.teamABench : state.teamBBench; _showSubstitutionDialog(context, teamId, onCourt, bench, controller, state, preSelectedOut: playerKey); }))
                   ] else
                     Wrap(
                       spacing: 12, runSpacing: 12, alignment: WrapAlignment.center,
                       children: [
-                        _buildStatButton("+1", Colors.lightBlueAccent, () { controller.updateStats(teamId, playerName, points: 1); Navigator.pop(context); }, isWideScreen),
-                        _buildStatButton("+2", Colors.greenAccent, () { controller.updateStats(teamId, playerName, points: 2); Navigator.pop(context); }, isWideScreen),
-                        _buildStatButton("+3", Colors.orangeAccent, () { controller.updateStats(teamId, playerName, points: 3); Navigator.pop(context); }, isWideScreen),
-                        _buildStatButton("Falta", Colors.redAccent, () { Navigator.pop(context); _showFoulOptionsDialog(context, controller, teamId, playerName); }, isWideScreen, icon: Icons.error_outline),
+                        _buildStatButton("+1", Colors.lightBlueAccent, () { controller.updateStats(teamId, playerKey, points: 1); Navigator.pop(context); }, isWideScreen),
+                        _buildStatButton("+2", Colors.greenAccent, () { controller.updateStats(teamId, playerKey, points: 2); Navigator.pop(context); }, isWideScreen),
+                        _buildStatButton("+3", Colors.orangeAccent, () { controller.updateStats(teamId, playerKey, points: 3); Navigator.pop(context); }, isWideScreen),
+                        _buildStatButton("Falta", Colors.redAccent, () { Navigator.pop(context); _showFoulOptionsDialog(context, controller, teamId, playerKey); }, isWideScreen, icon: Icons.error_outline),
                       ],
                     ),
                   const SizedBox(height: 24),
@@ -913,10 +998,18 @@ Widget _buildMiniFoulDots(int count) {
     );
   }
 
-  void _showSubstitutionDialog(BuildContext context, String teamId, List<String> onCourt, List<String> bench, MatchGameController controller, MatchState state, {String? preSelectedOut}) {
-    String? selectedOut = preSelectedOut; 
+  void _showSubstitutionDialog(
+    BuildContext context,
+    String teamId,
+    List<String> onCourt,
+    List<String> bench,
+    MatchGameController controller,
+    MatchState state, {
+    String? preSelectedOut,
+  }) {
+    String? selectedOut = preSelectedOut;
     String? selectedIn;
-    
+
     final sortedOnCourt = _sortPlayersByNumberDesc(onCourt, state);
     final sortedBench = _sortPlayersByNumberDesc(bench, state);
 
@@ -924,11 +1017,64 @@ Widget _buildMiniFoulDots(int count) {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          backgroundColor: const Color(0xFF1A1F2B), title: const Text("Sustitución", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          content: Column(mainAxisSize: MainAxisSize.min, children: [_dropdown("Sale (Cancha)", sortedOnCourt, selectedOut, (v) => setState(() => selectedOut = v), state), const Padding(padding: EdgeInsets.symmetric(vertical: 8.0), child: Icon(Icons.arrow_downward, color: Colors.orangeAccent)), _dropdown("Entra (Banca)", sortedBench, selectedIn, (v) => setState(() => selectedIn = v), state)]),
+          backgroundColor: const Color(0xFF1A1F2B),
+          title: const Text(
+            "Sustitución",
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _dropdown(
+                "Sale (Cancha)",
+                sortedOnCourt,
+                selectedOut,
+                (v) => setState(() => selectedOut = v),
+                state,
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: Icon(Icons.arrow_downward, color: Colors.orangeAccent),
+              ),
+              _dropdown(
+                "Entra (Banca)",
+                sortedBench,
+                selectedIn,
+                (v) => setState(() => selectedIn = v),
+                state,
+              ),
+            ],
+          ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar", style: TextStyle(color: Colors.grey))),
-            FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.orangeAccent), onPressed: (selectedOut != null && selectedIn != null) ? () { controller.substitutePlayer(teamId, selectedOut!, selectedIn!); Navigator.pop(context); } : null, child: const Text("Confirmar", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)))
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                "Cancelar",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.orangeAccent,
+              ),
+              onPressed: (selectedOut != null && selectedIn != null)
+                  ? () {
+                      controller.substitutePlayer(
+                        teamId,
+                        selectedOut!,
+                        selectedIn!,
+                      );
+                      Navigator.pop(context);
+                    }
+                  : null,
+              child: const Text(
+                "Confirmar",
+                style: TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -942,9 +1088,9 @@ Widget _buildMiniFoulDots(int count) {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: val, isDense: true, isExpanded: true, dropdownColor: const Color(0xFF2C323F), style: const TextStyle(color: Colors.white, fontSize: 16), 
-          items: items.map((e) {
-            final numDorsal = state.playerStats[e]?.playerNumber ?? "#";
-            return DropdownMenuItem(value: e, child: Text("$numDorsal - $e"));
+          items: items.map((id) {
+            final pStats = state.playerStats[id];
+            return DropdownMenuItem(value: id, child: Text("$pStats?.playerNumber - $pStats?.playerName"));
           }).toList(), 
           onChanged: changed))),
     );

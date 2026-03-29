@@ -158,8 +158,8 @@ class PdfGenerator {
     String mainReferee = "",
     String auxReferee = "",
     String scorekeeper = "",
-    required String coachA,
-    required String coachB,
+    String coachA = "",
+    String coachB = "",
     int? captainAId,
     int? captainBId,
     Uint8List? protestSignature,
@@ -203,8 +203,8 @@ class PdfGenerator {
     String mainReferee = "",
     String auxReferee = "",
     String scorekeeper = "",
-    required String coachA,
-    required String coachB,
+    String coachA = "",
+    String coachB = "",
     int? captainAId,
     int? captainBId,
     Uint8List? protestSignature,
@@ -252,8 +252,8 @@ class PdfGenerator {
     String mainReferee = "",
     String auxReferee = "",
     String scorekeeper = "",
-    required String coachA,
-    required String coachB,
+    String coachA = "",
+    String coachB = "",
     int? captainAId,
     int? captainBId,
     Uint8List? protestSignature,
@@ -898,12 +898,16 @@ class PdfGenerator {
     for (var i = 0; i < limit; i++) {
       // --- CASO 1: LA FILA TIENE JUGADOR ---
       if (i < players.length) {
-        final playerName = players[i];
-        final stat = stats[playerName] ?? const PlayerStats();
+        final playerKey = players[i];
+        final stat = stats[playerKey] ?? const PlayerStats();
         final dorsal = stat.playerNumber.isNotEmpty ? stat.playerNumber : "";
 
+        // --- RECUPERACIÓN DEL NOMBRE REAL ---
+        final String nameToDisplay = stat.playerName.isNotEmpty ? stat.playerName : playerKey;
+
+
         // Filtramos las faltas exactas de este jugador desde el historial
-        final playerFoulEvents = scoreLog.where((e) => e.playerId == playerName && e.points == 0).toList();
+        final playerFoulEvents = scoreLog.where((e) => e.playerId == playerKey && e.points == 0).toList();
 
         // Dorsal
         widgets.add(_drawText(dorsal, x: startXNum, y: currentY, fontSize: 10, color: PdfColors.blue900));
@@ -914,17 +918,14 @@ class PdfGenerator {
           );
         }
 
-        String displayName = playerName;
-        if (captainId != null && stat.dbId == captainId) {
-          displayName += " C";
-        }
-        displayName = playerName.length > 18
-            ? "${playerName.substring(0, 16)}..."
-            : playerName;
+        // Formatear Nombre (con truncado si es muy largo)
+        String finalNameText = nameToDisplay.length > 22
+            ? "${nameToDisplay.substring(0, 20)}..."
+            : nameToDisplay;
             
         // Nombre
         widgets.add(
-          _drawText(displayName, x: startXName, y: currentY, fontSize: 10, color: PdfColors.blue900),
+          _drawText(finalNameText, x: startXName, y: currentY, fontSize: 10, color: PdfColors.blue900),
         );
 
         // --- Marca de "Titular" o "Entró a cancha" (REGLA FIBA PERMANENTE) ---
