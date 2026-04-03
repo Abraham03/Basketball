@@ -243,7 +243,7 @@ void initState() {
     }
     return false; 
   }
-
+/*
   List<String> _sortPlayersByNumberDesc(List<String> playerNames, MatchState state) {
     List<String> sortedList = List.from(playerNames);
     sortedList.sort((a, b) {
@@ -253,6 +253,18 @@ void initState() {
     });
     return sortedList;
   }
+*/
+  List<String> _sortPlayersByNumberAsc(List<String> playerNames, MatchState state) {
+  List<String> sortedList = List.from(playerNames);
+  sortedList.sort((a, b) {
+    final numA = int.tryParse(state.playerStats[a]?.playerNumber ?? "0") ?? 0;
+    final numB = int.tryParse(state.playerStats[b]?.playerNumber ?? "0") ?? 0;
+    
+    // Aquí está el cambio: numA se compara con numB para orden ascendente
+    return numA.compareTo(numB); 
+  });
+  return sortedList;
+}
 
   @override
   Widget build(BuildContext context) {
@@ -411,8 +423,8 @@ void initState() {
           builder: (context, constraints) {
             final isWideScreen = constraints.maxWidth > 750;
             
-            final sortedCourtA = _sortPlayersByNumberDesc(gameState.teamAOnCourt, gameState);
-            final sortedCourtB = _sortPlayersByNumberDesc(gameState.teamBOnCourt, gameState);
+            final sortedCourtA = _sortPlayersByNumberAsc(gameState.teamAOnCourt, gameState);
+            final sortedCourtB = _sortPlayersByNumberAsc(gameState.teamBOnCourt, gameState);
 
             Widget teamAWidget = Expanded(child: _buildTeamList(context, widget.teamAName, Colors.orangeAccent, 'A', sortedCourtA, gameState.teamABench, controller, gameState, isWideScreen));
             Widget teamBWidget = Expanded(child: _buildTeamList(context, widget.teamBName, Colors.lightBlueAccent, 'B', sortedCourtB, gameState.teamBBench, controller, gameState, isWideScreen));
@@ -496,8 +508,8 @@ PopupMenuItem<String> _buildUndoMenuItem({
   MatchState state,
   bool isWideScreen,
 ) {
-  final sortedCourt = _sortPlayersByNumberDesc(onCourt, state);
-  final sortedBench = _sortPlayersByNumberDesc(bench, state);
+  final sortedCourt = _sortPlayersByNumberAsc(onCourt, state);
+  final sortedBench = _sortPlayersByNumberAsc(bench, state);
 
   return ClipRRect(
     borderRadius: BorderRadius.circular(20),
@@ -747,7 +759,8 @@ PopupMenuItem<String> _buildUndoMenuItem({
             child: Center(
               child: IconButton(
                 icon: const Icon(Icons.more_vert, size: 18, color: Colors.white24),
-                onPressed: () => _showEditPlayerDialog(context, controller, nameToDisplay, stats.playerNumber, teamId),
+                // AQUÍ: pasamos playerKey (ID) y nameToDisplay (Nombre)
+                onPressed: () => _showEditPlayerDialog(context, controller, playerKey, nameToDisplay, stats.playerNumber, teamId),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 35, minHeight: 35),
               ),
@@ -782,47 +795,55 @@ Widget _buildMiniFoulDots(int count) {
   );
 }
 
-  void _showEditPlayerDialog(BuildContext context, MatchGameController controller, String playerName, String currentNumber, String teamSide) {
-    final numberController = TextEditingController(text: currentNumber);
-    final errorNotifier = ValueNotifier<String?>(null);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1F2B), title: Text("Editar: $playerName", style: const TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text("Este cambio solo aplicará para el partido actual.", style: TextStyle(fontSize: 12, color: Colors.white54)),
-            const SizedBox(height: 16),
-            ValueListenableBuilder<String?>(
-              valueListenable: errorNotifier,
-              builder: (context, errorText, child) {
-                return TextField(
-                  controller: numberController, keyboardType: TextInputType.number, style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(labelText: "Número", labelStyle: const TextStyle(color: Colors.white54), filled: true, fillColor: Colors.black26, border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)), prefixIcon: const Icon(Icons.format_list_numbered, color: Colors.white54), errorText: errorText),
-                  onChanged: (_) => errorNotifier.value = null,
-                );
-              }
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar", style: TextStyle(color: Colors.grey))),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.orangeAccent),
-            onPressed: () {
-              final newNum = numberController.text.trim();
-              if (newNum.isEmpty) { errorNotifier.value = "El número no puede estar vacío"; return; }
-              if (_isNumberTaken(teamSide, newNum, playerName)) { errorNotifier.value = "El número $newNum ya está en uso"; return; }
-              controller.updateMatchPlayerInfo(playerName, newNumber: newNum);
-              Navigator.pop(ctx);
-            },
-            child: const Text("Guardar", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+  // Agrega el parámetro playerId a la función
+void _showEditPlayerDialog(BuildContext context, MatchGameController controller, String playerId, String playerName, String currentNumber, String teamSide) {
+  final numberController = TextEditingController(text: currentNumber);
+  final errorNotifier = ValueNotifier<String?>(null);
+  
+  showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      backgroundColor: const Color(0xFF1A1F2B), 
+      title: Text("Editar: $playerName", style: const TextStyle(color: Colors.white)), // Usamos el nombre para la UI
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text("Este cambio solo aplicará para el partido actual.", style: TextStyle(fontSize: 12, color: Colors.white54)),
+          const SizedBox(height: 16),
+          ValueListenableBuilder<String?>(
+            valueListenable: errorNotifier,
+            builder: (context, errorText, child) {
+              return TextField(
+                controller: numberController, keyboardType: TextInputType.number, style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(labelText: "Número", labelStyle: const TextStyle(color: Colors.white54), filled: true, fillColor: Colors.black26, border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)), prefixIcon: const Icon(Icons.format_list_numbered, color: Colors.white54), errorText: errorText),
+                onChanged: (_) => errorNotifier.value = null,
+              );
+            }
           ),
         ],
       ),
-    );
-  }
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar", style: TextStyle(color: Colors.grey))),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: Colors.orangeAccent),
+          onPressed: () {
+            final newNum = numberController.text.trim();
+            if (newNum.isEmpty) { errorNotifier.value = "El número no puede estar vacío"; return; }
+            
+            // Usamos playerId en lugar de playerName
+            if (_isNumberTaken(teamSide, newNum, playerId)) { errorNotifier.value = "El número $newNum ya está en uso"; return; }
+            
+            // Usamos playerId en lugar de playerName
+            controller.updateMatchPlayerInfo(playerId, newNumber: newNum);
+            
+            Navigator.pop(ctx);
+          },
+          child: const Text("Guardar", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        ),
+      ],
+    ),
+  );
+}
 
   void _showFoulOptionsDialog(BuildContext context, MatchGameController controller, String teamId, String playerKey) {
     final state = ref.read(matchGameProvider);
@@ -1010,8 +1031,8 @@ Widget _buildMiniFoulDots(int count) {
     String? selectedOut = preSelectedOut;
     String? selectedIn;
 
-    final sortedOnCourt = _sortPlayersByNumberDesc(onCourt, state);
-    final sortedBench = _sortPlayersByNumberDesc(bench, state);
+    final sortedOnCourt = _sortPlayersByNumberAsc(onCourt, state);
+    final sortedBench = _sortPlayersByNumberAsc(bench, state);
 
     showDialog(
       context: context,
