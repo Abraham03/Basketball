@@ -364,8 +364,21 @@ class _FixtureListScreenState extends ConsumerState<FixtureListScreen> {
             // 1. Configuramos la lista completa de opciones del Bottom Sheet
             List<String> allRounds = ["Todas", ...groupedRounds.keys];
 
-            // 2. Establecemos "Jornada 1" (o la primera llave disponible) como predeterminada si no hay selección
-            String activeRound = _selectedRound ?? (groupedRounds.keys.isNotEmpty ? groupedRounds.keys.first : "Todas");
+            // 2. Establecemos la ÚLTIMA jornada como predeterminada si no hay selección
+            String activeRound = "Todas";
+            if (_selectedRound != null) {
+              activeRound = _selectedRound!;
+            } else if (groupedRounds.keys.isNotEmpty) {
+              // Extraemos las llaves (nombres de jornada) y las ordenamos numéricamente
+              List<String> sortedRoundKeys = groupedRounds.keys.toList();
+              sortedRoundKeys.sort((a, b) {
+                int roundA = int.tryParse(a.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+                int roundB = int.tryParse(b.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+                return roundA.compareTo(roundB);
+              });
+              // Tomamos la última de la lista ordenada
+              activeRound = sortedRoundKeys.last;
+            }
 
             // 3. Filtramos los datos
             Map<String, List<Fixture>> filteredRounds = {};
