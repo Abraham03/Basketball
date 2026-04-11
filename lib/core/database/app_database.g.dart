@@ -243,6 +243,17 @@ class $MatchesTable extends Matches
     requiredDuringInsert: false,
     defaultValue: const Constant('Sin novedad'),
   );
+  static const VerificationMeta _fixtureIdMeta = const VerificationMeta(
+    'fixtureId',
+  );
+  @override
+  late final GeneratedColumn<String> fixtureId = GeneratedColumn<String>(
+    'fixture_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -266,6 +277,7 @@ class $MatchesTable extends Matches
     matchReportPath,
     forfeitStatus,
     observaciones,
+    fixtureId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -427,6 +439,12 @@ class $MatchesTable extends Matches
         ),
       );
     }
+    if (data.containsKey('fixture_id')) {
+      context.handle(
+        _fixtureIdMeta,
+        fixtureId.isAcceptableOrUnknown(data['fixture_id']!, _fixtureIdMeta),
+      );
+    }
     return context;
   }
 
@@ -520,6 +538,10 @@ class $MatchesTable extends Matches
         DriftSqlType.string,
         data['${effectivePrefix}observaciones'],
       )!,
+      fixtureId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}fixture_id'],
+      ),
     );
   }
 
@@ -551,6 +573,7 @@ class BasketballMatch extends DataClass implements Insertable<BasketballMatch> {
   final String? matchReportPath;
   final String forfeitStatus;
   final String observaciones;
+  final String? fixtureId;
   const BasketballMatch({
     required this.id,
     required this.createdAt,
@@ -573,6 +596,7 @@ class BasketballMatch extends DataClass implements Insertable<BasketballMatch> {
     this.matchReportPath,
     required this.forfeitStatus,
     required this.observaciones,
+    this.fixtureId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -620,6 +644,9 @@ class BasketballMatch extends DataClass implements Insertable<BasketballMatch> {
     }
     map['forfeit_status'] = Variable<String>(forfeitStatus);
     map['observaciones'] = Variable<String>(observaciones);
+    if (!nullToAbsent || fixtureId != null) {
+      map['fixture_id'] = Variable<String>(fixtureId);
+    }
     return map;
   }
 
@@ -668,6 +695,9 @@ class BasketballMatch extends DataClass implements Insertable<BasketballMatch> {
           : Value(matchReportPath),
       forfeitStatus: Value(forfeitStatus),
       observaciones: Value(observaciones),
+      fixtureId: fixtureId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fixtureId),
     );
   }
 
@@ -698,6 +728,7 @@ class BasketballMatch extends DataClass implements Insertable<BasketballMatch> {
       matchReportPath: serializer.fromJson<String?>(json['matchReportPath']),
       forfeitStatus: serializer.fromJson<String>(json['forfeitStatus']),
       observaciones: serializer.fromJson<String>(json['observaciones']),
+      fixtureId: serializer.fromJson<String?>(json['fixtureId']),
     );
   }
   @override
@@ -725,6 +756,7 @@ class BasketballMatch extends DataClass implements Insertable<BasketballMatch> {
       'matchReportPath': serializer.toJson<String?>(matchReportPath),
       'forfeitStatus': serializer.toJson<String>(forfeitStatus),
       'observaciones': serializer.toJson<String>(observaciones),
+      'fixtureId': serializer.toJson<String?>(fixtureId),
     };
   }
 
@@ -750,6 +782,7 @@ class BasketballMatch extends DataClass implements Insertable<BasketballMatch> {
     Value<String?> matchReportPath = const Value.absent(),
     String? forfeitStatus,
     String? observaciones,
+    Value<String?> fixtureId = const Value.absent(),
   }) => BasketballMatch(
     id: id ?? this.id,
     createdAt: createdAt ?? this.createdAt,
@@ -776,6 +809,7 @@ class BasketballMatch extends DataClass implements Insertable<BasketballMatch> {
         : this.matchReportPath,
     forfeitStatus: forfeitStatus ?? this.forfeitStatus,
     observaciones: observaciones ?? this.observaciones,
+    fixtureId: fixtureId.present ? fixtureId.value : this.fixtureId,
   );
   BasketballMatch copyWithCompanion(MatchesCompanion data) {
     return BasketballMatch(
@@ -816,6 +850,7 @@ class BasketballMatch extends DataClass implements Insertable<BasketballMatch> {
       observaciones: data.observaciones.present
           ? data.observaciones.value
           : this.observaciones,
+      fixtureId: data.fixtureId.present ? data.fixtureId.value : this.fixtureId,
     );
   }
 
@@ -842,7 +877,8 @@ class BasketballMatch extends DataClass implements Insertable<BasketballMatch> {
           ..write('signatureData: $signatureData, ')
           ..write('matchReportPath: $matchReportPath, ')
           ..write('forfeitStatus: $forfeitStatus, ')
-          ..write('observaciones: $observaciones')
+          ..write('observaciones: $observaciones, ')
+          ..write('fixtureId: $fixtureId')
           ..write(')'))
         .toString();
   }
@@ -870,6 +906,7 @@ class BasketballMatch extends DataClass implements Insertable<BasketballMatch> {
     matchReportPath,
     forfeitStatus,
     observaciones,
+    fixtureId,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -895,7 +932,8 @@ class BasketballMatch extends DataClass implements Insertable<BasketballMatch> {
           other.signatureData == this.signatureData &&
           other.matchReportPath == this.matchReportPath &&
           other.forfeitStatus == this.forfeitStatus &&
-          other.observaciones == this.observaciones);
+          other.observaciones == this.observaciones &&
+          other.fixtureId == this.fixtureId);
 }
 
 class MatchesCompanion extends UpdateCompanion<BasketballMatch> {
@@ -920,6 +958,7 @@ class MatchesCompanion extends UpdateCompanion<BasketballMatch> {
   final Value<String?> matchReportPath;
   final Value<String> forfeitStatus;
   final Value<String> observaciones;
+  final Value<String?> fixtureId;
   final Value<int> rowid;
   const MatchesCompanion({
     this.id = const Value.absent(),
@@ -943,6 +982,7 @@ class MatchesCompanion extends UpdateCompanion<BasketballMatch> {
     this.matchReportPath = const Value.absent(),
     this.forfeitStatus = const Value.absent(),
     this.observaciones = const Value.absent(),
+    this.fixtureId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   MatchesCompanion.insert({
@@ -967,6 +1007,7 @@ class MatchesCompanion extends UpdateCompanion<BasketballMatch> {
     this.matchReportPath = const Value.absent(),
     this.forfeitStatus = const Value.absent(),
     this.observaciones = const Value.absent(),
+    this.fixtureId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : teamAName = Value(teamAName),
        teamBName = Value(teamBName);
@@ -992,6 +1033,7 @@ class MatchesCompanion extends UpdateCompanion<BasketballMatch> {
     Expression<String>? matchReportPath,
     Expression<String>? forfeitStatus,
     Expression<String>? observaciones,
+    Expression<String>? fixtureId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1016,6 +1058,7 @@ class MatchesCompanion extends UpdateCompanion<BasketballMatch> {
       if (matchReportPath != null) 'match_report_path': matchReportPath,
       if (forfeitStatus != null) 'forfeit_status': forfeitStatus,
       if (observaciones != null) 'observaciones': observaciones,
+      if (fixtureId != null) 'fixture_id': fixtureId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1042,6 +1085,7 @@ class MatchesCompanion extends UpdateCompanion<BasketballMatch> {
     Value<String?>? matchReportPath,
     Value<String>? forfeitStatus,
     Value<String>? observaciones,
+    Value<String?>? fixtureId,
     Value<int>? rowid,
   }) {
     return MatchesCompanion(
@@ -1066,6 +1110,7 @@ class MatchesCompanion extends UpdateCompanion<BasketballMatch> {
       matchReportPath: matchReportPath ?? this.matchReportPath,
       forfeitStatus: forfeitStatus ?? this.forfeitStatus,
       observaciones: observaciones ?? this.observaciones,
+      fixtureId: fixtureId ?? this.fixtureId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1136,6 +1181,9 @@ class MatchesCompanion extends UpdateCompanion<BasketballMatch> {
     if (observaciones.present) {
       map['observaciones'] = Variable<String>(observaciones.value);
     }
+    if (fixtureId.present) {
+      map['fixture_id'] = Variable<String>(fixtureId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1166,6 +1214,7 @@ class MatchesCompanion extends UpdateCompanion<BasketballMatch> {
           ..write('matchReportPath: $matchReportPath, ')
           ..write('forfeitStatus: $forfeitStatus, ')
           ..write('observaciones: $observaciones, ')
+          ..write('fixtureId: $fixtureId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -6509,6 +6558,7 @@ typedef $$MatchesTableCreateCompanionBuilder =
       Value<String?> matchReportPath,
       Value<String> forfeitStatus,
       Value<String> observaciones,
+      Value<String?> fixtureId,
       Value<int> rowid,
     });
 typedef $$MatchesTableUpdateCompanionBuilder =
@@ -6534,6 +6584,7 @@ typedef $$MatchesTableUpdateCompanionBuilder =
       Value<String?> matchReportPath,
       Value<String> forfeitStatus,
       Value<String> observaciones,
+      Value<String?> fixtureId,
       Value<int> rowid,
     });
 
@@ -6689,6 +6740,11 @@ class $$MatchesTableFilterComposer
 
   ColumnFilters<String> get observaciones => $composableBuilder(
     column: $table.observaciones,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fixtureId => $composableBuilder(
+    column: $table.fixtureId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6856,6 +6912,11 @@ class $$MatchesTableOrderingComposer
     column: $table.observaciones,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get fixtureId => $composableBuilder(
+    column: $table.fixtureId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$MatchesTableAnnotationComposer
@@ -6945,6 +7006,9 @@ class $$MatchesTableAnnotationComposer
     column: $table.observaciones,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get fixtureId =>
+      $composableBuilder(column: $table.fixtureId, builder: (column) => column);
 
   Expression<T> matchRostersRefs<T extends Object>(
     Expression<T> Function($$MatchRostersTableAnnotationComposer a) f,
@@ -7046,6 +7110,7 @@ class $$MatchesTableTableManager
                 Value<String?> matchReportPath = const Value.absent(),
                 Value<String> forfeitStatus = const Value.absent(),
                 Value<String> observaciones = const Value.absent(),
+                Value<String?> fixtureId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => MatchesCompanion(
                 id: id,
@@ -7069,6 +7134,7 @@ class $$MatchesTableTableManager
                 matchReportPath: matchReportPath,
                 forfeitStatus: forfeitStatus,
                 observaciones: observaciones,
+                fixtureId: fixtureId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -7094,6 +7160,7 @@ class $$MatchesTableTableManager
                 Value<String?> matchReportPath = const Value.absent(),
                 Value<String> forfeitStatus = const Value.absent(),
                 Value<String> observaciones = const Value.absent(),
+                Value<String?> fixtureId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => MatchesCompanion.insert(
                 id: id,
@@ -7117,6 +7184,7 @@ class $$MatchesTableTableManager
                 matchReportPath: matchReportPath,
                 forfeitStatus: forfeitStatus,
                 observaciones: observaciones,
+                fixtureId: fixtureId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

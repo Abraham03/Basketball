@@ -26,6 +26,7 @@ class Matches extends Table with BaseTable {
   // Dentro de la clase Matches
   TextColumn get forfeitStatus => text().withDefault(const Constant('NONE'))();
   TextColumn get observaciones => text().withDefault(const Constant('Sin novedad'))();
+  TextColumn get fixtureId => text().nullable()();
   // ignore: annotate_overrides
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 }

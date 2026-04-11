@@ -22,7 +22,7 @@ class _ManualFixtureBuilderScreenState
     extends ConsumerState<ManualFixtureBuilderScreen> {
   int _selectedRoundId = 1;
   List<int> _availableRounds = [1];
-
+  bool _isInitialLoad = true;
   List<Map<String, dynamic>> _teamsStatus = [];
   List<Map<String, dynamic>> _createdMatchesForRound = [];
   
@@ -134,8 +134,12 @@ class _ManualFixtureBuilderScreenState
           ..where((f) => f.tournamentId.equals(widget.tournamentId)))
         .get();
 
+    // 1. SOLUCIÓN AQUÍ: Agregamos _selectedRoundId al Set inicial.
+    // Esto fuerza a que la jornada recién creada se mantenga viva en la UI
+    // aunque todavía no tenga partidos en la base de datos.
     Set<int> roundsSet = {1, _selectedRoundId};
 
+    // 2. Extraemos todos los números de jornada existentes en la BD
     for (var f in localFixtures) {
       final matchStr = RegExp(r'\d+').firstMatch(f.roundName);
       if (matchStr != null) {
@@ -143,9 +147,14 @@ class _ManualFixtureBuilderScreenState
       }
     }
 
+    // 3. Ordenamos de menor a mayor
     List<int> sortedRounds = roundsSet.toList()..sort();
 
-    if (!sortedRounds.contains(_selectedRoundId)) {
+    // 4. Lógica de carga inicial
+    if (_isInitialLoad) {
+      _selectedRoundId = sortedRounds.last;
+      _isInitialLoad = false;
+    } else if (!sortedRounds.contains(_selectedRoundId)) {
       _selectedRoundId = sortedRounds.last;
     }
 

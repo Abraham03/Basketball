@@ -43,6 +43,7 @@ class MatchesDao extends DatabaseAccessor<AppDatabase> with _$MatchesDaoMixin {
   // Método para guardar metadatos del partido (Árbitros, IDs, etc.)
   Future<void> updateMatchMetadata(
     String matchId,
+    String? fixtureId,
     int teamAId,
     int teamBId,
     String mainRef,
@@ -59,6 +60,19 @@ class MatchesDao extends DatabaseAccessor<AppDatabase> with _$MatchesDaoMixin {
         isSynced: const Value(false),
       ),
     );
+
+    // Vinculamos localmente el partido con el calendario para que 
+    // cuando regrese el internet, el proceso de Sync sepa a qué fixture pertenece.
+    if (fixtureId != null) {
+      await (db.update(db.fixtures)..where((f) => f.id.equals(fixtureId))).write(
+        FixturesCompanion(
+          matchId: Value(matchId),
+          status: const Value('IN_PROGRESS'), // Opcional: marcarlo en curso localmente
+        ),
+      );
+    }
+  
+
   }
 
   // Agrega también el campo para la firma

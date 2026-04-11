@@ -756,6 +756,7 @@ void _applyRestoreEvent({
     _timer = null;
     _dao.updateMatchMetadata(
       matchId,
+      fixtureId,
       teamAId,
       teamBId,
       mainReferee,
