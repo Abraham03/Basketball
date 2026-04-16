@@ -266,10 +266,15 @@ class MatchGameController extends StateNotifier<MatchState> {
 
   int getTeamFouls(String teamId) {
     return state.scoreLog.where((e) {
-      // Retorna true solo si es del equipo actual, en este periodo, no tiene puntos,
+      // Retorna true solo si:
+      // 1. Es del equipo actual y del periodo actual.
+      // 2. Tiene 0 puntos (es una falta).
+      // 3. NO es un cambio (SUB). <--- ESTA ES LA CORRECCIÓN
+      // 4. NO es una falta de Coach (C) ni de Banca (B) según tus reglas previas.
       return e.teamId == teamId &&
           e.period == state.currentPeriod &&
           e.points == 0 &&
+          e.type != 'SUB' && // <--- IGNORAR CAMBIOS
           !e.type.startsWith('C') &&
           !e.type.startsWith('B');
     }).length;
