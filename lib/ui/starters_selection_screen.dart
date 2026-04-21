@@ -292,55 +292,103 @@ class _StartersSelectionScreenState
     );
   }
 
+
+
   Widget _buildSelectionList(List<catalog.Player> roster, Set<int> selectedIds, Color themeColor, bool isTeamA) {
-    if (roster.isEmpty) return const Center(child: Text("No hay jugadores", style: TextStyle(color: Colors.white54)));
+  if (roster.isEmpty) return const Center(child: Text("No hay jugadores", style: TextStyle(color: Colors.white54)));
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: roster.length,
-      itemBuilder: (context, index) {
-        final player = roster[index];
-        final isSelected = selectedIds.contains(player.id);
-        final isCaptain = isTeamA ? _captainAId == player.id : _captainBId == player.id;
+  return ListView.builder(
+    padding: const EdgeInsets.all(16),
+    itemCount: roster.length,
+    itemBuilder: (context, index) {
+      final player = roster[index];
+      final isSelected = selectedIds.contains(player.id);
+      final isCaptain = isTeamA ? _captainAId == player.id : _captainBId == player.id;
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12.0),
-          child: InkWell(
-            onTap: () {
-              setState(() {
-                if (isSelected) {
-                  selectedIds.remove(player.id);
-                  if (isCaptain) {
-                    if (isTeamA) _captainAId = null; else _captainBId = null;
-                  }
-                } else if (selectedIds.length < 5) {
-                  selectedIds.add(player.id);
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12.0),
+        child: InkWell(
+          onTap: () {
+            setState(() {
+              if (isSelected) {
+                selectedIds.remove(player.id);
+                if (isCaptain) {
+                  if (isTeamA) _captainAId = null; else _captainBId = null;
                 }
-              });
-              _syncWithProvider();
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: isSelected ? themeColor.withOpacity(0.2) : Colors.white.withOpacity(0.05),
-                border: Border.all(color: isSelected ? themeColor : Colors.white24, width: isSelected ? 2 : 1),
-                borderRadius: BorderRadius.circular(16)
+              } else if (selectedIds.length < 5) {
+                selectedIds.add(player.id);
+              }
+            });
+            _syncWithProvider();
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: isSelected ? themeColor.withOpacity(0.15) : Colors.white.withOpacity(0.05),
+              border: Border.all(
+                color: isSelected ? themeColor : Colors.white10, 
+                width: isSelected ? 2 : 1
               ),
-              child: Row(
-                children: [
-                  Icon(isSelected ? Icons.check_circle : Icons.circle_outlined, color: isSelected ? themeColor : Colors.white54),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(player.name, style: TextStyle(color: isSelected ? Colors.white : Colors.white70, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
-                        Text("Camiseta #${player.defaultNumber}", style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                      ],
+              borderRadius: BorderRadius.circular(16)
+            ),
+            child: Row(
+              children: [
+                // Icono de selección
+                Icon(
+                  isSelected ? Icons.check_circle : Icons.circle_outlined, 
+                  color: isSelected ? themeColor : Colors.white24,
+                  size: 20,
+                ),
+                const SizedBox(width: 16),
+                
+                // CONTENEDOR DEL NÚMERO (Resaltado)
+                Container(
+                  width: 45,
+                  alignment: Alignment.center,
+                  child: Text(
+                    player.defaultNumber.toString(),
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : themeColor.withOpacity(0.8),
+                      fontSize: 30, // Número grande
+                      fontWeight: FontWeight.w900, // Peso máximo para resaltar
+                      letterSpacing: -5,
                     ),
                   ),
-                  if (isSelected) IconButton(
-                    icon: Icon(isCaptain ? Icons.star : Icons.star_border, color: isCaptain ? Colors.amber : Colors.white30),
+                ),
+                
+                const SizedBox(width: 12),
+                
+                // NOMBRE DEL JUGADOR
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        player.name, 
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : Colors.white70, 
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          fontSize: 14,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (isCaptain) 
+                        Text(
+                          "CAPITÁN", 
+                          style: TextStyle(color: Colors.amber.shade300, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.2)
+                        ),
+                    ],
+                  ),
+                ),
+
+                // Botón de Capitán
+                if (isSelected) 
+                  IconButton(
+                    icon: Icon(
+                      isCaptain ? Icons.star : Icons.star_border, 
+                      color: isCaptain ? Colors.amber : Colors.white24
+                    ),
                     onPressed: () {
                       setState(() { 
                         if (isTeamA) _captainAId = player.id; else _captainBId = player.id;
@@ -348,14 +396,14 @@ class _StartersSelectionScreenState
                       _syncWithProvider();
                     },
                   ),
-                ],
-              ),
+              ],
             ),
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
 
   Widget _buildBottomControlPanel() {
     bool canProceed = _startersA.length == 5 && _startersB.length == 5 && _captainAId != null && _captainBId != null;

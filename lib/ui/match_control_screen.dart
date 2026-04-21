@@ -687,7 +687,7 @@ PopupMenuItem<String> _buildUndoMenuItem({
                         style: TextStyle(
                             color: isOnCourt ? Colors.white : Colors.white38,
                             fontWeight: FontWeight.w900,
-                            fontSize: 12),
+                            fontSize: isWideScreen ? 30 : 20),
                       ),
                     ),
                   ),
@@ -706,7 +706,7 @@ PopupMenuItem<String> _buildUndoMenuItem({
                               style: TextStyle(
                                 color: isDisqualified ? Colors.redAccent : (isOnCourt ? Colors.white : Colors.white60),
                                 fontWeight: isOnCourt ? FontWeight.bold : FontWeight.w500,
-                                fontSize: isWideScreen ? 14 : 12.5,
+                                fontSize: isWideScreen ? 14 : 10,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -737,7 +737,7 @@ PopupMenuItem<String> _buildUndoMenuItem({
                                 ),
                                 child: Text(
                                   "${stats.points} PTS",
-                                  style: const TextStyle(color: Colors.greenAccent, fontSize: 8.5, fontWeight: FontWeight.bold),
+                                  style: const TextStyle(color: Colors.greenAccent, fontSize: 12, fontWeight: FontWeight.bold),
                                 ),
                               ),
                               const SizedBox(width: 10),
