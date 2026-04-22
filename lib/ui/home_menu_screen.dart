@@ -376,7 +376,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                                       ),
                                       const SizedBox(width: 15),
                                       const Text(
-                                        "Basket Pro",
+                                        "Van Ball",
                                         style: TextStyle(
                                           fontSize: 26,
                                           fontWeight: FontWeight.w900,
