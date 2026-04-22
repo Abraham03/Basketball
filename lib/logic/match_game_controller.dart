@@ -494,10 +494,17 @@ void _applyRestoreEvent({
           ? null
           : e.dbPlayerId.toString();
 
+      // OBTENEMOS EL NOMBRE REAL DEL JUGADOR
+      // Si currentStats existe, usamos su playerName (ej. "ABRAHAM CHVEZ")
+      // Si no existe (caso raro), caemos al e.playerId original.
+      final realPlayerName = currentStats != null && currentStats.playerName.isNotEmpty 
+          ? currentStats.playerName 
+          : e.playerId;
+
       return {
         "period": e.period,
         "team_side": e.teamId,
-        "player_name": e.playerId,
+        "player_name": realPlayerName,
         "player_id": parsedPlayerId,
         "player_number": updatedNumber,
         "points_scored": e.points,
@@ -1270,7 +1277,91 @@ void undoLastSubstitution() {
     newPlayerStatsMap[playerId] = newStats;
     state = state.copyWith(playerStats: newPlayerStatsMap);
   }
+
+
+  // =========================================================================
+  // --- AÑADIR JUGADOR MID-GAME (ONLINE ONLY) ---
+  // =========================================================================
+  
+  Future<void> addNewPlayerToMatch({
+    required String teamSide, // 'A' o 'B'
+    required String name,
+    required int number,
+    required ApiService api,
+  }) async {
+    // 1. Validar que tengamos el ID real del equipo en el estado actual
+    final teamId = teamSide == 'A' ? state.teamAId : state.teamBId;
+    if (teamId == null) {
+      throw Exception("Error crítico: ID del equipo no encontrado en el partido.");
+    }
+
+    // 2. Validación DRY (Don't Repeat Yourself) local: 
+    // Verificamos en memoria si el número ya está ocupado en este equipo para evitar viajes inútiles a la API.
+    final isNumberTaken = state.playerStats.values.any((p) {
+      final belongsToTeam = teamSide == 'A'
+          ? (state.teamAOnCourt.contains(p.dbId.toString()) || state.teamABench.contains(p.dbId.toString()))
+          : (state.teamBOnCourt.contains(p.dbId.toString()) || state.teamBBench.contains(p.dbId.toString()));
+          
+      return belongsToTeam && p.playerNumber == number.toString();
+    });
+
+    if (isNumberTaken) {
+      throw Exception("El número $number ya está en uso en este equipo.");
+    }
+
+    // 3. Llamada de Red (Capa 2)
+    // Si no hay internet o el backend lo rechaza, esto lanzará un Exception y cortará el flujo aquí.
+    final newPlayerId = await api.addPlayer(teamId, name, number);
+    final String playerKey = newPlayerId.toString();
+
+    // 4. Persistencia Local (Capa 3)
+    // Guardamos en SQLite para que el jugador siga ahí si se cierra la app.
+    await _dao.saveMidGamePlayerLocally(
+      matchId: state.matchId,
+      playerId: newPlayerId,
+      teamId: teamId,
+      name: name,
+      number: number,
+      teamSide: teamSide,
+    );
+
+    // 5. Actualización del Estado Reactivo (RAM)
+    // Creamos las estadísticas iniciales (0 puntos, 0 faltas)
+    final freshStatsMap = Map<String, PlayerStats>.from(state.playerStats);
+    freshStatsMap[playerKey] = PlayerStats(
+      dbId: newPlayerId,
+      playerName: name,
+      playerNumber: number.toString(),
+      isOnCourt: false,
+      isStarter: false,
+      hasPlayed: false,
+    );
+
+    // Agregamos el ID a la lista de la banca correspondiente
+    List<String> freshBenchA = List.from(state.teamABench);
+    List<String> freshBenchB = List.from(state.teamBBench);
+
+    if (teamSide == 'A') {
+      freshBenchA.add(playerKey);
+    } else {
+      freshBenchB.add(playerKey);
+    }
+
+    // 6. Emisión de Estado
+    // Esto disparará la reconstrucción en la UI mágicamente
+    state = state.copyWith(
+      playerStats: freshStatsMap,
+      teamABench: freshBenchA,
+      teamBBench: freshBenchB,
+    );
+
+    // 7. Actualizamos el timestamp del partido
+    _saveToDatabase();
+  }
+
 }
+
+
 
 final matchGameProvider =
     StateNotifierProvider<MatchGameController, MatchState>((ref) {

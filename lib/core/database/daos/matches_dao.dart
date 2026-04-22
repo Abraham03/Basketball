@@ -115,4 +115,52 @@ class MatchesDao extends DatabaseAccessor<AppDatabase> with _$MatchesDaoMixin {
       }
     });
   }
+
+  /// Guarda localmente un jugador creado a mitad de un partido de forma atómica.
+  /// Se inserta en el catálogo general de jugadores y se vincula al roster del partido actual.
+  Future<void> saveMidGamePlayerLocally({
+    required String matchId,
+    required int playerId, // ID real que nos devuelve la API
+    required int teamId,
+    required String name,
+    required int number,
+    required String teamSide,
+  }) async {
+    try {
+      // Transacción atómica: Todo o nada.
+      await transaction(() async {
+        
+        // 1. Insertar o actualizar en el catálogo global de Jugadores (Players)
+        await db.into(db.players).insert(
+          PlayersCompanion.insert(
+            // Sobrescribimos el UUID del BaseTable explícitamente con el ID de la nube
+            id: Value(playerId.toString()), 
+            teamId: teamId,
+            name: name,
+            defaultNumber: Value(number),
+            isSynced: const Value(true), // Viene de la nube, no necesita sincronizarse
+          ),
+          mode: InsertMode.insertOrReplace, // Si ya existía por caché, lo actualiza
+        );
+
+        // 2. Vincular el jugador al partido actual (MatchRosters)
+        await into(matchRosters).insert(
+          MatchRostersCompanion.insert(
+            // No pasamos 'id' aquí. El clientDefault del BaseTable generará el UUID automáticamente.
+            matchId: matchId,
+            playerId: playerId.toString(), // Llave foránea hacia Players
+            teamSide: teamSide,            // 'A' o 'B'
+            jerseyNumber: number,
+            isCaptain: const Value(false), // No puede ser capitán por llegar tarde
+          ),
+          mode: InsertMode.insertOrIgnore, // Previene error si el usuario presiona el botón 2 veces rápido
+        );
+        
+      });
+    } catch (e) {
+      // Captura y propaga a la capa superior (Controller -> UI)
+      throw Exception('Error al persistir el jugador localmente en BD: $e');
+    }
+  }
+
 }

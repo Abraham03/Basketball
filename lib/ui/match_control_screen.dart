@@ -524,28 +524,43 @@ PopupMenuItem<String> _buildUndoMenuItem({
         child: Column(
           children: [
             Container(
-              padding: EdgeInsets.symmetric(vertical: isWideScreen ? 12 : 8, horizontal: 16),
-              decoration: BoxDecoration(
-                color: primaryColor.withOpacity(0.15),
-                border: const Border(bottom: BorderSide(color: Colors.white24, width: 1)),
+                padding: EdgeInsets.symmetric(vertical: isWideScreen ? 12 : 8, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: primaryColor.withOpacity(0.15),
+                  border: const Border(bottom: BorderSide(color: Colors.white24, width: 1)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(teamName.toUpperCase(),
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1.0),
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                    // --- NUEVO: Fila de botones en la cabecera ---
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          onPressed: _isFinished ? null : () => _showAddPlayerOnlineDialog(context, controller, teamId, teamName),
+                          icon: Icon(Icons.person_add_alt_1, color: primaryColor, size: 20),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          tooltip: "Añadir Jugador",
+                        ),
+                        const SizedBox(width: 16), // Espacio entre botones
+                        IconButton(
+                          onPressed: _isFinished ? null : () => _showTeamOptions(context, controller, teamId, teamName),
+                          icon: Icon(Icons.settings_outlined, color: primaryColor, size: 20),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          tooltip: "Opciones de Equipo",
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(teamName.toUpperCase(),
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1.0),
-                        overflow: TextOverflow.ellipsis),
-                  ),
-                  IconButton(
-                    onPressed: _isFinished ? null : () => _showTeamOptions(context, controller, teamId, teamName),
-                    icon: Icon(Icons.settings_outlined, color: primaryColor, size: 20),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
-            ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.all(8),
@@ -794,6 +809,119 @@ Widget _buildMiniFoulDots(int count) {
     }),
   );
 }
+
+// =========================================================================
+  // --- DIÁLOGO PARA AÑADIR JUGADOR MID-GAME (ONLINE ONLY) ---
+  // =========================================================================
+  void _showAddPlayerOnlineDialog(BuildContext context, MatchGameController controller, String teamSide, String teamName) {
+    final nameController = TextEditingController();
+    final numberController = TextEditingController();
+    // Usamos ValueNotifier para actualizar el estado de carga sin reconstruir toda la pantalla de fondo
+    final isSubmitting = ValueNotifier<bool>(false);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Evita que se cierre tocando fuera mientras carga
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1F2B), 
+        title: Text("Nuevo Jugador - $teamName", style: const TextStyle(color: Colors.white, fontSize: 18)),
+        content: ValueListenableBuilder<bool>(
+          valueListenable: isSubmitting,
+          builder: (context, loading, child) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text("Se requiere conexión a internet. El jugador se guardará en la nube y en este partido.", 
+                  style: TextStyle(fontSize: 12, color: Colors.orangeAccent)),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: nameController,
+                  enabled: !loading,
+                  textCapitalization: TextCapitalization.characters,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(labelText: "Nombre Completo", labelStyle: const TextStyle(color: Colors.white54), filled: true, fillColor: Colors.black26, border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)), prefixIcon: const Icon(Icons.person, color: Colors.white54)),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: numberController,
+                  enabled: !loading,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(labelText: "Número de Jersey", labelStyle: const TextStyle(color: Colors.white54), filled: true, fillColor: Colors.black26, border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)), prefixIcon: const Icon(Icons.format_list_numbered, color: Colors.white54)),
+                ),
+                if (loading) 
+                  const Padding(
+                    padding: EdgeInsets.only(top: 20), 
+                    child: CircularProgressIndicator(color: Colors.orangeAccent)
+                  ),
+              ],
+            );
+          }
+        ),
+        actions: [
+          ValueListenableBuilder<bool>(
+            valueListenable: isSubmitting,
+            builder: (context, loading, child) {
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: loading ? null : () => Navigator.pop(ctx), 
+                    child: const Text("Cancelar", style: TextStyle(color: Colors.grey))
+                  ),
+                  FilledButton(
+                    style: FilledButton.styleFrom(backgroundColor: Colors.orangeAccent),
+                    onPressed: loading ? null : () async {
+                      final name = nameController.text.trim().toUpperCase();
+                      final numStr = numberController.text.trim();
+                      final number = int.tryParse(numStr);
+
+                      if (name.isEmpty || number == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Ingresa un nombre y número válido")));
+                        return;
+                      }
+
+                      isSubmitting.value = true; // Activa el loader
+
+                      try {
+                        // Leemos la API desde el Provider de Riverpod
+                        final api = ref.read(apiServiceProvider);
+                        
+                        // Llamamos al cerebro (Controller)
+                        await controller.addNewPlayerToMatch(
+                          teamSide: teamSide,
+                          name: name,
+                          number: number,
+                          api: api,
+                        );
+
+                        if (ctx.mounted) {
+                          Navigator.pop(ctx); // Cierra el diálogo si hubo éxito
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Jugador sincronizado y añadido a la banca", style: TextStyle(color: Colors.white)), backgroundColor: Colors.green)
+                          );
+                        }
+                      } catch (e) {
+                        isSubmitting.value = false; // Quita el loader si falló
+                        if (ctx.mounted) {
+                          // Mostramos el error (Ej. "El número ya está en uso" o "Sin internet")
+                          final errorMsg = e.toString().replaceAll('Exception: ', '');
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(errorMsg), backgroundColor: Colors.redAccent)
+                          );
+                        }
+                      }
+                    },
+                    child: const Text("Añadir Jugador", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                  ),
+                ]
+              );
+            }
+          )
+        ],
+      ),
+    );
+  }
 
   // Agrega el parámetro playerId a la función
 void _showEditPlayerDialog(BuildContext context, MatchGameController controller, String playerId, String playerName, String currentNumber, String teamSide) {
