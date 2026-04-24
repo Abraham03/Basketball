@@ -1295,6 +1295,14 @@ void _showEditPlayerDialog(BuildContext context, MatchGameController controller,
       final controller = ref.read(matchGameProvider.notifier);
       final dbBase = ref.read(databaseProvider);
 
+      try {
+        await controller.reconcileOfflinePlayers(api);
+      } catch (e) {
+        // Si no hay internet, ignoramos el error. 
+        // El jugador se quedará con ID negativo localmente por ahora.
+        debugPrint("Modo Offline Activo: Se sincronizará después.");
+      }
+
       // --- 1. RECUPERAR DATOS DEL TORNEO (PARA EL LOGO DEL ÁRBITRO) ---
       final tournamentObj = await (dbBase.select(dbBase.tournaments)
             ..where((t) => t.id.equals(widget.tournamentId.toString())))
