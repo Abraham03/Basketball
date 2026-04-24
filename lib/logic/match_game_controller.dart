@@ -337,46 +337,64 @@ Future<void> restoreFromDatabase({
       .get();
 
   // 4. Procesar eventos acumulativamente
-  for (var event in events) {
-    String teamId = 'A';
-    String? pName;
-    String pNumber = "00";
-    int dbId = 0;
+  // 4. Procesar eventos acumulativamente
+    for (var event in events) {
+      String teamId = 'A';
+      String? pName;
+      String pNumber = "00";
+      int dbId = 0;
+      String pIdKey = event.playerId ?? "-1";
 
-    if (event.playerId != null && event.playerId != "-1") {
-      final pA = rosterA.where((p) => p.id.toString() == event.playerId).firstOrNull;
-      final pB = rosterB.where((p) => p.id.toString() == event.playerId).firstOrNull;
-      if (pB != null) { teamId = 'B'; pName = pB.name; pNumber = pB.defaultNumber.toString(); dbId = pB.id; }
-      else if (pA != null) { pName = pA.name; pNumber = pA.defaultNumber.toString(); dbId = pA.id; }
-    } else if (event.type.endsWith('_B')) { 
-      teamId = 'B'; 
+      if (event.playerId != null && event.playerId != "-1") {
+        final pA = rosterA.where((p) => p.id.toString() == event.playerId).firstOrNull;
+        final pB = rosterB.where((p) => p.id.toString() == event.playerId).firstOrNull;
+        
+        if (pB != null) { teamId = 'B'; pName = pB.name; pNumber = pB.defaultNumber.toString(); dbId = pB.id; }
+        else if (pA != null) { teamId = 'A'; pName = pA.name; pNumber = pA.defaultNumber.toString(); dbId = pA.id; }
+        else {
+          // --- Buscar en SQLite para rescatar a los jugadores offline creados localmente ---
+          final localPlayer = await (_dao.db.select(_dao.db.players)..where((p) => p.id.equals(event.playerId!))).getSingleOrNull();
+          if (localPlayer != null) {
+            teamId = localPlayer.teamId == teamAId ? 'A' : 'B';
+            pName = localPlayer.name;
+            pNumber = localPlayer.defaultNumber.toString(); // <--- Aquí rescatamos el numero
+            dbId = int.tryParse(localPlayer.id) ?? 0;
+          }
+        }
+      } else if (event.type.endsWith('_B')) { 
+        teamId = 'B'; pIdKey = "Banca_$teamId";
+      } else if (event.type.endsWith('_C')) {
+        teamId = 'C'; pIdKey = "Coach_$teamId";
+      } else if (event.type.contains('TIMEOUT')) {
+        pIdKey = "TIMEOUT_$teamId";
+      }
+
+      int pts = 0;
+      if (event.type == 'POINT_1') {pts = 1;}
+      else if (event.type == 'POINT_2') {pts = 2;}
+      else if (event.type == 'POINT_3') {pts = 3;}
+
+      int fls = (pts == 0 && (event.type.contains('FOUL') || event.type.length <= 2) && !event.type.contains('TIMEOUT')) ? 1 : 0;
+
+      _applyRestoreEvent(
+        teamId: teamId,
+        playerId: pIdKey, // Pasamos el ID exacto
+        playerName: pName ?? (event.type.contains('TIMEOUT') ? "TIMEOUT" : "OTROS"),
+        points: pts,
+        fouls: fls,
+        type: event.type,
+        period: event.period,
+        pNumber: pNumber,
+        dbPlayerId: dbId,
+        clockTime: event.clockTime,
+      );
     }
-
-    int pts = 0;
-    if (event.type == 'POINT_1') pts = 1;
-    else if (event.type == 'POINT_2') pts = 2;
-    else if (event.type == 'POINT_3') pts = 3;
-
-    int fls = (pts == 0 && (event.type.contains('FOUL') || event.type.length <= 2) && !event.type.contains('TIMEOUT')) ? 1 : 0;
-
-    _applyRestoreEvent(
-      teamId: teamId,
-      playerName: pName ?? (event.type.contains('TIMEOUT') ? "TIMEOUT" : "OTROS"),
-      points: pts,
-      fouls: fls,
-      type: event.type,
-      period: event.period,
-      pNumber: pNumber,
-      dbPlayerId: dbId,
-      clockTime: event.clockTime,
-    );
-  }
 }
 
-// Método auxiliar necesario para el restore (sin llaves según tu estilo previo, 
-// pero agregadas donde el linter lo exigía)
+// Método auxiliar necesario para el restore
 void _applyRestoreEvent({
   required String teamId,
+  required String playerId,
   required String playerName,
   required int points,
   required int fouls,
@@ -386,7 +404,13 @@ void _applyRestoreEvent({
   required int dbPlayerId,
   String clockTime = "0:00",
 }) {
-  final currentStats = state.playerStats[playerName] ?? const PlayerStats();
+  // Ahora usamos playerId para la llave del mapa (como dicta el resto de la app)
+  final currentStats = state.playerStats[playerId] ?? PlayerStats(
+    dbId: dbPlayerId,
+    playerName: playerName,
+    playerNumber: pNumber,
+  );
+  
   final newPlayerStatsMap = Map<String, PlayerStats>.from(state.playerStats);
 
   List<String> newFoulDetails = List.from(currentStats.foulDetails);
@@ -406,7 +430,9 @@ void _applyRestoreEvent({
 
   final newScoreLog = List<ScoreEvent>.from(state.scoreLog);
   newScoreLog.add(ScoreEvent(
-    period: period, teamId: teamId, playerId: playerName, dbPlayerId: dbPlayerId,
+    period: period, teamId: teamId, 
+    playerId: playerId, 
+    dbPlayerId: dbPlayerId,
     playerNumber: pNumber, points: points, scoreAfter: teamId == 'A' ? newScoreA : newScoreB, type: type,
   ));
 
@@ -577,7 +603,7 @@ void _applyRestoreEvent({
       );
       if (success) {
         await _dao.markAsSynced(state.matchId);
-        if (localPdfPath != null) File(localPdfPath).delete();
+        //if (localPdfPath != null) File(localPdfPath).delete();
       }
       return success;
     } catch (e) {
@@ -1280,23 +1306,20 @@ void undoLastSubstitution() {
 
 
   // =========================================================================
-  // --- AÑADIR JUGADOR MID-GAME (ONLINE ONLY) ---
+  // --- AÑADIR JUGADOR MID-GAME (SOPORTE OFFLINE-FIRST) ---
   // =========================================================================
   
   Future<void> addNewPlayerToMatch({
-    required String teamSide, // 'A' o 'B'
+    required String teamSide,
     required String name,
     required int number,
     required ApiService api,
   }) async {
-    // 1. Validar que tengamos el ID real del equipo en el estado actual
     final teamId = teamSide == 'A' ? state.teamAId : state.teamBId;
     if (teamId == null) {
       throw Exception("Error crítico: ID del equipo no encontrado en el partido.");
     }
 
-    // 2. Validación DRY (Don't Repeat Yourself) local: 
-    // Verificamos en memoria si el número ya está ocupado en este equipo para evitar viajes inútiles a la API.
     final isNumberTaken = state.playerStats.values.any((p) {
       final belongsToTeam = teamSide == 'A'
           ? (state.teamAOnCourt.contains(p.dbId.toString()) || state.teamABench.contains(p.dbId.toString()))
@@ -1309,13 +1332,24 @@ void undoLastSubstitution() {
       throw Exception("El número $number ya está en uso en este equipo.");
     }
 
-    // 3. Llamada de Red (Capa 2)
-    // Si no hay internet o el backend lo rechaza, esto lanzará un Exception y cortará el flujo aquí.
-    final newPlayerId = await api.addPlayer(teamId, name, number);
+    int newPlayerId;
+    bool isOnlineSync = false;
+
+    // 3. ESTRATEGIA DE ID NEGATIVO
+    try {
+      // Intentamos subirlo a la nube
+      newPlayerId = await api.addPlayer(teamId, name, number);
+      isOnlineSync = true;
+    } catch (e) {
+      // Si falla (no hay internet), creamos un ID negativo único local basado en el tiempo
+      // Esto garantiza matemáticamente que nunca chocará con un ID de la nube.
+      newPlayerId = -DateTime.now().millisecondsSinceEpoch;
+      isOnlineSync = false;
+    }
+
     final String playerKey = newPlayerId.toString();
 
-    // 4. Persistencia Local (Capa 3)
-    // Guardamos en SQLite para que el jugador siga ahí si se cierra la app.
+    // 4. Persistencia Local (DAO)
     await _dao.saveMidGamePlayerLocally(
       matchId: state.matchId,
       playerId: newPlayerId,
@@ -1323,10 +1357,10 @@ void undoLastSubstitution() {
       name: name,
       number: number,
       teamSide: teamSide,
+      isSynced: isOnlineSync, // Le decimos a SQLite si ya está en la nube o no
     );
 
-    // 5. Actualización del Estado Reactivo (RAM)
-    // Creamos las estadísticas iniciales (0 puntos, 0 faltas)
+    // 5. Actualización RAM
     final freshStatsMap = Map<String, PlayerStats>.from(state.playerStats);
     freshStatsMap[playerKey] = PlayerStats(
       dbId: newPlayerId,
@@ -1337,7 +1371,6 @@ void undoLastSubstitution() {
       hasPlayed: false,
     );
 
-    // Agregamos el ID a la lista de la banca correspondiente
     List<String> freshBenchA = List.from(state.teamABench);
     List<String> freshBenchB = List.from(state.teamBBench);
 
@@ -1347,17 +1380,100 @@ void undoLastSubstitution() {
       freshBenchB.add(playerKey);
     }
 
-    // 6. Emisión de Estado
-    // Esto disparará la reconstrucción en la UI mágicamente
     state = state.copyWith(
       playerStats: freshStatsMap,
       teamABench: freshBenchA,
       teamBBench: freshBenchB,
     );
 
-    // 7. Actualizamos el timestamp del partido
     _saveToDatabase();
   }
+
+  // =========================================================================
+  // --- RECONCILIACIÓN PRE-SYNC ---
+  // =========================================================================
+
+  /// Busca jugadores creados offline (ID negativo) y los sube a la nube.
+  /// Luego intercambia el ID viejo por el nuevo en SQLite y en la RAM.
+  Future<void> reconcileOfflinePlayers(ApiService api) async {
+    // Extraemos solo los jugadores que tienen un ID negativo
+    final offlinePlayers = state.playerStats.values.where((p) => p.dbId < 0).toList();
+    
+    if (offlinePlayers.isEmpty) return; // No hay nada que reconciliar
+
+    Map<String, PlayerStats> newStatsMap = Map.from(state.playerStats);
+    List<String> newBenchA = List.from(state.teamABench);
+    List<String> newCourtA = List.from(state.teamAOnCourt);
+    List<String> newBenchB = List.from(state.teamBBench);
+    List<String> newCourtB = List.from(state.teamBOnCourt);
+    List<ScoreEvent> newScoreLog = List.from(state.scoreLog);
+
+    for (var offlinePlayer in offlinePlayers) {
+      final oldIdStr = offlinePlayer.dbId.toString();
+      final teamIdInt = (newCourtA.contains(oldIdStr) || newBenchA.contains(oldIdStr)) ? state.teamAId : state.teamBId;
+      
+      if (teamIdInt == null) continue;
+
+      try {
+        // 1. Subir a la nube
+        final realId = await api.addPlayer(teamIdInt, offlinePlayer.playerName, int.parse(offlinePlayer.playerNumber));
+        final realIdStr = realId.toString();
+
+        // 2. Reconciliar SQLite (Capa de Datos)
+        await _dao.replaceTempPlayerId(oldIdStr, realIdStr);
+
+        // 3. Reconciliar Estadísticas en RAM
+        final statsObj = newStatsMap.remove(oldIdStr);
+        if (statsObj != null) {
+          newStatsMap[realIdStr] = statsObj.copyWith(dbId: realId);
+        }
+
+        // 4. Reconciliar Rosters en RAM
+        _replaceInList(newBenchA, oldIdStr, realIdStr);
+        _replaceInList(newCourtA, oldIdStr, realIdStr);
+        _replaceInList(newBenchB, oldIdStr, realIdStr);
+        _replaceInList(newCourtB, oldIdStr, realIdStr);
+
+        // 5. Reconciliar Historial (ScoreLog)
+        for (int i = 0; i < newScoreLog.length; i++) {
+          final ev = newScoreLog[i];
+          if (ev.playerId == oldIdStr) {
+            newScoreLog[i] = ScoreEvent(
+              period: ev.period,
+              teamId: ev.teamId,
+              playerId: realIdStr, // <--- Actualizamos al ID nuevo
+              dbPlayerId: realId,  
+              playerNumber: ev.playerNumber,
+              points: ev.points,
+              scoreAfter: ev.scoreAfter,
+              type: ev.type,
+            );
+          }
+        }
+      } catch (e) {
+        throw Exception("Fallo al sincronizar jugador offline '${offlinePlayer.playerName}'. Requiere internet.");
+      }
+    }
+
+    // 6. Emitimos el estado corregido
+    state = state.copyWith(
+      playerStats: newStatsMap,
+      teamABench: newBenchA,
+      teamAOnCourt: newCourtA,
+      teamBBench: newBenchB,
+      teamBOnCourt: newCourtB,
+      scoreLog: newScoreLog,
+    );
+  }
+
+  // Helper privado para cambiar IDs en listas
+  void _replaceInList(List<String> list, String oldItem, String newItem) {
+    final index = list.indexOf(oldItem);
+    if (index != -1) {
+      list[index] = newItem;
+    }
+  }
+
 
 }
 

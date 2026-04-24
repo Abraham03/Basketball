@@ -5,6 +5,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
+import 'package:myapp/core/di/dependency_injection.dart' show matchesDaoProvider;
 import 'package:uuid/uuid.dart';
 import 'dart:io';
 
@@ -948,6 +949,14 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
     int uploadedOfficials = 0;
     int uploadedVenues = 0;
 
+    // ====================================================================
+    // --- 1. BARRIDO OFFLINE: RECONCILIAR JUGADORES PRIMERO ---
+    // ====================================================================
+    // Si un partido pendiente tiene a un jugador con ID negativo, el backend 
+    // lo rechazará o creará basura. Esto asegura que todos los IDs sean positivos.
+    final matchDao = ref.read(matchesDaoProvider);
+    await matchDao.syncOfflinePlayersBeforeMatches(api);
+    
     // Subir torneos
     try {
       final pendingTournaments = await (db.select(db.tournaments)..where((tbl) => tbl.isSynced.equals(false))).get();

@@ -116,50 +116,124 @@ class MatchesDao extends DatabaseAccessor<AppDatabase> with _$MatchesDaoMixin {
     });
   }
 
-  /// Guarda localmente un jugador creado a mitad de un partido de forma atómica.
-  /// Se inserta en el catálogo general de jugadores y se vincula al roster del partido actual.
+  /// Guarda localmente un jugador creado a mitad de un partido.
+  /// Soporta modo Online (ID real, isSynced: true) y Offline (ID negativo, isSynced: false).
   Future<void> saveMidGamePlayerLocally({
     required String matchId,
-    required int playerId, // ID real que nos devuelve la API
+    required int playerId, // ID real o ID negativo temporal
     required int teamId,
     required String name,
     required int number,
     required String teamSide,
+    bool isSynced = true, // <--- NUEVO: Por defecto true, pero en offline pasaremos false
   }) async {
     try {
-      // Transacción atómica: Todo o nada.
       await transaction(() async {
-        
-        // 1. Insertar o actualizar en el catálogo global de Jugadores (Players)
+        // 1. Insertar en el catálogo global de Jugadores (Players)
         await db.into(db.players).insert(
           PlayersCompanion.insert(
-            // Sobrescribimos el UUID del BaseTable explícitamente con el ID de la nube
             id: Value(playerId.toString()), 
             teamId: teamId,
             name: name,
             defaultNumber: Value(number),
-            isSynced: const Value(true), // Viene de la nube, no necesita sincronizarse
+            isSynced: Value(isSynced), // <--- Dependerá de si hubo red o no
           ),
-          mode: InsertMode.insertOrReplace, // Si ya existía por caché, lo actualiza
+          mode: InsertMode.insertOrReplace,
         );
 
         // 2. Vincular el jugador al partido actual (MatchRosters)
         await into(matchRosters).insert(
           MatchRostersCompanion.insert(
-            // No pasamos 'id' aquí. El clientDefault del BaseTable generará el UUID automáticamente.
             matchId: matchId,
-            playerId: playerId.toString(), // Llave foránea hacia Players
-            teamSide: teamSide,            // 'A' o 'B'
+            playerId: playerId.toString(),
+            teamSide: teamSide,
             jerseyNumber: number,
-            isCaptain: const Value(false), // No puede ser capitán por llegar tarde
+            isCaptain: const Value(false),
           ),
-          mode: InsertMode.insertOrIgnore, // Previene error si el usuario presiona el botón 2 veces rápido
+          mode: InsertMode.insertOrIgnore,
         );
-        
       });
     } catch (e) {
-      // Captura y propaga a la capa superior (Controller -> UI)
       throw Exception('Error al persistir el jugador localmente en BD: $e');
+    }
+  }
+
+  // =========================================================================
+  // --- RECONCILIACIÓN OFFLINE-FIRST ---
+  // =========================================================================
+
+  /// Intercambia el ID temporal (negativo) por el ID real de la nube.
+  /// Utiliza la estrategia Insertar -> Revincular -> Eliminar para evitar 
+  /// violaciones de llaves foráneas (Foreign Key Constraints) en SQLite.
+  Future<void> replaceTempPlayerId(String oldTempId, String newRealId) async {
+    try {
+      await transaction(() async {
+        // 1. Obtener los datos completos del jugador temporal
+        final oldPlayer = await (db.select(db.players)..where((p) => p.id.equals(oldTempId))).getSingleOrNull();
+        
+        if (oldPlayer != null) {
+          // 2. Insertar el "clon" del jugador, pero usando el ID real y marcado como sincronizado
+          await db.into(db.players).insert(
+            PlayersCompanion.insert(
+              id: Value(newRealId),
+              teamId: oldPlayer.teamId,
+              name: oldPlayer.name,
+              defaultNumber: Value(oldPlayer.defaultNumber),
+              active: Value(oldPlayer.active),
+              isSynced: const Value(true), // El nuevo ID siempre viene de la nube, ya está sincronizado
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
+        }
+
+        // 3. Revincular (Actualizar) todas las tablas hijas para que apunten al ID real
+        await (update(matchRosters)..where((t) => t.playerId.equals(oldTempId))).write(
+          MatchRostersCompanion(playerId: Value(newRealId)),
+        );
+        
+        await (update(gameEvents)..where((t) => t.playerId.equals(oldTempId))).write(
+          GameEventsCompanion(playerId: Value(newRealId)),
+        );
+
+        // 4. Eliminar el jugador temporal original (ya no tiene hijos dependientes)
+        if (oldPlayer != null) {
+          await (db.delete(db.players)..where((p) => p.id.equals(oldTempId))).go();
+        }
+      });
+    } catch (e) {
+      throw Exception('Error reconciliando IDs del jugador: $e');
+    }
+  }
+
+  // =========================================================================
+  // --- SINCRONIZACIÓN MAESTRA OFFLINE-FIRST ---
+  // =========================================================================
+
+  /// Se ejecuta ANTES de sincronizar los partidos atrasados.
+  /// Busca todos los jugadores con ID negativo y los sube a la nube.
+  Future<void> syncOfflinePlayersBeforeMatches(dynamic api) async {
+    // Buscamos jugadores que tengan isSynced en false
+    final offlinePlayers = await (select(db.players)..where((p) => p.isSynced.equals(false))).get();
+
+    for (var p in offlinePlayers) {
+      final int oldId = int.tryParse(p.id) ?? 0;
+      
+      // Confirmamos que es un ID temporal generado por nosotros (Negativo)
+      if (oldId < 0) { 
+        try {
+          // 1. Subimos a la nube
+          final int realId = await api.addPlayer(p.teamId, p.name, p.defaultNumber);
+          
+          // 2. Usamos el método de Reconciliación para corregir la BD local
+          await replaceTempPlayerId(p.id, realId.toString());
+          
+        } catch (e) {
+          // Ignoramos el error para que el bucle siga intentando con otros jugadores
+          // Si este falla, el partido que depende de él también fallará la subida,
+          // pero el usuario podrá intentarlo de nuevo más tarde.
+          print("Fallo al sincronizar jugador offline: ${p.name}");
+        }
+      }
     }
   }
 
