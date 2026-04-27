@@ -1202,8 +1202,11 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
       }
       
       // SUBIR PARTIDOS PENDIENTES
+      // SUBIR PARTIDOS PENDIENTES
       final pendingMatches = await (db.select(db.matches)..where((tbl) => tbl.isSynced.equals(false))).get();
       for (var match in pendingMatches) {
+        bool containsUnsyncedOfflinePlayers = false; // <--- ESCUDO PROTECTOR INICIALIZADO
+
         final query = db.select(db.gameEvents).join([
           drift.leftOuterJoin(
             db.matchRosters,
@@ -1219,6 +1222,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         final rows = await query.get();
         int runningScoreA = 0;
         int runningScoreB = 0;
+        
         final eventsList = rows.map((row) {
           final event = row.readTable(db.gameEvents);
           final roster = row.readTableOrNull(db.matchRosters);
@@ -1245,6 +1249,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
             }
           }
           final currentScore = isTeamA ? runningScoreA : runningScoreB;
+          
           Map<String, dynamic> eventPayload = {
             "period": event.period,
             "team_side": teamSide,
@@ -1254,11 +1259,18 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
             "score_after": currentScore,
             "type": rawType,
           };
+
+          // --- VALIDACIÓN DE IDS NEGATIVOS ---
+          int pId = 0;
           if (event.playerId != null && event.playerId!.isNotEmpty && event.playerId != '-1') {
-            eventPayload["player_id"] = int.tryParse(event.playerId!);
-          } else {
-            eventPayload["player_id"] = null;
+            pId = int.tryParse(event.playerId!) ?? 0;
           }
+
+          if (pId < 0) {
+             containsUnsyncedOfflinePlayers = true; // Se encendió la alarma del escudo
+          }
+
+          eventPayload["player_id"] = (pId > 0) ? pId : null;
           return eventPayload;
         }).toList();
 
@@ -1275,6 +1287,12 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         final rosterRows = await (db.select(db.matchRosters)..where((r) => r.matchId.equals(match.id))).get();
         final rostersList = rosterRows.map((r) {
           final pIdInt = int.tryParse(r.playerId) ?? 0;
+          
+          // --- VALIDACIÓN DE IDS NEGATIVOS EN EL ROSTER ---
+          if (pIdInt < 0) {
+             containsUnsyncedOfflinePlayers = true; // Alarma encendida
+          }
+
           bool hasPlayed = eventsList.any((event) => event["player_id"] == pIdInt);
           return {
             "player_id": pIdInt,
@@ -1284,6 +1302,24 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
             "played": hasPlayed ? 1 : 0
           };
         }).toList();
+
+        // ====================================================================
+        // --- EJECUCIÓN DEL ESCUDO ---
+        // Si hay un jugador con ID negativo, abortamos este partido en específico.
+        // ====================================================================
+        if (containsUnsyncedOfflinePlayers) {
+          debugPrint("ESCUDO ACTIVO: Se omitió el partido ${match.teamAName} vs ${match.teamBName} porque contiene jugadores no sincronizados.");
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("Partido ${match.teamAName} vs ${match.teamBName} omitido. Esperando conexión para crear jugadores."),
+                backgroundColor: Colors.orangeAccent,
+                duration: const Duration(seconds: 4),
+              ),
+            );
+          }
+          continue; // Salta a procesar el SIGUIENTE partido en el ciclo "for"
+        }
 
         final fixtureRow = await (db.select(db.fixtures)..where((f) => f.matchId.equals(match.id))).getSingleOrNull();
         final matchPayload = {
@@ -1307,6 +1343,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
           "events": eventsList,
           "rosters": rostersList,
         };
+
         final success = await api.syncMatchDataMultipart(
           matchData: matchPayload,
           pdfBytes: savedPdfBytes,
