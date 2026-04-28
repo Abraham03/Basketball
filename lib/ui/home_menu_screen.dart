@@ -699,6 +699,58 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
 
   // --- MODIFICADO: AHORA RECIBE EL ID DIRECTO DESDE EL MENÚ DE LA NUBE ---
   Future<void> _syncData(String syncId) async {
+    final db = ref.read(databaseProvider);
+
+    // ====================================================================
+    // --- 1. VERIFICACIÓN Y DIÁLOGO DE ADVERTENCIA ---
+    // ====================================================================
+    final pendingMatches = await (db.select(db.matches)..where((m) => m.isSynced.equals(false))).get();
+    
+    if (pendingMatches.isNotEmpty) {
+      // Mostrar diálogo de confirmación si hay datos en riesgo
+      final bool? confirm = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false, // Obliga al usuario a elegir una opción
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1F2B),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text("¡Peligro de pérdida de datos!", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+              ),
+            ],
+          ),
+          content: const Text(
+            "Tienes partidos pendientes por subir a la nube. Si descargas los datos ahora, SE BORRARÁN TODOS TUS PARTIDOS LOCALES y perderás esa información de forma permanente.\n\n¿Estás completamente seguro de querer continuar y eliminar los datos no subidos?",
+            style: TextStyle(color: Colors.white70, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text("Sí, borrar y descargar", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+
+      // Si el usuario presionó "Cancelar" o cerró el diálogo de alguna forma
+      if (confirm != true) {
+        return; 
+      }
+    }
+
+    // ====================================================================
+    // --- 2. INICIO DE LA DESCARGA ---
+    // ====================================================================
+
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -722,12 +774,17 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
 
     try {
       final api = ref.read(apiServiceProvider);
-      final db = ref.read(databaseProvider);
-
       final catalogData = await api.fetchCatalogs(syncId);
 
       await db.transaction(() async {
-        // --- LIMPIEZA ABSOLUTA DE FANTASMAS ---
+        // ====================================================================
+        // --- 3. LIMPIEZA ABSOLUTA DE FANTASMAS Y DATOS LOCALES ---
+        // ====================================================================
+        // Al descargar, borramos todo el historial local para que quede idéntico a la nube
+        await db.delete(db.matchRosters).go(); // NUEVO
+        await db.delete(db.gameEvents).go();   // NUEVO
+        await db.delete(db.matches).go();      // NUEVO
+        
         await db.delete(db.tournaments).go();
         await db.delete(db.teams).go();
         await db.delete(db.players).go();
@@ -736,6 +793,7 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         await db.delete(db.fixtures).go();
         await db.delete(db.officials).go();
 
+        // --- INSERCIONES DE CATÁLOGOS ---
         for (var t in catalogData.tournaments) {
           await db.into(db.tournaments).insert(
                 TournamentsCompanion.insert(
@@ -1053,7 +1111,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
       // ------------------------------------------
 
       // Subir equipos
-      // Subir equipos
       final pendingTeams = await (db.select(db.teams)..where((tbl) => tbl.isSynced.equals(false))).get();
       for (var team in pendingTeams) {
         try {
@@ -1201,7 +1258,6 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
         }
       }
       
-      // SUBIR PARTIDOS PENDIENTES
       // SUBIR PARTIDOS PENDIENTES
       final pendingMatches = await (db.select(db.matches)..where((tbl) => tbl.isSynced.equals(false))).get();
       for (var match in pendingMatches) {
