@@ -4,7 +4,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
-import 'package:uuid/uuid.dart';
 
 import '../core/database/app_database.dart' as db;
 import '../core/di/dependency_injection.dart';
@@ -196,7 +195,8 @@ class _StartersSelectionScreenState
               }
               
               final dbBase = ref.read(databaseProvider);
-              final tempId = const Uuid().v4();
+              // Generamos un ID negativo temporal 100% numérico para evitar pantallas negras
+              final tempId = (-DateTime.now().millisecondsSinceEpoch).toString();
 
               await dbBase.into(dbBase.players).insert(
                 db.PlayersCompanion.insert(

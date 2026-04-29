@@ -399,14 +399,14 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                               ),
                               const SizedBox(height: 20),
                               Text(
-  "Espacio de Trabajo Local:", // <--- Cambio aquí
-  style: TextStyle(
-    color: Colors.white.withValues(alpha: 0.7),
-    fontSize: 14,
-    fontWeight: FontWeight.w500,
-    letterSpacing: 1.5,
-  ),
-),
+                                "Espacio de Trabajo Local:", // <--- Cambio aquí
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.7),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 1.5,
+                                ),
+                              ),
                               const SizedBox(height: 8),
 
                               tournamentsAsync.when(
@@ -511,14 +511,41 @@ class _HomeMenuScreenState extends ConsumerState<HomeMenuScreen> {
                                   title: "Jugar Partido",
                                   icon: Icons.sports_basketball,
                                   color: Colors.orange,
-                                  onTap: selectedTournamentId == null || selectedTournamentId == "0"
-                                      ? () => _showNoTournamentAlert(context)
-                                      : () => Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => MatchSetupScreen(tournamentId: selectedTournamentId),
+                                  onTap: () {
+                                    if (selectedTournamentId == null || selectedTournamentId == "0") {
+                                      _showNoTournamentAlert(context);
+                                      return;
+                                    }
+                                    
+                                    // 🔒 BLOQUEO AMIGABLE 1: Evitar que entren con un Torneo Offline
+                                    final numericId = int.tryParse(selectedTournamentId);
+                                    if (numericId == null || numericId < 0) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: const Row(
+                                            children: [
+                                              Icon(Icons.cloud_off, color: Colors.white),
+                                              SizedBox(width: 10),
+                                              Expanded(child: Text("⚠️ Torneo Local. Súbelo a la nube antes de jugar un partido oficial.", style: TextStyle(fontWeight: FontWeight.bold))),
+                                            ],
                                           ),
+                                          backgroundColor: Colors.orange.shade800,
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                          margin: const EdgeInsets.all(16),
                                         ),
+                                      );
+                                      return; // Aborta la navegación
+                                    }
+
+                                    // Si pasa la validación, navega normal
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => MatchSetupScreen(tournamentId: selectedTournamentId),
+                                      ),
+                                    );
+                                  },
                                 ),
                                 if (_isAdminMode) ...[
                                   GlassDashboardCard(

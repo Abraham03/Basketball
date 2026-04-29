@@ -630,6 +630,32 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
       return;
     }
 
+    // ====================================================================
+    // 🔒 BLOQUEO AMIGABLE 2: Verificar si los equipos o la sede son Offline
+    // ====================================================================
+    final teamANum = int.tryParse(selectedTeamA!.id.toString());
+    final teamBNum = int.tryParse(selectedTeamB!.id.toString());
+    final venueNum = int.tryParse(selectedVenue!.id.toString());
+
+    if (teamANum == null || teamANum < 0 || teamBNum == null || teamBNum < 0 || venueNum == null || venueNum < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.white),
+              SizedBox(width: 10),
+              Expanded(child: Text("⚠️ Seleccionaste equipos o sedes locales. Súbelos a la nube antes de iniciar el partido.", style: TextStyle(fontWeight: FontWeight.bold))),
+            ],
+          ),
+          backgroundColor: Colors.orange.shade800,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
+      return; // Detiene la ejecución y evita el crasheo del int.parse
+    }
+
     final driftTournaments = ref.read(tournamentsListProvider).value ?? [];
     final currentTourn = driftTournaments.where((t) => t.id.toString() == widget.tournamentId).firstOrNull;
 
