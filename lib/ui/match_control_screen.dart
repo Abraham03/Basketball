@@ -338,10 +338,10 @@ void initState() {
         title: Column(
           children: [
             Text(
-              _isFinished ? "PARTIDO FINALIZADO" : "CONTROL DE JUEGO", 
-              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2.0, fontSize: 16, color: _isFinished ? Colors.redAccent : Colors.white)
+              _isFinished ? "FINALIZADO" : "CONTROL DE JUEGO", 
+              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2.0, fontSize: 13, color: _isFinished ? Colors.redAccent : Colors.white)
             ),
-            Text("IP Tablero: $_localIp", style: const TextStyle(fontSize: 12, color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+            Text("IP: $_localIp", style: const TextStyle(fontSize: 12, color: Colors.greenAccent, fontWeight: FontWeight.bold)),
           ],
         ),
         centerTitle: true,
@@ -413,6 +413,7 @@ void initState() {
               ),
             ],
           ),
+          IconButton(icon: const Icon(Icons.edit_document), tooltip: "Anotar Reporte/Novedad", onPressed: () => _showMidGameReportDialog(context, gameState, controller)),
           IconButton(icon: const Icon(Icons.visibility_outlined), tooltip: "Ver Acta", onPressed: () => _goToPdfPreview(context, gameState, _capturedSignature)),
           IconButton(icon: const Icon(Icons.save_alt), tooltip: "Finalizar Partido", onPressed: _isFinished ? null : () => _showFinalOptionsDialog(context, gameState)),
         ],
@@ -1499,16 +1500,21 @@ void _showEditPlayerDialog(BuildContext context, MatchGameController controller,
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // 1. FINALIZAR RÁPIDO (Sin reporte)
               FilledButton.icon(
                 style: FilledButton.styleFrom(backgroundColor: Colors.greenAccent, foregroundColor: Colors.black, padding: const EdgeInsets.symmetric(vertical: 12)), 
                 icon: const Icon(Icons.check_circle), 
                 label: const Text("Finalizar Normal", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)), 
                 onPressed: () { 
                   Navigator.pop(ctx); 
-                  _handleIncidentsFlow(context, currentState); // <--- Llama al nuevo diálogo
+                  // Finaliza directo sin preguntar novedades
+                  _finishMatchProcess(context, currentState, null, autoShow: true); 
                 }
               ),
+            
               const SizedBox(height: 10),
+
+              // 3. INASISTENCIA
               OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(foregroundColor: Colors.orangeAccent, side: const BorderSide(color: Colors.orangeAccent), padding: const EdgeInsets.symmetric(vertical: 12)),
                 icon: const Icon(Icons.warning_amber_rounded), 
@@ -1516,6 +1522,8 @@ void _showEditPlayerDialog(BuildContext context, MatchGameController controller,
                 onPressed: () { Navigator.pop(ctx); _handleForfeitFlow(context, currentState); }
               ),
               const SizedBox(height: 10),
+
+              // 4. PROTESTA
               OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(foregroundColor: Colors.redAccent, side: const BorderSide(color: Colors.redAccent), padding: const EdgeInsets.symmetric(vertical: 12)),
                 icon: const Icon(Icons.edit_document), 
@@ -1523,6 +1531,8 @@ void _showEditPlayerDialog(BuildContext context, MatchGameController controller,
                 onPressed: () { Navigator.pop(ctx); _handleProtestFlow(context, currentState); }
               ),
               const SizedBox(height: 16),
+              
+              // CANCELAR
               TextButton(
                 onPressed: () => Navigator.pop(ctx), 
                 child: const Text("Cancelar", style: TextStyle(color: Colors.grey))
@@ -1534,61 +1544,7 @@ void _showEditPlayerDialog(BuildContext context, MatchGameController controller,
     );
   }
 
-  // --- NUEVO FLUJO PARA NOVEDADES ---
-  Future<void> _handleIncidentsFlow(BuildContext context, MatchState state) async {
-    final textController = TextEditingController(text: "Sin novedad");
-    
-    final bool? confirm = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1F2B),
-        title: const Text("Reporte de Novedades", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text("¿Hubo algún incidente o problema durante el partido?", style: TextStyle(color: Colors.white70)),
-            const SizedBox(height: 16),
-            TextField(
-              controller: textController,
-              maxLines: 3,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                labelText: "Observaciones",
-                labelStyle: const TextStyle(color: Colors.white54),
-                filled: true,
-                fillColor: Colors.black26,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text("Cancelar", style: TextStyle(color: Colors.grey))
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.greenAccent),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text("Finalizar", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold))
-          ),
-        ],
-      )
-    );
 
-    if (confirm == true && context.mounted) {
-      String novedades = textController.text.trim();
-      if (novedades.isEmpty) novedades = "Sin novedad";
-      
-      final controller = ref.read(matchGameProvider.notifier);
-      controller.setObservaciones(novedades);
-      
-      final newState = ref.read(matchGameProvider);
-      _finishMatchProcess(context, newState, null, autoShow: true);
-    }
-  }
 
   Future<void> _handleForfeitFlow(BuildContext context, MatchState state) async {
     final controller = ref.read(matchGameProvider.notifier);
@@ -1647,4 +1603,80 @@ void _showEditPlayerDialog(BuildContext context, MatchGameController controller,
       }
     }
   }
+
+  // --- NUEVO FLUJO: REPORTE MID-GAME (SIN FINALIZAR EL PARTIDO) ---
+  Future<void> _showMidGameReportDialog(BuildContext context, MatchState state, MatchGameController controller) async {
+    // Si ya había algo escrito antes, lo precargamos en el cuadro de texto
+    String initialText = state.observaciones;
+    final textController = TextEditingController(text: initialText);
+    
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1F2B),
+        title: const Row(
+          children: [
+            Icon(Icons.edit_document, color: Colors.blueAccent),
+            SizedBox(width: 10),
+            Text("Reporte Arbitral", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ]
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Redacta las novedades del partido. Puedes actualizar este texto en cualquier momento. Se anexará al acta final.", 
+              style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.3)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: textController,
+              maxLines: 5,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: "Observaciones / Incidentes",
+                labelStyle: const TextStyle(color: Colors.white54),
+                filled: true,
+                fillColor: Colors.black26,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: const BorderSide(color: Colors.blueAccent), 
+                  borderRadius: BorderRadius.circular(10)
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("Cancelar", style: TextStyle(color: Colors.grey))
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.blueAccent),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text("Guardar", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
+          ),
+        ],
+      )
+    );
+
+    if (confirm == true && context.mounted) {
+      String novedades = textController.text.trim();
+      if (novedades.isEmpty) novedades = "";
+      
+      // Solo actualizamos el estado, NO cerramos el partido
+      controller.setObservaciones(novedades);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Reporte actualizado correctamente", style: TextStyle(color: Colors.white)), 
+          backgroundColor: Colors.blueAccent, 
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        )
+      );
+    }
+  }
+
 }

@@ -143,7 +143,7 @@ class MatchState {
     this.auxReferee = '',
     this.scorekeeper = '',
     this.forfeitStatus = 'NONE',
-    this.observaciones = 'Sin novedad',
+    this.observaciones = '',
     this.teamATimeouts1 = const [],
     this.teamATimeouts2 = const [],
     this.teamAOTTimeouts = const [],
@@ -252,7 +252,7 @@ class MatchState {
       teamBTimeouts2: List<String>.from(json['teamBTimeouts2'] ?? []),
       teamBOTTimeouts: List<String>.from(json['teamBOTTimeouts'] ?? []),
       forfeitStatus: json['forfeitStatus'] ?? 'NONE',
-      observaciones: json['observaciones'] ?? 'Sin novedad',
+      observaciones: json['observaciones'] ?? '',
     );
   }
 }
@@ -336,7 +336,6 @@ Future<void> restoreFromDatabase({
         ..orderBy([(t) => drift.OrderingTerm.asc(t.createdAt)]))
       .get();
 
-  // 4. Procesar eventos acumulativamente
   // 4. Procesar eventos acumulativamente
     for (var event in events) {
       String teamId = 'A';
@@ -874,7 +873,7 @@ void _applyRestoreEvent({
       teamBTimeouts2: [],
       teamBOTTimeouts: [],
       forfeitStatus: 'NONE',         
-      observaciones: 'Sin novedad',
+      observaciones: '',
     );
   }
 

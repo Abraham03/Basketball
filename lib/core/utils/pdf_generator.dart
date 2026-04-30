@@ -712,7 +712,7 @@ class PdfGenerator {
 
                   if (state.observaciones.isNotEmpty)
                   _drawText(
-                    "OBSERVACIONES: ${state.observaciones}",
+                    state.observaciones,
                     x: 60.0,
                     y: 10.0, 
                     fontSize: 9,
@@ -726,6 +726,141 @@ class PdfGenerator {
           },
         ),
       );
+
+      // =================================================================
+      // --- NUEVA SECCIÓN: SEGUNDA HOJA PARA REPORTE ARBITRAL ---
+      // =================================================================
+      if (state.observaciones.trim().isNotEmpty) {
+        pdf.addPage(
+          pw.Page(
+            pageFormat: PdfPageFormat.a4,
+            margin: const pw.EdgeInsets.all(40), // Márgenes formales
+            build: (pw.Context context) {
+              return pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  // --- ENCABEZADO OFICIAL ---
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: pw.CrossAxisAlignment.center,
+                    children: [
+                      if (tournLogoProvider != null)
+                        pw.Image(tournLogoProvider, width: 60, height: 60)
+                      else
+                        pw.SizedBox(width: 60, height: 60),
+                      
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.center,
+                        children: [
+                          pw.Text("REPORTE ARBITRAL / ANEXO DE NOVEDADES", 
+                            style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
+                          pw.SizedBox(height: 4),
+                          pw.Text(tournamentName.toUpperCase(), 
+                            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                        ]
+                      ),
+
+                      if (refereeLogoProvider != null)
+                        pw.Image(refereeLogoProvider, width: 60, height: 60)
+                      else
+                        pw.SizedBox(width: 60, height: 60),
+                    ]
+                  ),
+                  pw.SizedBox(height: 20),
+                  
+                  // --- DATOS DEL PARTIDO ---
+                  pw.Container(
+                    padding: const pw.EdgeInsets.all(10),
+                    decoration: pw.BoxDecoration(
+                      border: pw.Border.all(color: PdfColors.blue900, width: 1.5),
+                      borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+                    ),
+                    child: pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text("Partido: $teamAName vs $teamBName", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                            pw.Text("Categoría: $categoryName"),
+                            pw.Text("Cancha: $venueName"),
+                          ]
+                        ),
+                        pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.end,
+                          children: [
+                            pw.Text("Fecha: $dateStr", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                            pw.Text("Hora: $timeStr"),
+                            pw.Text("Marcador: $teamAName ${state.scoreA} - ${state.scoreB} $teamBName"),
+                          ]
+                        ),
+                      ]
+                    )
+                  ),
+                  pw.SizedBox(height: 30),
+
+                  // --- CUERPO DEL REPORTE ---
+                  pw.Text("DESCRIPCIÓN DE LOS HECHOS:", style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.red900)),
+                  pw.SizedBox(height: 10),
+                  pw.Container(
+                    width: double.infinity,
+                    padding: const pw.EdgeInsets.all(15),
+                    decoration: pw.BoxDecoration(
+                      color: PdfColors.grey100,
+                      border: pw.Border.all(color: PdfColors.grey400),
+                      borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+                    ),
+                    child: pw.Text(
+                      state.observaciones,
+                      style: const pw.TextStyle(fontSize: 12, lineSpacing: 1.5),
+                      textAlign: pw.TextAlign.justify,
+                    ),
+                  ),
+
+                  pw.Spacer(),
+
+                  // --- FIRMAS DE LOS ÁRBITROS ---
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceEvenly,
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Column(
+                        children: [
+                          if (mainRefSignature != null)
+                            pw.Image(pw.MemoryImage(mainRefSignature), width: 120, height: 60)
+                          else
+                            pw.SizedBox(height: 60),
+                          pw.Container(width: 180, height: 1.5, color: PdfColors.black),
+                          pw.SizedBox(height: 5),
+                          pw.Text("Árbitro Principal", style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                          pw.Text(mainReferee, style: const pw.TextStyle(fontSize: 10)),
+                        ]
+                      ),
+                      if (auxReferee.isNotEmpty)
+                        pw.Column(
+                          children: [
+                            if (auxRefSignature != null)
+                              pw.Image(pw.MemoryImage(auxRefSignature), width: 120, height: 60)
+                            else
+                              pw.SizedBox(height: 60),
+                            pw.Container(width: 180, height: 1.5, color: PdfColors.black),
+                            pw.SizedBox(height: 5),
+                            pw.Text("Árbitro Auxiliar", style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                            pw.Text(auxReferee, style: const pw.TextStyle(fontSize: 10)),
+                          ]
+                        ),
+                    ]
+                  ),
+                  pw.SizedBox(height: 20),
+                  pw.Center(
+                    child: pw.Text("Generado por Van Ball App", style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey)),
+                  )
+                ],
+              );
+            },
+          ),
+        );
+      }
     } catch (e) {
       throw Exception('Error al generar PDF: $e');
     }
