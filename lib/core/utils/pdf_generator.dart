@@ -710,15 +710,7 @@ class PdfGenerator {
                     PdfCoords.overtimeY,
                   ),
 
-                  if (state.observaciones.isNotEmpty)
-                  _drawText(
-                    state.observaciones,
-                    x: 60.0,
-                    y: 10.0, 
-                    fontSize: 9,
-                    isBold: true,
-                    color: PdfColors.red900,
-                  ),
+                 
 
                 ..._drawRunningScore(state.scoreLog, state.periodScores),
               ],
